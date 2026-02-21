@@ -1006,66 +1006,68 @@ function App() {
           ) : <p className="empty">-</p>}
         </div>
         
-        {(true) && (
-          <div className="gallery">
-            <div className="gallery-tabs">
-              <button 
-                className={`gallery-tab ${galleryTab === 'generated' ? 'active' : ''}`}
-                onClick={() => { setGalleryTab('generated'); setCurrentPage(1); }}
-              >
-                Generated ({sharedGallery.filter(p => !p.isOg).length})
-              </button>
-              <button 
-                className={`gallery-tab ${galleryTab === 'transformed' ? 'active' : ''}`}
-                onClick={() => { setGalleryTab('transformed'); setCurrentPage(1); }}
-              >
-                Transformed ({sharedGallery.filter(p => p.isOg).length})
-              </button>
-            </div>
-            <div className="gallery-grid">
-              {sharedGallery.filter(p => galleryTab === 'generated' ? !p.isOg : p.isOg).length === 0 ? (
-                <p className="empty">No {galleryTab} penguins yet. Be the first to create one!</p>
-              ) : (
-                sharedGallery
-                  .filter(p => galleryTab === 'generated' ? !p.isOg : p.isOg)
-                  .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-                  .map((penguin, idx) => (
-                    <div 
-                      key={penguin.id || idx} 
-                      className="gallery-item"
-                      onClick={() => loadPenguin(penguin)}
-                    >
-                      <img src={penguin.image} alt="Penguin" />
-                    </div>
-                  ))
-              )}
-            </div>
-            {sharedGallery.filter(p => galleryTab === 'generated' ? !p.isOg : p.isOg).length > itemsPerPage && (
-              <div className="pagination">
+        {(() => {
+          const allPenguins = [...sharedGallery, ...savedPenguins]
+          const filteredPenguins = allPenguins.filter(p => galleryTab === 'generated' ? !p.isOg : p.isOg)
+          const uniquePenguins = filteredPenguins.filter((p, idx, arr) => arr.findIndex(x => x.id === p.id) === idx)
+          
+          return (
+            <div className="gallery">
+              <div className="gallery-tabs">
                 <button 
-                  className="page-btn" 
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
+                  className={`gallery-tab ${galleryTab === 'generated' ? 'active' : ''}`}
+                  onClick={() => { setGalleryTab('generated'); setCurrentPage(1); }}
                 >
-                  Prev
+                  Generated ({uniquePenguins.length})
                 </button>
-                <span className="page-info">
-                  {currentPage} / {Math.max(1, Math.ceil(sharedGallery.filter(p => galleryTab === 'generated' ? !p.isOg : p.isOg).length / itemsPerPage))}
-                </span>
                 <button 
-                  className="page-btn" 
-                  onClick={() => setCurrentPage(p => Math.min(
-                    Math.max(1, Math.ceil(sharedGallery.filter(p => galleryTab === 'generated' ? !p.isOg : p.isOg).length / itemsPerPage)), 
-                    p + 1
-                  ))}
-                  disabled={currentPage >= Math.max(1, Math.ceil(sharedGallery.filter(p => galleryTab === 'generated' ? !p.isOg : p.isOg).length / itemsPerPage))}
+                  className={`gallery-tab ${galleryTab === 'transformed' ? 'active' : ''}`}
+                  onClick={() => { setGalleryTab('transformed'); setCurrentPage(1); }}
                 >
-                  Next
+                  Transformed ({uniquePenguins.length})
                 </button>
               </div>
-            )}
-          </div>
-        )}
+              <div className="gallery-grid">
+                {uniquePenguins.length === 0 ? (
+                  <p className="empty">No {galleryTab} penguins yet. Be the first to create one!</p>
+                ) : (
+                  uniquePenguins
+                    .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                    .map((penguin, idx) => (
+                      <div 
+                        key={penguin.id || idx} 
+                        className="gallery-item"
+                        onClick={() => loadPenguin(penguin)}
+                      >
+                        <img src={penguin.image} alt="Penguin" />
+                      </div>
+                    ))
+                )}
+              </div>
+              {uniquePenguins.length > itemsPerPage && (
+                <div className="pagination">
+                  <button 
+                    className="page-btn" 
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    Prev
+                  </button>
+                  <span className="page-info">
+                    {currentPage} / {Math.max(1, Math.ceil(uniquePenguins.length / itemsPerPage))}
+                  </span>
+                  <button 
+                    className="page-btn" 
+                    onClick={() => setCurrentPage(p => Math.min(Math.ceil(uniquePenguins.length / itemsPerPage), p + 1))}
+                    disabled={currentPage >= Math.ceil(uniquePenguins.length / itemsPerPage)}
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </div>
+          )
+        })()}
         
         {modalPenguin && (
           <div className="modal-overlay" onClick={closeModal}>
