@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { ethers } from 'ethers'
-import { uploadToIPFS, getIPFSUrl, saveToSharedGallery, fetchSharedGallery } from './ipfs'
+import { uploadToIPFS, saveToSharedGallery, fetchSharedGallery } from './ipfs'
 import './App.css'
 
 const CONTRACT_ADDRESS = '0xd0510B85EdC7e077b57Ce6AD81D10253608eed92'
@@ -1006,31 +1006,28 @@ function App() {
           ) : <p className="empty">-</p>}
         </div>
         
-        {(savedPenguins.length > 0 || sharedGallery.length > 0) && (
+        {(true) && (
           <div className="gallery">
             <div className="gallery-tabs">
               <button 
                 className={`gallery-tab ${galleryTab === 'generated' ? 'active' : ''}`}
                 onClick={() => { setGalleryTab('generated'); setCurrentPage(1); }}
               >
-                My Generated ({savedPenguins.filter(p => !p.isOg).length})
+                Generated ({sharedGallery.filter(p => !p.isOg).length})
               </button>
               <button 
                 className={`gallery-tab ${galleryTab === 'transformed' ? 'active' : ''}`}
                 onClick={() => { setGalleryTab('transformed'); setCurrentPage(1); }}
               >
-                My Transformed ({savedPenguins.filter(p => p.isOg).length})
-              </button>
-              <button 
-                className={`gallery-tab ${galleryTab === 'shared' ? 'active' : ''}`}
-                onClick={() => { setGalleryTab('shared'); setCurrentPage(1); }}
-              >
-                Community ({sharedGallery.length})
+                Transformed ({sharedGallery.filter(p => p.isOg).length})
               </button>
             </div>
             <div className="gallery-grid">
-              {galleryTab === 'shared' ? (
+              {sharedGallery.filter(p => galleryTab === 'generated' ? !p.isOg : p.isOg).length === 0 ? (
+                <p className="empty">No {galleryTab} penguins yet. Be the first to create one!</p>
+              ) : (
                 sharedGallery
+                  .filter(p => galleryTab === 'generated' ? !p.isOg : p.isOg)
                   .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                   .map((penguin, idx) => (
                     <div 
@@ -1041,22 +1038,9 @@ function App() {
                       <img src={penguin.image} alt="Penguin" />
                     </div>
                   ))
-              ) : (
-                savedPenguins
-                  .filter(p => galleryTab === 'generated' ? !p.isOg : p.isOg)
-                  .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-                  .map((penguin) => (
-                    <div 
-                      key={penguin.id} 
-                      className="gallery-item"
-                      onClick={() => loadPenguin(penguin)}
-                    >
-                      <img src={penguin.image} alt="Penguin" />
-                    </div>
-                  ))
               )}
             </div>
-            {(galleryTab === 'shared' ? sharedGallery : savedPenguins.filter(p => galleryTab === 'generated' ? !p.isOg : p.isOg)).length > itemsPerPage && (
+            {sharedGallery.filter(p => galleryTab === 'generated' ? !p.isOg : p.isOg).length > itemsPerPage && (
               <div className="pagination">
                 <button 
                   className="page-btn" 
@@ -1066,19 +1050,15 @@ function App() {
                   Prev
                 </button>
                 <span className="page-info">
-                  {currentPage} / {Math.ceil(
-                    (galleryTab === 'shared' ? sharedGallery : savedPenguins.filter(p => galleryTab === 'generated' ? !p.isOg : p.isOg)).length / itemsPerPage
-                  )}
+                  {currentPage} / {Math.max(1, Math.ceil(sharedGallery.filter(p => galleryTab === 'generated' ? !p.isOg : p.isOg).length / itemsPerPage))}
                 </span>
                 <button 
                   className="page-btn" 
                   onClick={() => setCurrentPage(p => Math.min(
-                    Math.ceil((galleryTab === 'shared' ? sharedGallery : savedPenguins.filter(p => galleryTab === 'generated' ? !p.isOg : p.isOg)).length / itemsPerPage), 
+                    Math.max(1, Math.ceil(sharedGallery.filter(p => galleryTab === 'generated' ? !p.isOg : p.isOg).length / itemsPerPage)), 
                     p + 1
                   ))}
-                  disabled={currentPage >= Math.ceil(
-                    (galleryTab === 'shared' ? sharedGallery : savedPenguins.filter(p => galleryTab === 'generated' ? !p.isOg : p.isOg)).length / itemsPerPage
-                  )}
+                  disabled={currentPage >= Math.max(1, Math.ceil(sharedGallery.filter(p => galleryTab === 'generated' ? !p.isOg : p.isOg).length / itemsPerPage))}
                 >
                   Next
                 </button>
