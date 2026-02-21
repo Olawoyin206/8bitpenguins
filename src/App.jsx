@@ -662,6 +662,7 @@ function App() {
   const [modalPenguin, setModalPenguin] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [galleryTab, setGalleryTab] = useState('generated')
+  const [cooldown, setCooldown] = useState(0)
   const itemsPerPage = 20
   const fileInputRef = useRef(null)
   const canvasRef = useRef(null)
@@ -673,6 +674,13 @@ function App() {
   useEffect(() => {
     fetchSharedGallery().then(gallery => setSharedGallery(gallery))
   }, [])
+
+  useEffect(() => {
+    if (cooldown > 0) {
+      const timer = setTimeout(() => setCooldown(cooldown - 1), 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [cooldown])
 
   useEffect(() => {
     if (window.ethereum) {
@@ -723,30 +731,31 @@ function App() {
             }))
             setConfetti(newConfetti)
             
-            setStatus('OG Penguin Generated!')
-            
             // Clear confetti after animation
             setTimeout(() => setConfetti([]), 1200)
             
-            // Upload to IPFS and save OG to gallery
-            setStatus('Uploading to IPFS...')
-            const ipfsData = await uploadToIPFS(canvasRef)
-            
+            // Save penguin immediately with local image
             const newPenguin = {
               id: Date.now(),
-              cid: ipfsData ? ipfsData.cid : null,
-              image: ipfsData ? ipfsData.url : canvasRef.current.toDataURL(),
+              cid: null,
+              image: canvasRef.current.toDataURL(),
               traits: extractedTraits,
               isOg: true,
               timestamp: Date.now()
             }
             setSavedPenguins([newPenguin, ...savedPenguins])
             
-            await saveToSharedGallery(newPenguin)
-            const updatedGallery = await fetchSharedGallery()
-            setSharedGallery(updatedGallery)
+            // Upload to IPFS in background
+            uploadToIPFS(canvasRef).then(ipfsData => {
+              if (ipfsData) {
+                const updatedPenguin = { ...newPenguin, cid: ipfsData.cid, image: ipfsData.url }
+                setSavedPenguins(prev => prev.map(p => p.id === newPenguin.id ? updatedPenguin : p))
+                saveToSharedGallery(updatedPenguin).then(() => fetchSharedGallery().then(setSharedGallery))
+              }
+            })
             
-            setStatus('Saved to IPFS!')
+            // Save to shared gallery immediately too
+            saveToSharedGallery(newPenguin).then(() => fetchSharedGallery().then(setSharedGallery))
         }, 200)
       }
       img.src = event.target.result
@@ -788,10 +797,12 @@ function App() {
   }
 
   const generate = async () => {
+    if (cooldown > 0) return
     setIsGenerating(true)
     setIsRevealing(false)
     setConfetti([])
     setHasGenerated(true)
+    setCooldown(10)
     
     setTimeout(() => {
       const t = {
@@ -823,30 +834,31 @@ function App() {
         }))
         setConfetti(newConfetti)
         
-        setStatus('Generated!')
-        
         // Clear confetti after animation
         setTimeout(() => setConfetti([]), 1200)
         
-        // Upload to IPFS and save to gallery
-        setStatus('Uploading to IPFS...')
-        const ipfsData = await uploadToIPFS(canvasRef)
-        
+        // Save penguin immediately with local image
         const newPenguin = {
           id: Date.now(),
-          cid: ipfsData ? ipfsData.cid : null,
-          image: ipfsData ? ipfsData.url : canvasRef.current.toDataURL(),
+          cid: null,
+          image: canvasRef.current.toDataURL(),
           traits: t,
           isOg: false,
           timestamp: Date.now()
         }
         setSavedPenguins([newPenguin, ...savedPenguins])
         
-        await saveToSharedGallery(newPenguin)
-        const updatedGallery = await fetchSharedGallery()
-        setSharedGallery(updatedGallery)
+        // Upload to IPFS in background
+        uploadToIPFS(canvasRef).then(ipfsData => {
+          if (ipfsData) {
+            const updatedPenguin = { ...newPenguin, cid: ipfsData.cid, image: ipfsData.url }
+            setSavedPenguins(prev => prev.map(p => p.id === newPenguin.id ? updatedPenguin : p))
+            saveToSharedGallery(updatedPenguin).then(() => fetchSharedGallery().then(setSharedGallery))
+          }
+        })
         
-        setStatus('Saved to IPFS!')
+        // Save to shared gallery immediately too
+        saveToSharedGallery(newPenguin).then(() => fetchSharedGallery().then(setSharedGallery))
       }, 200)
     }, 1500)
   }
@@ -896,6 +908,7 @@ function App() {
       <header>
         <h1>8bit Penguins</h1>
         <p>Generate or transform into 8-bit penguins</p>
+        <a href="https://x.com/8bitpenguins" target="_blank" rel="noopener noreferrer" className="x-btn">Follow us on X</a>
       </header>
 
       <main>
@@ -949,7 +962,7 @@ function App() {
             ))}
           </div>
           
-          {mode === 'og' && !ogMode && (
+{mode === 'og' && (
             <div className="og-section">
               <input
                 type="file"
@@ -959,26 +972,22 @@ function App() {
                 style={{ display: 'none' }}
                 id="og-upload"
               />
-              <label htmlFor="og-upload" className="btn og-btn">
+              <label htmlFor="og-upload" className="btn white">
                 Upload Your PFP
               </label>
+              <button className="btn" onClick={save}>Save</button>
             </div>
           )}
-          
+
           <div className="btns">
-            {mode === 'generate' ? (
+            {mode === 'generate' && (
               <>
-                <button className="btn primary" onClick={generate} disabled={isGenerating}>
-                  {isGenerating ? 'Generating...' : 'Generate'}
+                <button className="btn" onClick={generate} disabled={isGenerating || cooldown > 0}>
+                  {isGenerating ? 'Generating...' : cooldown > 0 ? `Wait ${cooldown}s` : 'Generate'}
                 </button>
                 <button className="btn" onClick={save} disabled={!traits}>Save</button>
               </>
-            ) : ogMode ? (
-              <>
-                <button className="btn primary" onClick={clearOg}>New OG</button>
-                <button className="btn" onClick={save}>Download</button>
-              </>
-            ) : null}
+            )}
           </div>
           <p className="status">{status}</p>
         </div>
@@ -1008,6 +1017,8 @@ function App() {
         
         {(() => {
           const allPenguins = [...sharedGallery, ...savedPenguins]
+          const generatedCount = allPenguins.filter(p => !p.isOg).length
+          const transformedCount = allPenguins.filter(p => p.isOg).length
           const filteredPenguins = allPenguins.filter(p => galleryTab === 'generated' ? !p.isOg : p.isOg)
           const uniquePenguins = filteredPenguins.filter((p, idx, arr) => arr.findIndex(x => x.id === p.id) === idx)
           
@@ -1018,18 +1029,18 @@ function App() {
                   className={`gallery-tab ${galleryTab === 'generated' ? 'active' : ''}`}
                   onClick={() => { setGalleryTab('generated'); setCurrentPage(1); }}
                 >
-                  Generated ({uniquePenguins.length})
+                  Generated ({generatedCount})
                 </button>
                 <button 
                   className={`gallery-tab ${galleryTab === 'transformed' ? 'active' : ''}`}
                   onClick={() => { setGalleryTab('transformed'); setCurrentPage(1); }}
                 >
-                  Transformed ({uniquePenguins.length})
+                  Transformed ({transformedCount})
                 </button>
               </div>
               <div className="gallery-grid">
                 {uniquePenguins.length === 0 ? (
-                  <p className="empty">No {galleryTab} penguins yet. Be the first to create one!</p>
+                  <p className="empty">No {galleryTab === 'generated' ? 'generated' : 'transformed'} penguins yet. Be the first to create one!</p>
                 ) : (
                   uniquePenguins
                     .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)

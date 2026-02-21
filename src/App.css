@@ -11,6 +11,12 @@ body {
   justify-content: center;
   align-items: center;
   padding: 20px;
+  margin: 0;
+}
+
+html {
+  margin: 0;
+  padding: 0;
 }
 
 .app {
@@ -42,6 +48,24 @@ header p {
   color: #8b949e;
   font-size: 0.75rem;
   letter-spacing: 2px;
+}
+
+.x-btn {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 6px 12px;
+  background: #000;
+  color: #fff;
+  font-size: 0.7rem;
+  text-decoration: none;
+  border-radius: 4px;
+  border: 1px solid #333;
+  transition: all 0.2s;
+}
+
+.x-btn:hover {
+  background: #333;
+  border-color: #fff;
 }
 
 .badge {
@@ -316,6 +340,18 @@ main {
   border-color: #32d912;
 }
 
+.btn.white {
+  background: #ffffff;
+  border-color: #ffffff;
+  color: #0d1117;
+  font-weight: 600;
+}
+
+.btn.white:hover {
+  background: #e0e0e0;
+  border-color: #e0e0e0;
+}
+
 .btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
@@ -329,17 +365,9 @@ main {
 
 .og-section {
   margin-bottom: 12px;
-}
-
-.og-btn {
-  background: linear-gradient(135deg, #f0883e 0%, #d29922 100%);
-  color: #0d1117 !important;
-  font-weight: 700;
-  border: none !important;
-}
-
-.og-btn:hover {
-  background: linear-gradient(135deg, #d29922 0%, #f0883e 100%);
+  display: flex;
+  gap: 10px;
+  justify-content: center;
 }
 
 .status {
@@ -559,8 +587,9 @@ main {
   main { gap: 12px; }
   .tab { padding: 10px 16px; font-size: 0.6rem; }
   .gallery { min-width: auto; max-width: 100%; }
-  .gallery-tabs { flex-direction: column; gap: 8px; }
-  .gallery-tab:first-child { border-right: none; border-bottom: 1px solid #30363d; }
+  .gallery-tabs { flex-direction: row; gap: 0; }
+  .gallery-tab:first-child { border-right: 1px solid #30363d; border-bottom: none; }
+  .gallery-tab { padding: 8px 10px; font-size: 0.6rem; }
   .gallery-grid { grid-template-columns: repeat(4, 1fr); gap: 6px; }
 }
 
