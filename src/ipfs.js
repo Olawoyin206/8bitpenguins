@@ -4,7 +4,7 @@ const JSONBIN_BIN_ID = import.meta.env.VITE_JSONBIN_BIN_ID
 
 const IPFS_GATEWAY = "https://gateway.pinata.cloud/ipfs/"
 const CACHE_KEY = 'sharedGalleryCache'
-const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+const CACHE_DURATION = 30 * 1000 // 30 seconds
 
 function getCache() {
   try {

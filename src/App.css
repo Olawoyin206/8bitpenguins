@@ -471,13 +471,20 @@ main {
   text-transform: uppercase;
 }
 
+.gallery-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
 .gallery-tabs {
   display: flex;
   gap: 0;
-  margin-bottom: 15px;
   border: 1px solid #30363d;
   border-radius: 4px;
   overflow: hidden;
+  margin-bottom: 0;
 }
 
 .gallery-tab {
@@ -504,6 +511,23 @@ main {
 .gallery-tab:hover:not(.active) {
   background: #30363d;
   color: #ffffff;
+}
+
+.refresh-btn {
+  width: 36px;
+  height: 36px;
+  border: 1px solid #30363d;
+  background: #21262d;
+  color: #8b949e;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.15s;
+}
+
+.refresh-btn:hover {
+  border-color: #39ff14;
+  color: #39ff14;
 }
 
 .gallery-grid {

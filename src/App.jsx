@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { uploadToIPFS, saveToSharedGallery, fetchSharedGallery } from './ipfs'
+import { uploadToIPFS, saveToSharedGallery, fetchSharedGallery, clearGalleryCache } from './ipfs'
 import './App.css'
 
 const GRID_SIZE = 80
@@ -966,18 +966,29 @@ function App() {
           
           return (
             <div className="gallery">
-              <div className="gallery-tabs">
+              <div className="gallery-header">
+                <div className="gallery-tabs">
+                  <button 
+                    className={`gallery-tab ${galleryTab === 'generated' ? 'active' : ''}`}
+                    onClick={() => { setGalleryTab('generated'); setCurrentPage(1); }}
+                  >
+                    Generated ({generatedCount})
+                  </button>
+                  <button 
+                    className={`gallery-tab ${galleryTab === 'transformed' ? 'active' : ''}`}
+                    onClick={() => { setGalleryTab('transformed'); setCurrentPage(1); }}
+                  >
+                    Transformed ({transformedCount})
+                  </button>
+                </div>
                 <button 
-                  className={`gallery-tab ${galleryTab === 'generated' ? 'active' : ''}`}
-                  onClick={() => { setGalleryTab('generated'); setCurrentPage(1); }}
+                  className="refresh-btn"
+                  onClick={() => {
+                    clearGalleryCache()
+                    fetchSharedGallery().then(setSharedGallery)
+                  }}
                 >
-                  Generated ({generatedCount})
-                </button>
-                <button 
-                  className={`gallery-tab ${galleryTab === 'transformed' ? 'active' : ''}`}
-                  onClick={() => { setGalleryTab('transformed'); setCurrentPage(1); }}
-                >
-                  Transformed ({transformedCount})
+                  ↻
                 </button>
               </div>
               <div className="gallery-grid">
