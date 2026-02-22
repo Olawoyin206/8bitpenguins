@@ -1,14 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { ethers } from 'ethers'
 import { uploadToIPFS, saveToSharedGallery, fetchSharedGallery } from './ipfs'
 import './App.css'
-
-const CONTRACT_ADDRESS = '0xd0510B85EdC7e077b57Ce6AD81D10253608eed92'
-
-const contractABI = [
-  "function mint() public payable",
-  "function balanceOf(address owner) public view returns (uint256)"
-]
 
 const GRID_SIZE = 80
 
@@ -637,17 +629,16 @@ function drawAgent(traits, canvas) {
 }
 
 function App() {
-  const [account, setAccount] = useState(null)
   const [traits, setTraits] = useState(null)
   const [status, setStatus] = useState('')
   const [ogMode, setOgMode] = useState(false)
-  const [uploadedImage, setUploadedImage] = useState(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [isRevealing, setIsRevealing] = useState(false)
   const [confetti, setConfetti] = useState([])
   const [hasGenerated, setHasGenerated] = useState(false)
   const [hasOgGenerated, setHasOgGenerated] = useState(false)
-  const [idleMatrix, setIdleMatrix] = useState(() => 
+  const [, setUploadedImage] = useState(null)
+  const [idleMatrix] = useState(() => 
     Array.from({ length: 12 }).map((_, i) => ({
       id: i,
       chars: Array.from({ length: 25 }).map(() => Math.random() > 0.5 ? '1' : '0').join('')
@@ -658,7 +649,6 @@ function App() {
     return saved ? JSON.parse(saved) : []
   })
   const [sharedGallery, setSharedGallery] = useState([])
-  const [selectedPenguin, setSelectedPenguin] = useState(null)
   const [modalPenguin, setModalPenguin] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [galleryTab, setGalleryTab] = useState('generated')
@@ -689,14 +679,6 @@ function App() {
       return () => clearTimeout(timer)
     }
   }, [uploadCooldown])
-
-  useEffect(() => {
-    if (window.ethereum) {
-      window.ethereum.request({ method: 'eth_accounts' }).then(accounts => {
-        if (accounts[0]) setAccount(accounts[0])
-      })
-    }
-  }, [])
 
   useEffect(() => {
     if (canvasRef.current && !ogMode && hasGenerated && traits) {
@@ -754,55 +736,21 @@ function App() {
             }
             setSavedPenguins([newPenguin, ...savedPenguins])
             
-            // Upload to IPFS in background
+            // Upload to IPFS first, then save to shared gallery
             uploadToIPFS(canvasRef).then(ipfsData => {
               if (ipfsData) {
                 const updatedPenguin = { ...newPenguin, cid: ipfsData.cid, image: ipfsData.url }
                 setSavedPenguins(prev => prev.map(p => p.id === newPenguin.id ? updatedPenguin : p))
-                saveToSharedGallery(updatedPenguin).then(() => fetchSharedGallery().then(setSharedGallery))
+                saveToSharedGallery(updatedPenguin)
+              } else {
+                saveToSharedGallery(newPenguin)
               }
             })
-            
-            // Save to shared gallery immediately too
-            saveToSharedGallery(newPenguin).then(() => fetchSharedGallery().then(setSharedGallery))
         }, 200)
       }
       img.src = event.target.result
     }
     reader.readAsDataURL(file)
-  }
-
-  const clearOg = () => {
-    setOgMode(false)
-    setUploadedImage(null)
-    setTraits(null)
-    setHasOgGenerated(false)
-    setHasGenerated(false)
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
-    }
-    drawAgent({ 
-      background: TRAITS.background[0],
-      body: TRAITS.body[0], 
-      belly: TRAITS.belly[0], 
-      beak: TRAITS.beak[0], 
-      eyes: TRAITS.eyes[0],
-      head: TRAITS.head[0],
-    }, canvasRef.current)
-  }
-
-  const connect = async () => {
-    if (!window.ethereum) {
-      setStatus('Install MetaMask')
-      return
-    }
-    try {
-      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' })
-      setAccount(accounts[0])
-      setStatus('Connected')
-    } catch (e) {
-      setStatus('Error: ' + e.message)
-    }
   }
 
   const generate = async () => {
@@ -857,42 +805,19 @@ function App() {
         }
         setSavedPenguins([newPenguin, ...savedPenguins])
         
-        // Upload to IPFS in background
+        // Upload to IPFS first, then save to shared gallery
         uploadToIPFS(canvasRef).then(ipfsData => {
           if (ipfsData) {
             const updatedPenguin = { ...newPenguin, cid: ipfsData.cid, image: ipfsData.url }
             setSavedPenguins(prev => prev.map(p => p.id === newPenguin.id ? updatedPenguin : p))
-            saveToSharedGallery(updatedPenguin).then(() => fetchSharedGallery().then(setSharedGallery))
+            saveToSharedGallery(updatedPenguin)
+          } else {
+            // If IPFS fails, still save to shared gallery with base64
+            saveToSharedGallery(newPenguin)
           }
         })
-        
-        // Save to shared gallery immediately too
-        saveToSharedGallery(newPenguin).then(() => fetchSharedGallery().then(setSharedGallery))
       }, 200)
     }, 1500)
-  }
-
-  const mint = async () => {
-    if (!account) {
-      setStatus('Connect wallet first')
-      return
-    }
-    if (!traits) {
-      setStatus('Generate first')
-      return
-    }
-    try {
-      setStatus('Minting...')
-      const provider = new ethers.BrowserProvider(window.ethereum)
-      const signer = provider.getSigner()
-      const contract = new ethers.Contract(CONTRACT_ADDRESS, contractABI, signer)
-      const tx = await contract.mint({ value: 0 })
-      setStatus('Waiting...')
-      await tx.wait()
-      setStatus('Minted!')
-    } catch (e) {
-      setStatus('Error: ' + (e.reason || e.message?.slice(0, 30)))
-    }
   }
 
   const save = () => {
@@ -1025,7 +950,11 @@ function App() {
         </div>
         
         {(() => {
-          const allPenguins = [...sharedGallery, ...savedPenguins]
+          // Combine and deduplicate by ID, with savedPenguins taking precedence
+          const savedIds = new Set(savedPenguins.map(p => p.id))
+          const onlyShared = sharedGallery.filter(p => !savedIds.has(p.id))
+          const allPenguins = [...savedPenguins, ...onlyShared]
+          
           const generatedCount = allPenguins.filter(p => !p.isOg).length
           const transformedCount = allPenguins.filter(p => p.isOg).length
           const filteredPenguins = allPenguins.filter(p => galleryTab === 'generated' ? !p.isOg : p.isOg)

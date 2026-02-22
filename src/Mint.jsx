@@ -50,7 +50,7 @@ function Mint() {
         }
         setMyTokens(tokens)
       }
-    } catch (e) {
+    } catch {
       console.log('Demo mode')
     }
   }
@@ -65,7 +65,7 @@ function Mint() {
       setAccount(accounts[0])
       fetchContractData(accounts[0])
       setStatus('')
-    } catch (e) {
+    } catch {
       setStatus('Connection failed')
     }
   }
