@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { uploadToIPFS, saveToSharedGallery, fetchSharedGallery } from './ipfs'
+import { uploadToIPFS, saveToSharedGallery, fetchSharedGallery, fetchFreshGallery } from './ipfs'
 import './App.css'
 
 const GRID_SIZE = 80
@@ -679,9 +679,9 @@ function App() {
     // Fetch fresh data in background
     fetchSharedGallery().then(gallery => setSharedGallery(gallery))
     
-    // Poll every 5 seconds to see new penguins from other users
+    // Poll every 5 seconds to see new penguins from other users (force fresh fetch)
     const interval = setInterval(() => {
-      fetchSharedGallery().then(gallery => setSharedGallery(gallery))
+      fetchFreshGallery().then(gallery => setSharedGallery(gallery))
     }, 5000)
     
     return () => clearInterval(interval)

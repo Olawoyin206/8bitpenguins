@@ -123,6 +123,11 @@ export async function fetchSharedGallery() {
     return cached
   }
 
+  return fetchFreshGallery()
+}
+
+export async function fetchFreshGallery() {
+  // Always fetch fresh from API
   if (!JSONBIN_KEY || !JSONBIN_BIN_ID) {
     return []
   }
