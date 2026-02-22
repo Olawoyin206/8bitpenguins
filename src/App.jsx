@@ -678,6 +678,13 @@ function App() {
   useEffect(() => {
     // Fetch fresh data in background
     fetchSharedGallery().then(gallery => setSharedGallery(gallery))
+    
+    // Poll every 5 seconds to see new penguins from other users
+    const interval = setInterval(() => {
+      fetchSharedGallery().then(gallery => setSharedGallery(gallery))
+    }, 5000)
+    
+    return () => clearInterval(interval)
   }, [])
 
   useEffect(() => {
@@ -968,7 +975,7 @@ function App() {
         </div>
         
         {(() => {
-          // Combine and deduplicate by ID, with savedPenguins taking precedence
+          // Combine saved and shared penguins, remove duplicates
           const savedIds = new Set(savedPenguins.map(p => p.id))
           const onlyShared = sharedGallery.filter(p => !savedIds.has(p.id))
           const allPenguins = [...savedPenguins, ...onlyShared]
@@ -976,14 +983,11 @@ function App() {
           // Sort by timestamp (latest first)
           const sortedPenguins = allPenguins.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
           
-          // Deduplicate by ID
-          const uniquePenguins = sortedPenguins.filter((p, idx, arr) => arr.findIndex(x => x.id === p.id) === idx)
-          
           // Filter by tab
-          const filteredPenguins = uniquePenguins.filter(p => galleryTab === 'generated' ? !p.isOg : p.isOg)
+          const filteredPenguins = sortedPenguins.filter(p => galleryTab === 'generated' ? !p.isOg : p.isOg)
           
-          const generatedCount = uniquePenguins.filter(p => !p.isOg).length
-          const transformedCount = uniquePenguins.filter(p => p.isOg).length
+          const generatedCount = sortedPenguins.filter(p => !p.isOg).length
+          const transformedCount = sortedPenguins.filter(p => p.isOg).length
           
           return (
             <div className="gallery">
