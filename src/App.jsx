@@ -955,10 +955,14 @@ function App() {
           const onlyShared = sharedGallery.filter(p => !savedIds.has(p.id))
           const allPenguins = [...savedPenguins, ...onlyShared]
           
-          const generatedCount = allPenguins.filter(p => !p.isOg).length
-          const transformedCount = allPenguins.filter(p => p.isOg).length
-          const filteredPenguins = allPenguins.filter(p => galleryTab === 'generated' ? !p.isOg : p.isOg)
-          const uniquePenguins = filteredPenguins.filter((p, idx, arr) => arr.findIndex(x => x.id === p.id) === idx)
+          // Deduplicate by ID
+          const uniquePenguins = allPenguins.filter((p, idx, arr) => arr.findIndex(x => x.id === p.id) === idx)
+          
+          // Filter by tab
+          const filteredPenguins = uniquePenguins.filter(p => galleryTab === 'generated' ? !p.isOg : p.isOg)
+          
+          const generatedCount = uniquePenguins.filter(p => !p.isOg).length
+          const transformedCount = uniquePenguins.filter(p => p.isOg).length
           
           return (
             <div className="gallery">
@@ -977,10 +981,10 @@ function App() {
                 </button>
               </div>
               <div className="gallery-grid">
-                {uniquePenguins.length === 0 ? (
+                {filteredPenguins.length === 0 ? (
                   <p className="empty">No {galleryTab === 'generated' ? 'generated' : 'transformed'} penguins yet. Be the first to create one!</p>
                 ) : (
-                  uniquePenguins
+                  filteredPenguins
                     .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                     .map((penguin, idx) => (
                       <div 
@@ -993,7 +997,7 @@ function App() {
                     ))
                 )}
               </div>
-              {uniquePenguins.length > itemsPerPage && (
+              {filteredPenguins.length > itemsPerPage && (
                 <div className="pagination">
                   <button 
                     className="page-btn" 
@@ -1003,12 +1007,12 @@ function App() {
                     Prev
                   </button>
                   <span className="page-info">
-                    {currentPage} / {Math.max(1, Math.ceil(uniquePenguins.length / itemsPerPage))}
+                    {currentPage} / {Math.max(1, Math.ceil(filteredPenguins.length / itemsPerPage))}
                   </span>
                   <button 
                     className="page-btn" 
-                    onClick={() => setCurrentPage(p => Math.min(Math.ceil(uniquePenguins.length / itemsPerPage), p + 1))}
-                    disabled={currentPage >= Math.ceil(uniquePenguins.length / itemsPerPage)}
+                    onClick={() => setCurrentPage(p => Math.min(Math.ceil(filteredPenguins.length / itemsPerPage), p + 1))}
+                    disabled={currentPage >= Math.ceil(filteredPenguins.length / itemsPerPage)}
                   >
                     Next
                   </button>
