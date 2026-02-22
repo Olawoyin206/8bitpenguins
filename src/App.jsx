@@ -648,7 +648,13 @@ function App() {
     const saved = localStorage.getItem('savedPenguins')
     return saved ? JSON.parse(saved) : []
   })
-  const [sharedGallery, setSharedGallery] = useState([])
+  
+  // Load cached gallery immediately, then refresh in background
+  const [sharedGallery, setSharedGallery] = useState(() => {
+    const cached = localStorage.getItem('cachedGallery')
+    return cached ? JSON.parse(cached) : []
+  })
+  
   const [modalPenguin, setModalPenguin] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [galleryTab, setGalleryTab] = useState('generated')
@@ -663,6 +669,14 @@ function App() {
   }, [savedPenguins])
 
   useEffect(() => {
+    // Update cache when shared gallery changes
+    if (sharedGallery.length > 0) {
+      localStorage.setItem('cachedGallery', JSON.stringify(sharedGallery))
+    }
+  }, [sharedGallery])
+
+  useEffect(() => {
+    // Fetch fresh data in background
     fetchSharedGallery().then(gallery => setSharedGallery(gallery))
   }, [])
 
