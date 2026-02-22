@@ -3,6 +3,24 @@ const JSONBIN_KEY = import.meta.env.VITE_JSONBIN_KEY
 const JSONBIN_BIN_ID = import.meta.env.VITE_JSONBIN_BIN_ID
 
 const IPFS_GATEWAY = "https://gateway.pinata.cloud/ipfs/"
+const GALLERY_CACHE_KEY = 'sharedGalleryCache'
+
+function getGalleryCache() {
+  try {
+    const cached = localStorage.getItem(GALLERY_CACHE_KEY)
+    return cached ? JSON.parse(cached) : null
+  } catch {
+    return null
+  }
+}
+
+function setGalleryCache(data) {
+  try {
+    localStorage.setItem(GALLERY_CACHE_KEY, JSON.stringify(data))
+  } catch {
+    // Storage unavailable
+  }
+}
 
 export async function uploadToIPFS(canvasRef) {
   if (!PINATA_JWT) {
@@ -88,6 +106,9 @@ export async function saveToSharedGallery(penguin) {
       body: JSON.stringify({ penguins: gallery })
     })
     
+    // Update cache
+    setGalleryCache(gallery)
+    
     return true
   } catch (err) {
     console.error("Error saving to shared gallery:", err)
@@ -96,6 +117,12 @@ export async function saveToSharedGallery(penguin) {
 }
 
 export async function fetchSharedGallery() {
+  // Check cache first
+  const cached = getGalleryCache()
+  if (cached && cached.length > 0) {
+    return cached
+  }
+
   if (!JSONBIN_KEY || !JSONBIN_BIN_ID) {
     return []
   }
@@ -108,7 +135,12 @@ export async function fetchSharedGallery() {
     if (!res.ok) return []
     
     const data = await res.json()
-    return data.record?.penguins || []
+    const gallery = data.record?.penguins || []
+    
+    // Cache the result
+    setGalleryCache(gallery)
+    
+    return gallery
   } catch {
     return []
   }

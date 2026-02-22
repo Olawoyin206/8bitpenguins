@@ -735,12 +735,14 @@ function App() {
               timestamp: Date.now()
             }
             setSavedPenguins([newPenguin, ...savedPenguins])
+            setSharedGallery([newPenguin, ...sharedGallery])
             
             // Upload to IPFS first, then save to shared gallery
             uploadToIPFS(canvasRef).then(ipfsData => {
               if (ipfsData) {
                 const updatedPenguin = { ...newPenguin, cid: ipfsData.cid, image: ipfsData.url }
                 setSavedPenguins(prev => prev.map(p => p.id === newPenguin.id ? updatedPenguin : p))
+                setSharedGallery(prev => prev.map(p => p.id === newPenguin.id ? updatedPenguin : p))
                 saveToSharedGallery(updatedPenguin)
               } else {
                 saveToSharedGallery(newPenguin)
@@ -804,12 +806,14 @@ function App() {
           timestamp: Date.now()
         }
         setSavedPenguins([newPenguin, ...savedPenguins])
+        setSharedGallery([newPenguin, ...sharedGallery])
         
         // Upload to IPFS first, then save to shared gallery
         uploadToIPFS(canvasRef).then(ipfsData => {
           if (ipfsData) {
             const updatedPenguin = { ...newPenguin, cid: ipfsData.cid, image: ipfsData.url }
             setSavedPenguins(prev => prev.map(p => p.id === newPenguin.id ? updatedPenguin : p))
+            setSharedGallery(prev => prev.map(p => p.id === newPenguin.id ? updatedPenguin : p))
             saveToSharedGallery(updatedPenguin)
           } else {
             // If IPFS fails, still save to shared gallery with base64
