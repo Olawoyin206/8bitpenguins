@@ -718,6 +718,9 @@ function App() {
     setConfetti([])
     setUploadCooldown(10)
     
+    // Refresh gallery to see latest from other users
+    fetchFreshGallery().then(gallery => setSharedGallery(gallery))
+    
     const reader = new FileReader()
     reader.onload = (event) => {
       const img = new Image()
@@ -783,6 +786,9 @@ function App() {
     setConfetti([])
     setHasGenerated(true)
     setCooldown(10)
+    
+    // Refresh gallery to see latest from other users
+    fetchFreshGallery().then(gallery => setSharedGallery(gallery))
     
     setTimeout(() => {
       const t = {
