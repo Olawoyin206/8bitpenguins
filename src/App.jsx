@@ -748,8 +748,8 @@ function App() {
               isOg: true,
               timestamp: Date.now()
             }
-            setSavedPenguins([newPenguin, ...savedPenguins])
-            setSharedGallery([newPenguin, ...sharedGallery])
+            setSavedPenguins(prev => [newPenguin, ...prev])
+            setSharedGallery(prev => [newPenguin, ...prev])
             
             // Upload to IPFS first, then save to shared gallery
             uploadToIPFS(canvasRef).then(ipfsData => {
@@ -819,8 +819,8 @@ function App() {
           isOg: false,
           timestamp: Date.now()
         }
-        setSavedPenguins([newPenguin, ...savedPenguins])
-        setSharedGallery([newPenguin, ...sharedGallery])
+        setSavedPenguins(prev => [newPenguin, ...prev])
+        setSharedGallery(prev => [newPenguin, ...prev])
         
         // Upload to IPFS first, then save to shared gallery
         uploadToIPFS(canvasRef).then(ipfsData => {
