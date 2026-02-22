@@ -663,6 +663,7 @@ function App() {
   const [currentPage, setCurrentPage] = useState(1)
   const [galleryTab, setGalleryTab] = useState('generated')
   const [cooldown, setCooldown] = useState(0)
+  const [uploadCooldown, setUploadCooldown] = useState(0)
   const itemsPerPage = 20
   const fileInputRef = useRef(null)
   const canvasRef = useRef(null)
@@ -683,6 +684,13 @@ function App() {
   }, [cooldown])
 
   useEffect(() => {
+    if (uploadCooldown > 0) {
+      const timer = setTimeout(() => setUploadCooldown(uploadCooldown - 1), 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [uploadCooldown])
+
+  useEffect(() => {
     if (window.ethereum) {
       window.ethereum.request({ method: 'eth_accounts' }).then(accounts => {
         if (accounts[0]) setAccount(accounts[0])
@@ -700,11 +708,12 @@ function App() {
 
   const handleImageUpload = async (e) => {
     const file = e.target.files[0]
-    if (!file) return
+    if (!file || uploadCooldown > 0) return
     
     setIsGenerating(true)
     setIsRevealing(false)
     setConfetti([])
+    setUploadCooldown(10)
     
     const reader = new FileReader()
     reader.onload = (event) => {
@@ -972,17 +981,17 @@ function App() {
                 style={{ display: 'none' }}
                 id="og-upload"
               />
-              <label htmlFor="og-upload" className="btn white">
-                Upload Your PFP
+              <label htmlFor="og-upload" className={`btn white ${uploadCooldown > 0 ? 'disabled' : ''}`}>
+                {uploadCooldown > 0 ? `Wait ${uploadCooldown}s` : 'Upload Your PFP'}
               </label>
-              <button className="btn" onClick={save}>Save</button>
+              <button className="btn" onClick={save} disabled={!traits}>Save</button>
             </div>
           )}
 
           <div className="btns">
             {mode === 'generate' && (
               <>
-                <button className="btn" onClick={generate} disabled={isGenerating || cooldown > 0}>
+                <button className="btn white" onClick={generate} disabled={isGenerating || cooldown > 0}>
                   {isGenerating ? 'Generating...' : cooldown > 0 ? `Wait ${cooldown}s` : 'Generate'}
                 </button>
                 <button className="btn" onClick={save} disabled={!traits}>Save</button>
