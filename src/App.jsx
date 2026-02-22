@@ -975,13 +975,26 @@ function App() {
         </div>
         
         {(() => {
-          // Combine saved and shared penguins, remove duplicates
-          const savedIds = new Set(savedPenguins.map(p => p.id))
-          const onlyShared = sharedGallery.filter(p => !savedIds.has(p.id))
-          const allPenguins = [...savedPenguins, ...onlyShared]
+          // First, deduplicate by ID (savedPenguins take precedence)
+          const allById = new Map()
+          
+          // Add shared gallery first
+          sharedGallery.forEach(p => {
+            if (!allById.has(p.id)) {
+              allById.set(p.id, p)
+            }
+          })
+          
+          // Add saved penguins (will overwrite if duplicate ID)
+          savedPenguins.forEach(p => {
+            allById.set(p.id, p)
+          })
+          
+          // Convert to array
+          const allUnique = Array.from(allById.values())
           
           // Sort by timestamp (latest first)
-          const sortedPenguins = allPenguins.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+          const sortedPenguins = allUnique.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
           
           // Filter by tab
           const filteredPenguins = sortedPenguins.filter(p => galleryTab === 'generated' ? !p.isOg : p.isOg)
