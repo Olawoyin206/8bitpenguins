@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { uploadToIPFS, saveToSharedGallery, fetchSharedGallery, fetchFreshGallery } from './ipfs'
+import { uploadToIPFS, saveToSharedGallery, fetchFreshGallery } from './ipfs'
 import './App.css'
 
 const GRID_SIZE = 80
@@ -660,6 +660,7 @@ function App() {
   const [galleryTab, setGalleryTab] = useState('generated')
   const [cooldown, setCooldown] = useState(0)
   const [uploadCooldown, setUploadCooldown] = useState(0)
+  const [lastRefresh, setLastRefresh] = useState(null)
   const itemsPerPage = 20
   const fileInputRef = useRef(null)
   const canvasRef = useRef(null)
@@ -669,14 +670,21 @@ function App() {
   }, [savedPenguins])
 
   useEffect(() => {
-    // Update cache when shared gallery changes
     if (sharedGallery.length > 0) {
       localStorage.setItem('cachedGallery', JSON.stringify(sharedGallery))
     }
   }, [sharedGallery])
 
+  // Poll every 30 seconds to see new penguins from other users
   useEffect(() => {
-    fetchSharedGallery().then(gallery => setSharedGallery(gallery))
+    const interval = setInterval(() => {
+      fetchFreshGallery().then(gallery => {
+        setSharedGallery(gallery)
+        setLastRefresh(new Date())
+      })
+    }, 30000)
+    
+    return () => clearInterval(interval)
   }, [])
 
   useEffect(() => {
@@ -763,6 +771,12 @@ function App() {
               } else {
                 saveToSharedGallery(newPenguin)
               }
+              
+              // Fetch latest gallery and update timestamp
+              fetchFreshGallery().then(gallery => {
+                setSharedGallery(gallery)
+                setLastRefresh(new Date())
+              })
             })
         }, 200)
       }
@@ -778,9 +792,6 @@ function App() {
     setConfetti([])
     setHasGenerated(true)
     setCooldown(10)
-    
-    // Refresh gallery to see latest from other users
-    fetchFreshGallery().then(gallery => setSharedGallery(gallery))
     
     setTimeout(() => {
       const t = {
@@ -835,9 +846,14 @@ function App() {
             setSharedGallery(prev => prev.map(p => p.id === newPenguin.id ? updatedPenguin : p))
             saveToSharedGallery(updatedPenguin)
           } else {
-            // If IPFS fails, still save to shared gallery with base64
             saveToSharedGallery(newPenguin)
           }
+          
+          // Fetch latest gallery and update timestamp
+          fetchFreshGallery().then(gallery => {
+            setSharedGallery(gallery)
+            setLastRefresh(new Date())
+          })
         })
       }, 200)
     }, 1500)
@@ -946,6 +962,11 @@ function App() {
               </>
             )}
           </div>
+          {lastRefresh && (
+            <p className="last-refresh">
+              Gallery refreshed: {lastRefresh.toLocaleTimeString()}
+            </p>
+          )}
           <p className="status">{status}</p>
         </div>
 
