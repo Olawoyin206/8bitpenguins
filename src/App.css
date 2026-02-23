@@ -179,6 +179,7 @@ main {
   color: #39ff14;
   text-shadow: 0 0 8px #39ff14;
   opacity: 0.8;
+  filter: blur(2px);
 }
 
 .canvas-wrap.generating .matrix-column::before,
