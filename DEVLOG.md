@@ -1,0 +1,72 @@
+# 8bit Penguins - Dev Log
+
+## Project Overview
+NFT minting application for generating 8-bit pixel penguin NFTs with customizable traits or transforming uploaded PFPs into penguin style.
+
+## Tech Stack
+- React 19 + Vite 7
+- Ethers.js 6 (wallet/MetaMask integration)
+- Pinata (IPFS image storage)
+- JSONBin (shared gallery sync)
+
+## Contract
+- Address: `0xd0510B85EdC7e077b57Ce6AD81D10253608eed92`
+- Max Supply: 10,000
+
+## Environment Variables
+```
+VITE_PINATA_JWT=        # Pinata API key for IPFS uploads
+VITE_JSONBIN_KEY=       # JSONBin access key
+VITE_JSONBIN_BIN_ID=    # JSONBin bin ID for gallery
+```
+
+## Files
+| File | Purpose |
+|------|---------|
+| `src/App.jsx` | Main app - penguin generation, PFP transformation, gallery |
+| `src/Mint.jsx` | Mint page - wallet connection, free mint |
+| `src/ipfs.js` | IPFS upload, gallery sync functions |
+| `src/App.css` | Main styling |
+| `src/index.css` | Base styles |
+
+## Features Implemented
+- [x] Random penguin generation with 6 trait categories
+- [x] PFP transformation (convert any image to 8-bit penguin)
+- [x] Gallery with pagination (Generated/Transformed tabs)
+- [x] IPFS upload via Pinata
+- [x] Shared gallery via JSONBin
+- [x] MetaMask wallet connection
+- [x] Free mint functionality
+- [x] Mint progress tracking
+
+## Traits System
+- **Background**: Soft Pink, Mint Green, Peach, Lavender, Sky Blue, Cream
+- **Body**: Sky Blue, Ocean Blue, Cobalt, Purple, Pink, Green, Coral, Yellow
+- **Belly**: Cream, White, Peach
+- **Beak**: Small, Large, Wide, Pointy, Round, Coral Small
+- **Eyes**: Round, Tender, Curious, Sleepy, Sparkle, Happy, Wink
+- **Head**: None, Crown, Top Hat, Beanie, Bow, Cap, Scarf
+
+---
+
+## Issues & Fixes
+
+### 2026-02-23: JSONBin Rate Limiting
+**Problem**: JSON requests being made every 5 seconds even when not generating images, causing JSONBin credits to reduce rapidly.
+
+**Root Cause**: `fetchFreshGallery()` is called every 5 seconds in a `setInterval`:
+```javascript
+const interval = setInterval(() => {
+  fetchFreshGallery().then(gallery => setSharedGallery(gallery))
+}, 5000)
+```
+
+**Fix**: Removed the 5-second polling. Gallery only fetches:
+1. On initial load
+2. After user generates/transforms a penguin
+
+*Status: FIXED*
+
+---
+
+*Log started: 2026-02-23*

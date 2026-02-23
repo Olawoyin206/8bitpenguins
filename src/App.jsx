@@ -676,15 +676,7 @@ function App() {
   }, [sharedGallery])
 
   useEffect(() => {
-    // Fetch fresh data in background
     fetchSharedGallery().then(gallery => setSharedGallery(gallery))
-    
-    // Poll every 5 seconds to see new penguins from other users (force fresh fetch)
-    const interval = setInterval(() => {
-      fetchFreshGallery().then(gallery => setSharedGallery(gallery))
-    }, 5000)
-    
-    return () => clearInterval(interval)
   }, [])
 
   useEffect(() => {
