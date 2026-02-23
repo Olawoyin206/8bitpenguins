@@ -675,22 +675,12 @@ function App() {
     }
   }, [sharedGallery])
 
-  // Poll every 5 seconds to see new penguins from other users
+  // Fetch on page load and when user generates/transforms
   useEffect(() => {
-    // Initial fetch on page load
     fetchFreshGallery().then(gallery => {
       setSharedGallery(gallery)
       setLastRefresh(new Date())
     })
-    
-    const interval = setInterval(() => {
-      fetchFreshGallery().then(gallery => {
-        setSharedGallery(gallery)
-        setLastRefresh(new Date())
-      })
-    }, 5000)
-    
-    return () => clearInterval(interval)
   }, [])
 
   useEffect(() => {
