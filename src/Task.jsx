@@ -1,11 +1,7 @@
-import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useState } from 'react'
 import './Task.css'
 
 function Task() {
-  const [alreadySubmitted, setAlreadySubmitted] = useState(() => {
-    return !!localStorage.getItem('taskSubmission')
-  })
   const [clickedFollow, setClickedFollow] = useState(false)
   const [clickedLike, setClickedLike] = useState(false)
   const [clickedRetweet, setClickedRetweet] = useState(false)
@@ -24,13 +20,6 @@ function Task() {
   const [showForm, setShowForm] = useState(false)
   const [showLinkWarning, setShowLinkWarning] = useState({})
   const [taskError, setTaskError] = useState({})
-  const navigate = useNavigate()
-
-  useEffect(() => {
-    if (alreadySubmitted) {
-      navigate('/generate')
-    }
-  }, [alreadySubmitted, navigate])
 
   const tasks = [
     {
