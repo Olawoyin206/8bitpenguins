@@ -92,7 +92,7 @@ function Task() {
   }
 
   const validateTweetLink = (link) => {
-    return /^https:\/\/x\.com\/\w+\/status\/\d+$/.test(link)
+    return /^https:\/\/(x\.com|twitter\.com|mobile\.twitter\.com)\/[\w.-]+\/status\/\d+(\?.*)?$/.test(link)
   }
 
   const handleLinkClick = (taskId) => {
