@@ -3,18 +3,17 @@ import './Task.css'
 
 function Task() {
   const [clickedFollow, setClickedFollow] = useState(false)
-  const [clickedLike, setClickedLike] = useState(false)
-  const [clickedRetweet, setClickedRetweet] = useState(false)
+  const [clickedLikeRetweet, setClickedLikeRetweet] = useState(false)
   const [clickedQuote, setClickedQuote] = useState(false)
   const [twitterUsername, setTwitterUsername] = useState('')
   const [walletAddress, setWalletAddress] = useState('')
   const [tweetLink, setTweetLink] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitStatus, setSubmitStatus] = useState(null)
+  const [isSubmitted, setIsSubmitted] = useState(false)
   const [completedTasks, setCompletedTasks] = useState({
     follow: false,
-    like: false,
-    retweet: false,
+    likeRetweet: false,
     quote: false
   })
   const [showForm, setShowForm] = useState(false)
@@ -33,24 +32,14 @@ function Task() {
       completed: completedTasks.follow
     },
     {
-      id: 'like',
-      title: 'Like Our Pinned Post',
-      description: 'Like and show some love to our pinned tweet',
+      id: 'likeRetweet',
+      title: 'Like and Retweet',
+      description: 'Like and retweet our pinned post to help spread the word',
       action: 'View Pinned Post',
       link: 'https://x.com/8bitpenguins/status/2025318146135961699',
-      clicked: clickedLike,
-      setClicked: setClickedLike,
-      completed: completedTasks.like
-    },
-    {
-      id: 'retweet',
-      title: 'Retweet the Post',
-      description: 'Help us spread the word by retweeting',
-      action: 'Retweet',
-      link: 'https://x.com/8bitpenguins/status/2025318146135961699',
-      clicked: clickedRetweet,
-      setClicked: setClickedRetweet,
-      completed: completedTasks.retweet
+      clicked: clickedLikeRetweet,
+      setClicked: setClickedLikeRetweet,
+      completed: completedTasks.likeRetweet
     },
     {
       id: 'quote',
@@ -65,7 +54,7 @@ function Task() {
     }
   ]
 
-  const allTasksComplete = completedTasks.follow && completedTasks.like && completedTasks.retweet && completedTasks.quote
+  const allTasksComplete = completedTasks.follow && completedTasks.likeRetweet && completedTasks.quote
 
   useEffect(() => {
     if (allTasksComplete) {
@@ -146,10 +135,10 @@ function Task() {
     }
 
     localStorage.setItem('taskSubmission', JSON.stringify(submission))
-    setAlreadySubmitted(true)
 
     await new Promise(resolve => setTimeout(resolve, 1000))
 
+    setIsSubmitted(true)
     setSubmitStatus({ type: 'success', message: 'Submission successful!' })
     setTwitterUsername('')
     setWalletAddress('')
@@ -187,29 +176,35 @@ function Task() {
                       Done
                     </span>
                   ) : (
-                    <a 
-                      href={task.link} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className={`task-btn ${task.clicked && !task.completed ? 'clicked' : ''}`}
-                      onClick={(e) => {
-                        e.preventDefault()
-                        window.open(task.link, '_blank')
-                        handleLinkClick(task.id)
-                      }}
-                    >
-                      {task.clicked && !task.completed ? 'Opened - Click Verify' : task.action}
-                    </a>
+                    <>
+                      <a 
+                        href={task.link} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className={`task-btn ${task.clicked && !task.completed ? 'clicked' : ''}`}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          window.open(task.link, '_blank')
+                          handleLinkClick(task.id)
+                        }}
+                      >
+                        {task.clicked && !task.completed ? 'Opened - Click Verify' : task.action}
+                      </a>
+                      <button 
+                        className="verify-btn"
+                        onClick={() => handleVerify(task.id)}
+                      >
+                        Verify
+                      </button>
+                    </>
                   )}
                 </div>
 
                 {task.requiresLink && !task.completed && (
                   <div className="tweet-link-input">
-                    {task.clicked && (
-                      <div className="quote-instruction">
-                        <span>Quote with: <strong>"8bit Penguins Coming To Ethereum"</strong></span>
-                      </div>
-                    )}
+                    <div className="quote-instruction">
+                      <span>Quote with: <strong>"8bit Penguins Coming To Ethereum"</strong></span>
+                    </div>
                     <input
                       type="text"
                       placeholder="Paste your quote tweet link here"
@@ -230,21 +225,12 @@ function Task() {
                     {taskError[task.id]}
                   </div>
                 )}
-
-                {!task.completed && (
-                  <button 
-                    className="verify-btn"
-                    onClick={() => handleVerify(task.id)}
-                  >
-                    Verify
-                  </button>
-                )}
               </div>
             ))}
           </div>
           )}
           
-          {allTasksComplete && (
+          {allTasksComplete && !isSubmitted && (
             <div className={`form-section ${showForm ? 'show' : ''}`}>
               <div className="unlock-message">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -293,6 +279,19 @@ function Task() {
                   </div>
                 )}
               </form>
+            </div>
+          )}
+
+          {isSubmitted && (
+            <div className="form-section show">
+              <div className="unlock-message">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+                <h3>Submission Successful!</h3>
+                <p>Thank you for completing all tasks</p>
+              </div>
             </div>
           )}
         </main>
