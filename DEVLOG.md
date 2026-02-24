@@ -81,4 +81,32 @@ const interval = setInterval(() => {
 
 ---
 
+## 2026-02-24: Task Page for X Engagement
+**Problem**: Need to require users to follow and interact with X account before generating penguins.
+
+**Solution**: Created task page (`/task`) with 4 required tasks:
+1. Follow @8bitpenguins on X
+2. Like pinned post
+3. Retweet pinned post
+4. Quote tweet with "8bit Penguins Coming To Ethereum"
+
+**Key Features**:
+- Click verification: User must click task link before "I've Done This" works
+- Quote tweet opens X with pre-filled message
+- Tweet link validation (format: `https://x.com/username/status/...`)
+- EVM wallet + Twitter username collection
+- Saves submission to localStorage
+
+**Files Added**:
+- `src/Task.jsx` - Task page component
+- `src/Task.css` - Task page styles
+
+**Tweet Links**:
+- Account: https://x.com/8bitpenguins
+- Pinned Post: https://x.com/8bitpenguins/status/2025318146135961699
+
+*Status: DONE*
+
+---
+
 *Log started: 2026-02-23*

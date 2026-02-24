@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import { uploadToIPFS, saveToSharedGallery, fetchFreshGallery } from './ipfs'
 import './App.css'
 
@@ -114,9 +115,11 @@ function convertToPenguinStyle(imageSrc, canvas) {
         background: { name: 'Custom', color: bg.hex },
         body: { name: 'Custom', base: shirt.hex, highlight: shirtHighlight.hex, shadow: shirtShadow.hex },
         belly: { name: 'Custom', base: face.hex, highlight: faceHighlight.hex, shadow: faceShadow.hex },
-        beak: { name: 'Orange', base: '#FF9F43', highlight: '#FFBE76', shadow: '#E67E22' },
+        beak: { name: 'Small', type: 'small', base: '#FF9F43', highlight: '#FFBE76', shadow: '#E67E22' },
         eyes: { name: 'Round', type: 'round', color: '#0A0A0A' },
         head: { name: 'None', type: 'none', color: '#323232' },
+        feet: { name: 'Default Orange', base: '#FF9F43', highlight: '#FFBE76', shadow: '#E67E22' },
+        cheeks: { name: 'Pink', base: '#FFB6C1', highlight: '#FFD1D7', shadow: '#FF91A4' },
       }
       
       ctx.fillStyle = bg.hex
@@ -208,6 +211,17 @@ function convertToPenguinStyle(imageSrc, canvas) {
       rect(cx - 8, 13, cx - 4, 13, shirtShadow.hex)
       rect(cx + 4, 13, cx + 8, 13, shirtShadow.hex)
       
+      // Beak
+      rect(cx - 2, 21, cx + 1, 23, '#FF9F43')
+      rect(cx - 1, 20, cx, 22, '#FF9F43')
+      rect(cx - 1, 22, cx, 22, '#E67E22')
+      
+      // Cheeks
+      rect(cx - 9, 19, cx - 7, 21, '#FFB6C1')
+      rect(cx + 7, 19, cx + 9, 21, '#FFB6C1')
+      rect(cx - 8, 20, cx - 7, 20, '#FFC5CD')
+      rect(cx + 7, 20, cx + 8, 20, '#FFC5CD')
+      
       rect(2, 26, 5, 32, shirt.hex)
       rect(1, 27, 6, 31, shirt.hex)
       rect(2, 28, 5, 30, shirtHighlight.hex)
@@ -215,10 +229,27 @@ function convertToPenguinStyle(imageSrc, canvas) {
       rect(33, 27, 38, 31, shirt.hex)
       rect(34, 28, 37, 30, shirtHighlight.hex)
       
-      rect(10, 37, 14, 38, '#FF9F43')
-      rect(9, 38, 15, 38, '#FF9F43')
-      rect(25, 37, 29, 38, '#FF9F43')
-      rect(24, 38, 30, 38, '#FF9F43')
+      // Feet
+      rect(10, 37, 14, 38, traits.feet.base)
+      rect(9, 38, 15, 38, traits.feet.base)
+      rect(11, 36, 13, 37, traits.feet.highlight)
+      rect(10, 38, 13, 38, traits.feet.shadow)
+      rect(8, 38, 10, 39, traits.feet.base)
+      rect(9, 38, 10, 39, traits.feet.highlight)
+      rect(12, 38, 14, 39, traits.feet.base)
+      rect(13, 38, 14, 39, traits.feet.highlight)
+      rect(25, 37, 29, 38, traits.feet.base)
+      rect(24, 38, 30, 38, traits.feet.base)
+      rect(26, 36, 28, 37, traits.feet.highlight)
+      rect(25, 38, 28, 38, traits.feet.shadow)
+      rect(25, 38, 27, 39, traits.feet.base)
+      rect(26, 38, 27, 39, traits.feet.highlight)
+      rect(29, 38, 31, 39, traits.feet.base)
+      rect(24, 39, 25, 40, traits.feet.highlight)
+      rect(26, 39, 28, 40, traits.feet.base)
+      rect(27, 39, 28, 40, traits.feet.highlight)
+      rect(29, 39, 31, 39, traits.feet.base)
+      rect(30, 39, 31, 39, traits.feet.highlight)
       
       rect(8, 38, 31, 38, 'rgba(0,0,0,0.3)')
       
@@ -230,53 +261,90 @@ function convertToPenguinStyle(imageSrc, canvas) {
 
 const TRAITS = {
   background: [
-    { name: 'Soft Pink', color: '#FADBD8', weight: 20 },
-    { name: 'Mint Green', color: '#D5F5E3', weight: 20 },
-    { name: 'Peach', color: '#FAD7A0', weight: 15 },
-    { name: 'Lavender', color: '#E8DAEF', weight: 15 },
-    { name: 'Sky Blue', color: '#D4E6F1', weight: 15 },
-    { name: 'Cream', color: '#FCF3CF', weight: 15 },
+    { name: 'Light Blue', color: '#ADD8E6', weight: 15 },
+    { name: 'Sky Blue', color: '#87CEEB', weight: 15 },
+    { name: 'Lavender', color: '#E6E6FA', weight: 12 },
+    { name: 'Baby Pink', color: '#FFB6C1', weight: 12 },
+    { name: 'Cream', color: '#FFFDD0', weight: 12 },
+    { name: 'Peach', color: '#FFDAB9', weight: 12 },
+    { name: 'Teal', color: '#008080', weight: 10 },
+    { name: 'Ice Blue', color: '#F0F8FF', weight: 10 },
+    { name: 'Arctic White', color: '#F0FFFF', weight: 8 },
+    { name: 'Gold', color: '#FFD700', weight: 3 },
+    { name: 'Rainbow', color: 'rainbow', weight: 1 },
   ],
   body: [
-    { name: 'Sky Blue', base: '#5DADE2', highlight: '#85C1E9', shadow: '#3498DB', weight: 15 },
-    { name: 'Ocean Blue', base: '#3498DB', highlight: '#5DADE2', shadow: '#2471A3', weight: 15 },
-    { name: 'Cobalt', base: '#2E86AB', highlight: '#54A0FF', shadow: '#1F618D', weight: 12 },
-    { name: 'Purple', base: '#8E44AD', highlight: '#A569BD', shadow: '#6C3483', weight: 12 },
-    { name: 'Pink', base: '#E91E63', highlight: '#EC407A', shadow: '#C2185B', weight: 12 },
-    { name: 'Green', base: '#27AE60', highlight: '#58D68D', shadow: '#1E8449', weight: 12 },
-    { name: 'Coral', base: '#E74C3C', highlight: '#EC7063', shadow: '#C0392B', weight: 12 },
-    { name: 'Yellow', base: '#F39C12', highlight: '#F7DC6F', shadow: '#D68910', weight: 10 },
+    { name: 'Classic', base: '#2C3E50', highlight: '#34495E', shadow: '#1A252F', weight: 15 },
+    { name: 'Baby Blue', base: '#74B9FF', highlight: '#A3D1FF', shadow: '#0984E3', weight: 12 },
+    { name: 'Navy Blue', base: '#1A252F', highlight: '#2C3E50', shadow: '#0D1318', weight: 10 },
+    { name: 'Ice Blue', base: '#81ECEC', highlight: '#A9F5F5', shadow: '#00CEC9', weight: 10 },
+    { name: 'Grey', base: '#95A5A6', highlight: '#BDC3C7', shadow: '#7F8C8D', weight: 10 },
+    { name: 'Dark Grey', base: '#636E72', highlight: '#839192', shadow: '#2D3436', weight: 10 },
+    { name: 'Cream', base: '#F5F0E1', highlight: '#FFFAF2', shadow: '#E8DFD0', weight: 10 },
+    { name: 'Pink', base: '#E91E63', highlight: '#EC407A', shadow: '#C2185B', weight: 10 },
+    { name: 'Sky Blue', base: '#5DADE2', highlight: '#85C1E9', shadow: '#3498DB', weight: 10 },
+    { name: 'Ocean Blue', base: '#3498DB', highlight: '#5DADE2', shadow: '#2471A3', weight: 8 },
+    { name: 'Cobalt', base: '#2E86AB', highlight: '#54A0FF', shadow: '#1F618D', weight: 8 },
+    { name: 'Purple', base: '#8E44AD', highlight: '#A569BD', shadow: '#6C3483', weight: 8 },
+    { name: 'Green', base: '#27AE60', highlight: '#58D68D', shadow: '#1E8449', weight: 8 },
+    { name: 'Coral', base: '#E74C3C', highlight: '#EC7063', shadow: '#C0392B', weight: 8 },
+    { name: 'Yellow', base: '#F39C12', highlight: '#F7DC6F', shadow: '#D68910', weight: 6 },
+    { name: 'Zombie Green', base: '#6AB04C', highlight: '#78E08F', shadow: '#489918', weight: 5 },
+    { name: 'Skeleton White', base: '#F8F9F9', highlight: '#FFFFFF', shadow: '#DFE4E5', weight: 5 },
+    { name: 'Gold', base: '#F9CA24', highlight: '#F8EFBA', shadow: '#F39C12', weight: 3 },
+    { name: 'Rainbow', base: 'rainbow', highlight: 'rainbow', shadow: 'rainbow', weight: 1 },
   ],
   belly: [
-    { name: 'Cream', base: '#FDF5E6', highlight: '#FFFAF0', shadow: '#F5E6D3', weight: 50 },
-    { name: 'White', base: '#FFFFFF', highlight: '#FFFFFF', shadow: '#F0F0F0', weight: 30 },
-    { name: 'Peach', base: '#FFDAB9', highlight: '#FFE4C4', shadow: '#F5CBA7', weight: 20 },
+    { name: 'Cream', base: '#FDF5E6', highlight: '#FFFAF0', shadow: '#F5E6D3', weight: 45 },
+    { name: 'Peach', base: '#FFDAB9', highlight: '#FFE4C4', shadow: '#F5CBA7', weight: 25 },
+    { name: 'Light Blue', base: '#D6EAF8', highlight: '#EBF5FB', shadow: '#AED6F1', weight: 15 },
+    { name: 'Mint', base: '#D5F5E3', highlight: '#E8F8F5', shadow: '#ABEBC6', weight: 10 },
+    { name: 'Lavender', base: '#E8DAEF', highlight: '#F4ECF7', shadow: '#D2B4DE', weight: 5 },
   ],
   beak: [
     { name: 'Small', type: 'small', base: '#FF9F43', highlight: '#FFBE76', shadow: '#E67E22', weight: 20 },
-    { name: 'Large', type: 'large', base: '#FF9F43', highlight: '#FFBE76', shadow: '#E67E22', weight: 20 },
+    { name: 'Large', type: 'large', base: '#FF9F43', highlight: '#FFBE76', shadow: '#E67E22', weight: 18 },
     { name: 'Wide', type: 'wide', base: '#FF9F43', highlight: '#FFBE76', shadow: '#E67E22', weight: 15 },
     { name: 'Pointy', type: 'pointy', base: '#FF9F43', highlight: '#FFBE76', shadow: '#E67E22', weight: 15 },
     { name: 'Round', type: 'round', base: '#FF9F43', highlight: '#FFBE76', shadow: '#E67E22', weight: 15 },
-    { name: 'Coral Small', type: 'small', base: '#FF6B6B', highlight: '#FF8787', shadow: '#EE5A5A', weight: 15 },
+    { name: 'Puffy', type: 'puffy', base: '#FF9F43', highlight: '#FFBE76', shadow: '#E67E22', weight: 12 },
   ],
   eyes: [
-    { name: 'Round', type: 'round', weight: 20 },
-    { name: 'Tender', type: 'tender', weight: 15 },
-    { name: 'Curious', type: 'curious', weight: 15 },
+    { name: 'Normal', type: 'round', weight: 20 },
+    { name: 'Happy', type: 'happy', weight: 15 },
+    { name: 'Sad', type: 'sad', weight: 12 },
+    { name: 'Angry', type: 'angry', weight: 10 },
     { name: 'Sleepy', type: 'sleepy', weight: 12 },
-    { name: 'Sparkle', type: 'sparkle', weight: 15 },
-    { name: 'Happy', type: 'happy', weight: 13 },
+    { name: 'Surprised', type: 'surprised', weight: 10 },
     { name: 'Wink', type: 'wink', weight: 10 },
+    { name: 'Side-eye', type: 'sideeye', weight: 8 },
+    { name: 'Closed', type: 'closed', weight: 8 },
+    { name: 'Sparkle', type: 'sparkle', weight: 10 },
   ],
   head: [
     { name: 'None', type: 'none', weight: 30 },
-    { name: 'Crown', type: 'crown', weight: 12 },
-    { name: 'Top Hat', type: 'tophat', weight: 12 },
-    { name: 'Beanie', type: 'beanie', weight: 12 },
-    { name: 'Bow', type: 'bow', weight: 12 },
-    { name: 'Cap', type: 'cap', weight: 12 },
-    { name: 'Scarf', type: 'scarf', weight: 10 },
+    { name: 'Scarf', type: 'scarf', weight: 20 },
+    { name: 'Beanie', type: 'beanie', weight: 18 },
+    { name: 'Crown', type: 'crown', weight: 15 },
+    { name: 'Halo', type: 'halo', weight: 10 },
+  ],
+  feet: [
+    { name: 'Default Orange', type: 'default', base: '#FF9F43', highlight: '#FFBE76', shadow: '#E67E22', weight: 50 },
+    { name: 'Default Pink', type: 'default', base: '#FD79A8', highlight: '#FDCBDF', shadow: '#E84393', weight: 20 },
+    { name: 'Default Black', type: 'default', base: '#2D3436', highlight: '#636E72', shadow: '#0D1318', weight: 15 },
+    { name: 'Default White', type: 'default', base: '#DFE6E9', highlight: '#FFFFFF', shadow: '#B2BEC3', weight: 15 },
+  ],
+  name: [
+    { name: 'Frosty', weight: 15 },
+    { name: 'Waddles', weight: 15 },
+    { name: 'Pebble', weight: 12 },
+    { name: 'Chilly', weight: 12 },
+    { name: 'Snowy', weight: 12 },
+    { name: 'Flurry', weight: 10 },
+    { name: 'Icee', weight: 10 },
+    { name: 'Bubbles', weight: 8 },
+    { name: 'Nippy', weight: 8 },
+    { name: 'Tuxy', weight: 8 },
   ],
 }
 
@@ -298,8 +366,17 @@ function drawAgent(traits, canvas) {
   canvas.width = 400
   canvas.height = 400
   
-  ctx.fillStyle = traits.background.color
-  ctx.fillRect(0, 0, canvas.width, canvas.height)
+  // Handle rainbow background
+  if (traits.background.color === 'rainbow') {
+    const rainbowColors = ['#FF6B6B', '#FF9F43', '#F9CA24', '#6AB04C', '#48DBFB', '#9B59B6']
+    for (let y = 0; y < 40; y++) {
+      ctx.fillStyle = rainbowColors[y % rainbowColors.length]
+      ctx.fillRect(0, y * scale, canvas.width, scale)
+    }
+  } else {
+    ctx.fillStyle = traits.background.color
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+  }
   
   const set = (x, y, color) => {
     if (x >= 0 && x < 40 && y >= 0 && y < 40) {
@@ -314,14 +391,25 @@ function drawAgent(traits, canvas) {
     }
   }
   
-  const body = traits.body.base
-  const bodyHighlight = traits.body.highlight
-  const bodyShadow = traits.body.shadow
+  const rainbowColors = ['#FF6B6B', '#FF9F43', '#F9CA24', '#6AB04C', '#48DBFB', '#9B59B6', '#FF6B9D']
+  const getRainbow = (x, y) => rainbowColors[((x + y) % 7)]
+  
+  const getColor = (color, x = 20, y = 30) => {
+    if (color === 'rainbow') return getRainbow(x, y)
+    return color
+  }
+  
+  const body = getColor(traits.body.base)
+  const bodyHighlight = getColor(traits.body.highlight)
+  const bodyShadow = getColor(traits.body.shadow)
   const belly = traits.belly.base
   const bellyHighlight = traits.belly.highlight
   const beak = traits.beak.base
   const beakHighlight = traits.beak.highlight
   const beakShadow = traits.beak.shadow
+  const feet = traits.feet?.base || '#FF9F43'
+  const feetHighlight = traits.feet?.highlight || '#FFBE76'
+  const feetShadow = traits.feet?.shadow || '#E67E22'
   
   const cx = 20
   
@@ -477,6 +565,33 @@ function drawAgent(traits, canvas) {
     rect(cx - 4, eyeY + 1, cx - 3, eyeY + 1, '#FFFFFF')
     // Right eye winking
     rect(cx + 3, eyeY + 1, cx + 5, eyeY + 2, '#0A0A0A')
+  } else if (traits.eyes.type === 'sad') {
+    // Sad eyes - droopy
+    rect(cx - 5, eyeY, cx - 3, eyeY + 1, '#0A0A0A')
+    rect(cx - 6, eyeY + 1, cx - 2, eyeY + 1, '#0A0A0A')
+    rect(cx + 3, eyeY, cx + 5, eyeY + 1, '#0A0A0A')
+    rect(cx + 2, eyeY + 1, cx + 6, eyeY + 1, '#0A0A0A')
+    // Sad eyebrows
+    rect(cx - 6, eyeY - 2, cx - 3, eyeY - 2, bodyShadow)
+    rect(cx + 3, eyeY - 2, cx + 6, eyeY - 2, bodyShadow)
+  } else if (traits.eyes.type === 'surprised') {
+    // Surprised eyes - wide open
+    rect(cx - 6, eyeY - 1, cx - 2, eyeY + 2, '#0A0A0A')
+    rect(cx - 5, eyeY - 1, cx - 3, eyeY + 2, '#FFFFFF')
+    rect(cx - 5, eyeY, cx - 4, eyeY + 1, '#0A0A0A')
+    rect(cx + 2, eyeY - 1, cx + 6, eyeY + 2, '#0A0A0A')
+    rect(cx + 3, eyeY - 1, cx + 5, eyeY + 2, '#FFFFFF')
+    rect(cx + 4, eyeY, cx + 5, eyeY + 1, '#0A0A0A')
+  } else if (traits.eyes.type === 'sideeye') {
+    // Side-eye - looking sideways
+    rect(cx - 6, eyeY, cx - 3, eyeY + 2, '#0A0A0A')
+    rect(cx - 5, eyeY + 1, cx - 4, eyeY + 2, '#0A0A0A')
+    rect(cx + 3, eyeY, cx + 6, eyeY + 2, '#0A0A0A')
+    rect(cx + 4, eyeY + 1, cx + 5, eyeY + 2, '#0A0A0A')
+  } else if (traits.eyes.type === 'closed') {
+    // Closed eyes - straight line
+    rect(cx - 6, eyeY + 1, cx - 2, eyeY + 1, '#0A0A0A')
+    rect(cx + 2, eyeY + 1, cx + 6, eyeY + 1, '#0A0A0A')
   }
   
   // Eyebrows
@@ -512,6 +627,12 @@ function drawAgent(traits, canvas) {
     rect(cx - 2, 20, cx + 1, 24, beak)
     rect(cx - 1, 20, cx, 20, beak)
     rect(cx - 2, 24, cx + 1, 24, beakShadow)
+  } else if (traits.beak.type === 'puffy') {
+    rect(cx - 4, 20, cx + 3, 23, beak)
+    rect(cx - 3, 19, cx + 2, 22, beakHighlight)
+    rect(cx - 2, 18, cx + 1, 20, beakHighlight)
+    rect(cx - 3, 23, cx + 2, 23, beakShadow)
+    rect(cx + 2, 22, cx + 3, 22, beakShadow)
   } else {
     // Default small
     rect(cx - 3, 21, cx + 2, 23, beak)
@@ -522,10 +643,12 @@ function drawAgent(traits, canvas) {
   }
   
   // Cheeks
-  rect(cx - 9, 19, cx - 7, 21, '#FFB6C1')
-  rect(cx + 7, 19, cx + 9, 21, '#FFB6C1')
-  rect(cx - 8, 20, cx - 7, 20, '#FFC5CD')
-  rect(cx + 7, 20, cx + 8, 20, '#FFC5CD')
+  const cheeksColor = traits.cheeks?.base || '#FFB6C1'
+  const cheeksHighlightColor = traits.cheeks?.highlight || '#FFC5CD'
+  rect(cx - 9, 19, cx - 7, 21, cheeksColor)
+  rect(cx + 7, 19, cx + 9, 21, cheeksColor)
+  rect(cx - 8, 20, cx - 7, 20, cheeksHighlightColor)
+  rect(cx + 7, 20, cx + 8, 20, cheeksHighlightColor)
   
   // Head accessories
   if (traits.head.type === 'crown') {
@@ -568,6 +691,10 @@ function drawAgent(traits, canvas) {
     rect(cx + 8, 24, cx + 11, 32, '#388E3C')
     rect(cx + 9, 25, cx + 10, 31, '#4CAF50')
     rect(cx - 2, 25, cx + 1, 26, '#2E7D32')
+  } else if (traits.head.type === 'halo') {
+    rect(cx - 4, 3, cx + 3, 4, '#FFD700')
+    rect(cx - 5, 4, cx + 4, 5, '#FFD700')
+    rect(cx - 3, 2, cx + 2, 3, '#FFD700')
   }
   
   // Flippers - detailed pixel art (fixed to stay in bounds)
@@ -599,30 +726,30 @@ function drawAgent(traits, canvas) {
   
   // Feet - detailed (fixed to stay in bounds)
   // Left foot
-  rect(10, 37, 14, 38, beak)
-  rect(9, 38, 15, 38, beak)
-  rect(11, 36, 13, 37, beakHighlight)
-  rect(10, 38, 13, 38, beakShadow)
+  rect(10, 37, 14, 38, feet)
+  rect(9, 38, 15, 38, feet)
+  rect(11, 36, 13, 37, feetHighlight)
+  rect(10, 38, 13, 38, feetShadow)
   // Toes
-  rect(8, 38, 10, 39, beak)
-  rect(9, 38, 10, 39, beakHighlight)
-  rect(12, 38, 14, 39, beak)
-  rect(13, 38, 14, 39, beakHighlight)
+  rect(8, 38, 10, 39, feet)
+  rect(9, 38, 10, 39, feetHighlight)
+  rect(12, 38, 14, 39, feet)
+  rect(13, 38, 14, 39, feetHighlight)
   
   // Right foot
-  rect(25, 37, 29, 38, beak)
-  rect(24, 38, 30, 38, beak)
-  rect(26, 36, 28, 37, beakHighlight)
-  rect(25, 38, 28, 38, beakShadow)
+  rect(25, 37, 29, 38, feet)
+  rect(24, 38, 30, 38, feet)
+  rect(26, 36, 28, 37, feetHighlight)
+  rect(25, 38, 28, 38, feetShadow)
   // Toes
-  rect(25, 38, 27, 39, beak)
-  rect(26, 38, 27, 39, beakHighlight)
-  rect(29, 38, 31, 39, beak)
-  rect(24, 39, 25, 40, beakHighlight)
-  rect(26, 39, 28, 40, beak)
-  rect(27, 39, 28, 40, beakHighlight)
-  rect(29, 39, 31, 39, beak)
-  rect(30, 39, 31, 39, beakHighlight)
+  rect(25, 38, 27, 39, feet)
+  rect(26, 38, 27, 39, feetHighlight)
+  rect(29, 38, 31, 39, feet)
+  rect(24, 39, 25, 40, feetHighlight)
+  rect(26, 39, 28, 40, feet)
+  rect(27, 39, 28, 40, feetHighlight)
+  rect(29, 39, 31, 39, feet)
+  rect(30, 39, 31, 39, feetHighlight)
   
   // Ground shadow
   rect(8, 38, 31, 38, 'rgba(0,0,0,0.3)')
@@ -797,6 +924,8 @@ function App() {
         beak: randomItem(TRAITS.beak),
         eyes: randomItem(TRAITS.eyes),
         head: randomItem(TRAITS.head),
+        feet: { name: 'Default Orange', base: '#FF9F43', highlight: '#FFBE76', shadow: '#E67E22' },
+        name: randomItem(TRAITS.name),
       }
       setTraits(t)
       
@@ -877,7 +1006,11 @@ function App() {
       <header>
         <h1>8bit Penguins</h1>
         <p>Generate or transform into 8-bit penguins</p>
-        <a href="https://x.com/8bitpenguins" target="_blank" rel="noopener noreferrer" className="x-btn">Follow us on X</a>
+        <div className="header-links">
+          <Link to="/task" className="header-link">Task</Link>
+          <Link to="/3d" className="header-link">3D Version</Link>
+          <a href="https://x.com/8bitpenguins" target="_blank" rel="noopener noreferrer" className="x-btn">Follow us on X</a>
+        </div>
       </header>
 
       <main>
@@ -978,6 +1111,7 @@ function App() {
                   <li><span>Beak</span><span>{traits.beak.name}</span></li>
                   <li><span>Eyes</span><span>{traits.eyes.name}</span></li>
                   <li><span>Head</span><span>{traits.head.name}</span></li>
+                  <li><span>Name</span><span>{traits.name?.name}</span></li>
                 </>
               ) : (
                 <>
@@ -1090,6 +1224,7 @@ function App() {
                     <li><span>Beak</span><span>{modalPenguin.traits.beak.name}</span></li>
                     <li><span>Eyes</span><span>{modalPenguin.traits.eyes.name}</span></li>
                     <li><span>Head</span><span>{modalPenguin.traits.head.name}</span></li>
+                    <li><span>Name</span><span>{modalPenguin.traits.name?.name}</span></li>
                   </ul>
                 ) : (
                   <ul>
