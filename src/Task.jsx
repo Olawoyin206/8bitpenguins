@@ -166,10 +166,6 @@ function Task() {
     setWalletAddress('')
     setTweetLink('')
     setIsSubmitting(false)
-
-    setTimeout(() => {
-      navigate('/')
-    }, 2000)
   }
 
   return (
