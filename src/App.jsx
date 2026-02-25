@@ -1029,8 +1029,6 @@ function App() {
         <h1>8bit Penguins</h1>
         <p>Generate or transform into 8-bit penguins</p>
         <div className="header-links">
-          <Link to="/task" className="header-link">Task</Link>
-          <Link to="/3d" className="header-link">3D Version</Link>
           <a href="https://x.com/8bitpenguins" target="_blank" rel="noopener noreferrer" className="x-btn">Follow us on X</a>
         </div>
       </header>
