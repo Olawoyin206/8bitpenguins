@@ -111,8 +111,8 @@ function createVoxelPenguin(traits, THREE) {
   
   const mat = (color) => new THREE.MeshStandardMaterial({
     color,
-    roughness: 0.3,
-    metalness: 0.2,
+    roughness: 0.9,
+    metalness: 0.0,
     flatShading: true,
   })
   
@@ -503,7 +503,7 @@ function ThreeGenerator() {
   const rendererRef = useRef(null)
   const frameRef = useRef(null)
   const penguinRef = useRef(null)
-  const groundBaseRef = useRef(null)
+  const cameraRef = useRef(null)
   const isDragging = useRef(false)
   const lastMouseX = useRef(0)
   
@@ -514,7 +514,7 @@ function ThreeGenerator() {
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
     const canvasSize = isMobile ? 320 : 420
     const pixelRatio = isMobile ? 1 : Math.min(window.devicePixelRatio, 1.5)
-    const shadowMapSize = isMobile ? 512 : 1024
+    const shadowMapSize = isMobile ? 1024 : 2048
     
     const scene = new THREE.Scene()
     scene.background = new THREE.Color(traits.background.color)
@@ -523,7 +523,7 @@ function ThreeGenerator() {
     
     // Camera - orthographic view
     const aspect = 1
-    const frustumSize = 14
+    const frustumSize = 13
     const camera = new THREE.OrthographicCamera(
       -frustumSize * aspect / 2,
       frustumSize * aspect / 2,
@@ -532,8 +532,9 @@ function ThreeGenerator() {
       0.1,
       1000
     )
-    camera.position.set(10, 8, 10)
+    camera.position.set(8, 6, 12)
     camera.lookAt(0, 0, 0)
+    cameraRef.current = camera
     
     const renderer = new THREE.WebGLRenderer({ antialias: !isMobile, alpha: true })
     renderer.setSize(canvasSize, canvasSize)
@@ -583,16 +584,16 @@ function ThreeGenerator() {
     renderer.domElement.addEventListener('touchend', onPointerUp)
     
     // Ambient
-    const ambient = new THREE.AmbientLight(0xffffff, 0.7)
+    const ambient = new THREE.AmbientLight(0xffffff, 0.8)
     scene.add(ambient)
     
     // Hemisphere light for better ambient
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x888888, 0.6)
+    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x888888, 0.4)
     scene.add(hemiLight)
     
     // Key light - facing the penguin, shadow at back
-    const keyLight = new THREE.DirectionalLight(0xffffff, 2.0)
-    keyLight.position.set(0, 15, 20)
+    const keyLight = new THREE.DirectionalLight(0xffffff, 1.2)
+    keyLight.position.set(5, 10, 15)
     keyLight.castShadow = true
     keyLight.shadow.mapSize.width = shadowMapSize
     keyLight.shadow.mapSize.height = shadowMapSize
@@ -602,28 +603,23 @@ function ThreeGenerator() {
     keyLight.shadow.camera.right = 15
     keyLight.shadow.camera.top = 15
     keyLight.shadow.camera.bottom = -15
-    keyLight.shadow.radius = isMobile ? 0 : 2
-    keyLight.shadow.bias = -0.0005
+    keyLight.shadow.radius = 1
+    keyLight.shadow.bias = -0.001
     scene.add(keyLight)
     
     // Fill light - soften shadows
-    const fillLight = new THREE.DirectionalLight(0xffffff, 0.4)
+    const fillLight = new THREE.DirectionalLight(0xffffff, 0.2)
     fillLight.position.set(8, 8, 5)
     scene.add(fillLight)
     
     // Rim light - add depth
-    const rimLight = new THREE.DirectionalLight(0xffffff, 0.8)
+    const rimLight = new THREE.DirectionalLight(0xffffff, 0.3)
     rimLight.position.set(0, 5, -15)
     scene.add(rimLight)
     
-    // Bottom fill - reduce harsh shadows
-    const bottomFill = new THREE.DirectionalLight(0xffffff, 0.3)
-    bottomFill.position.set(0, -5, 5)
-    scene.add(bottomFill)
-    
     // Add penguin pivot for rotation
     const penguinPivot = new THREE.Group()
-    penguinPivot.position.set(0, 1.8, 0)
+    penguinPivot.position.set(0, 0.5, 0)
     const penguin = createVoxelPenguin(traits, THREE)
     penguinPivot.add(penguin)
     scene.add(penguinPivot)
@@ -634,24 +630,9 @@ function ThreeGenerator() {
     const groundMat = new THREE.ShadowMaterial({ opacity: 0.35 })
     const ground = new THREE.Mesh(groundGeo, groundMat)
     ground.rotation.x = -Math.PI / 2
-    ground.position.y = -3.5
+    ground.position.y = -4.5
     ground.receiveShadow = true
-    ground.userData.isGround = true
     scene.add(ground)
-    
-    // Subtle ground color for depth
-    const groundBaseGeo = new THREE.PlaneGeometry(100, 100)
-    const groundBaseMat = new THREE.MeshStandardMaterial({ 
-      color: traits.background.color,
-      roughness: 1,
-      metalness: 0
-    })
-    const groundBase = new THREE.Mesh(groundBaseGeo, groundBaseMat)
-    groundBase.rotation.x = -Math.PI / 2
-    groundBase.position.y = -3.51
-    groundBase.userData.isGround = true
-    groundBaseRef.current = groundBase
-    scene.add(groundBase)
     
     const animate = () => {
       frameRef.current = requestAnimationFrame(animate)
@@ -698,13 +679,19 @@ function ThreeGenerator() {
         penguinRef.current.add(newPenguin)
         sceneRef.current.background = new THREE.Color(t.background.color)
         sceneRef.current.fog = new THREE.Fog(t.background.color, 15, 60)
-        if (groundBaseRef.current) {
-          groundBaseRef.current.material.color.set(t.background.color)
-        }
       }
       
       setIsGenerating(false)
     }, 300)
+  }
+  
+  const saveImage = () => {
+    if (!rendererRef.current || !sceneRef.current || !cameraRef.current) return
+    rendererRef.current.render(sceneRef.current, cameraRef.current)
+    const link = document.createElement('a')
+    link.download = '8bit-penguin.png'
+    link.href = rendererRef.current.domElement.toDataURL('image/png')
+    link.click()
   }
   
   return (
@@ -728,6 +715,12 @@ function ThreeGenerator() {
               disabled={isGenerating}
             >
               {isGenerating ? 'Generating...' : 'Generate 3D'}
+            </button>
+            <button 
+              className="btn white" 
+              onClick={saveImage}
+            >
+              Save Image
             </button>
           </div>
         </div>
