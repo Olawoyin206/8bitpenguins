@@ -9,18 +9,19 @@
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  padding: 20px;
   font-family: 'JetBrains Mono', 'Courier New', monospace;
 }
 
 .task-container {
-  max-width: 700px;
+  max-width: 100%;
+  width: 100%;
   margin: 0 auto;
   text-align: center;
   background: #161b22;
   border: 1px solid #30363d;
   border-radius: 6px;
   padding: 30px;
+  box-sizing: border-box;
 }
 
 .task-page header {
@@ -287,12 +288,13 @@
 
 .unlock-message {
   text-align: center;
-  padding: 10px;
+  padding: 20px;
   background: rgba(57, 255, 20, 0.1);
   border: 1px solid #39ff14;
   border-radius: 4px;
   margin-bottom: 20px;
   width: 100%;
+  box-sizing: border-box;
 }
 
 .unlock-message svg {
