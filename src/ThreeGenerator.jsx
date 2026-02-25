@@ -687,11 +687,21 @@ function ThreeGenerator() {
   
   const saveImage = () => {
     if (!rendererRef.current || !sceneRef.current || !cameraRef.current) return
-    rendererRef.current.render(sceneRef.current, cameraRef.current)
+    
+    // Create high-res renderer for saving (4K quality)
+    const saveRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+    saveRenderer.setSize(4096, 4096)
+    saveRenderer.setPixelRatio(1)
+    saveRenderer.shadowMap.enabled = true
+    saveRenderer.shadowMap.type = THREE.PCFSoftShadowMap
+    saveRenderer.render(sceneRef.current, cameraRef.current)
+    
     const link = document.createElement('a')
     link.download = '8bit-penguin.png'
-    link.href = rendererRef.current.domElement.toDataURL('image/png')
+    link.href = saveRenderer.domElement.toDataURL('image/png')
     link.click()
+    
+    saveRenderer.dispose()
   }
   
   return (
