@@ -536,7 +536,7 @@ function ThreeGenerator() {
     camera.lookAt(0, 0, 0)
     cameraRef.current = camera
     
-    const renderer = new THREE.WebGLRenderer({ antialias: !isMobile, alpha: true })
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
     renderer.setSize(canvasSize, canvasSize)
     renderer.setPixelRatio(pixelRatio)
     renderer.shadowMap.enabled = true
