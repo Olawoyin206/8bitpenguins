@@ -54,17 +54,25 @@ const TRAITS = {
     { name: 'Sparkle', type: 'sparkle', weight: 10 },
   ],
   head: [
-    { name: 'None', type: 'none', weight: 30 },
-    { name: 'Scarf', type: 'scarf', weight: 20 },
-    { name: 'Beanie', type: 'beanie', weight: 18 },
-    { name: 'Crown', type: 'crown', weight: 15 },
-    { name: 'Halo', type: 'halo', weight: 10 },
-  ],
-  feet: [
-    { name: 'Default Orange', type: 'default', base: '#FF9F43', highlight: '#FFBE76', shadow: '#E67E22', weight: 50 },
-    { name: 'Default Pink', type: 'default', base: '#FD79A8', highlight: '#FDCBDF', shadow: '#E84393', weight: 20 },
-    { name: 'Default Black', type: 'default', base: '#2D3436', highlight: '#636E72', shadow: '#0D1318', weight: 15 },
-    { name: 'Default White', type: 'default', base: '#DFE6E9', highlight: '#FFFFFF', shadow: '#B2BEC3', weight: 15 },
+    { name: 'None', type: 'none', weight: 25 },
+    { name: 'Cap Blue', type: 'cap', color: '#1976D2', highlight: '#2196F3', shadow: '#1565C0', weight: 6 },
+    { name: 'Cap Red', type: 'cap', color: '#C62828', highlight: '#E53935', shadow: '#B71C1C', weight: 6 },
+    { name: 'Cap Black', type: 'cap', color: '#212121', highlight: '#424242', shadow: '#000000', weight: 6 },
+    { name: 'Cap Green', type: 'cap', color: '#2E7D32', highlight: '#43A047', shadow: '#1B5E20', weight: 6 },
+    { name: 'Beanie Red', type: 'beanie', color: '#D32F2F', highlight: '#E53935', shadow: '#B71C1C', weight: 6 },
+    { name: 'Beanie Blue', type: 'beanie', color: '#1565C0', highlight: '#1976D2', shadow: '#0D47A1', weight: 6 },
+    { name: 'Beanie Green', type: 'beanie', color: '#2E7D32', highlight: '#43A047', shadow: '#1B5E20', weight: 6 },
+    { name: 'Beanie Purple', type: 'beanie', color: '#7B1FA2', highlight: '#9C27B0', shadow: '#4A148C', weight: 6 },
+    { name: 'Scarf Green', type: 'scarf', color: '#388E3C', highlight: '#4CAF50', shadow: '#2E7D32', weight: 5 },
+    { name: 'Scarf Red', type: 'scarf', color: '#C62828', highlight: '#E53935', shadow: '#B71C1C', weight: 5 },
+    { name: 'Scarf Blue', type: 'scarf', color: '#1565C0', highlight: '#1976D2', shadow: '#0D47A1', weight: 5 },
+    { name: 'Scarf Purple', type: 'scarf', color: '#7B1FA2', highlight: '#9C27B0', shadow: '#4A148C', weight: 5 },
+    { name: 'Headband Red', type: 'headband', color: '#C62828', highlight: '#E53935', weight: 5 },
+    { name: 'Headband Blue', type: 'headband', color: '#1565C0', highlight: '#1976D2', weight: 5 },
+    { name: 'Headband Green', type: 'headband', color: '#2E7D32', highlight: '#43A047', weight: 5 },
+    { name: 'Headband Purple', type: 'headband', color: '#7B1FA2', highlight: '#9C27B0', weight: 5 },
+    { name: 'Crown', type: 'crown', weight: 10 },
+    { name: 'Halo', type: 'halo', weight: 8 },
   ],
   background: [
     { name: 'Soft Pink', color: '#FADBD8' },
@@ -95,7 +103,6 @@ function createVoxelPenguin(traits, THREE) {
   const belly = traits.belly.base
   const bellyHighlight = traits.belly.highlight
   const beak = traits.beak.base
-  const beakHighlight = traits.beak.highlight
   const beakShadow = traits.beak.shadow
   
   const cx = 20
@@ -302,7 +309,7 @@ function createVoxelPenguin(traits, THREE) {
     rectFront(cx + 5, eyeY + 2, cx + 5, eyeY + 2, '#FFFFFF', 12)
   }
   
-  if (traits.eyes.type !== 'sleepy' && traits.eyes.type !== 'closed') {
+  if (traits.eyes.type !== 'sleepy' && traits.eyes.type !== 'closed' && traits.eyes.type !== 'angry') {
     rectFront(cx - 7, 14, cx - 3, 14, bodyShadow, 11)
     rectFront(cx + 3, 14, cx + 7, 14, bodyShadow, 11)
     rectFront(cx - 8, 13, cx - 4, 13, bodyShadow, 11)
@@ -364,11 +371,11 @@ function createVoxelPenguin(traits, THREE) {
     rect(cx - 11, 8, cx + 11, 9, '#8B0000', 20)
     rect(cx - 2, 3, cx + 1, 4, '#C0C0C0', 20)
   } else if (traits.head.type === 'beanie') {
-    rect(cx - 10, 6, cx + 10, 9, '#D32F2F', 20)
-    rect(cx - 9, 4, cx + 9, 7, '#E53935', 20)
-    rect(cx - 8, 3, cx + 8, 5, '#EF5350', 20)
-    rect(cx - 3, 2, cx + 2, 4, '#FFCDD2', 20)
-    rect(cx - 2, 1, cx + 1, 3, '#FFFFFF', 20)
+    rect(cx - 10, 6, cx + 10, 9, traits.head.color, 20)
+    rect(cx - 9, 4, cx + 9, 7, traits.head.highlight, 20)
+    rect(cx - 8, 3, cx + 8, 5, traits.head.highlight, 20)
+    rect(cx - 3, 2, cx + 2, 4, traits.head.shadow, 20)
+    rect(cx - 2, 1, cx + 1, 3, traits.head.shadow, 20)
   } else if (traits.head.type === 'bow') {
     rect(cx - 10, 7, cx - 7, 9, '#FF69B4', 20)
     rect(cx + 7, 7, cx + 10, 9, '#FF69B4', 20)
@@ -377,21 +384,27 @@ function createVoxelPenguin(traits, THREE) {
     rect(cx + 6, 6, cx + 8, 8, '#FFB6C1', 20)
     rect(cx - 2, 8, cx + 1, 8, '#FF1493', 20)
   } else if (traits.head.type === 'cap') {
-    rect(cx - 10, 7, cx + 9, 9, '#1976D2', 20)
-    rect(cx - 9, 6, cx + 8, 8, '#2196F3', 20)
-    rect(cx + 8, 8, cx + 12, 10, '#1565C0', 20)
-    rect(cx + 10, 9, cx + 12, 10, '#0D47A1', 20)
-    rect(cx - 11, 8, cx - 9, 9, '#1565C0', 20)
+    rect(cx - 10, 7, cx + 9, 9, traits.head.color, 20)
+    rect(cx - 9, 6, cx + 8, 8, traits.head.highlight, 20)
+    rect(cx + 8, 8, cx + 12, 10, traits.head.shadow, 20)
+    rect(cx + 10, 9, cx + 12, 10, traits.head.shadow, 20)
+    rect(cx - 11, 8, cx - 9, 9, traits.head.shadow, 20)
   } else if (traits.head.type === 'scarf') {
-    rect(cx - 10, 24, cx + 10, 27, '#388E3C', 20)
-    rect(cx - 9, 23, cx + 9, 25, '#4CAF50', 20)
-    rect(cx + 8, 24, cx + 11, 32, '#388E3C', 20)
-    rect(cx + 9, 25, cx + 10, 31, '#4CAF50', 20)
-    rect(cx - 2, 25, cx + 1, 26, '#2E7D32', 20)
+    rect(cx - 10, 25, cx + 10, 28, traits.head.color, 20)
+    rect(cx - 9, 24, cx + 9, 26, traits.head.highlight, 20)
+    rect(cx + 8, 25, cx + 11, 33, traits.head.color, 20)
+    rect(cx + 9, 26, cx + 10, 32, traits.head.highlight, 20)
+    rect(cx - 2, 26, cx + 1, 27, traits.head.shadow, 20)
   } else if (traits.head.type === 'halo') {
     rect(cx - 4, 3, cx + 3, 4, '#FFD700', 20)
     rect(cx - 5, 4, cx + 4, 5, '#FFD700', 20)
     rect(cx - 3, 2, cx + 2, 3, '#FFD700', 20)
+  } else if (traits.head.type === 'headband') {
+    rect(cx - 10, 6, cx + 10, 9, traits.head.color, 20)
+    rect(cx - 9, 5, cx + 9, 7, traits.head.highlight, 20)
+    rect(cx - 7, 5, cx - 5, 8, traits.head.highlight, 20)
+    rect(cx - 1, 5, cx + 1, 8, traits.head.highlight, 20)
+    rect(cx + 5, 5, cx + 7, 8, traits.head.highlight, 20)
   }
   
   // FLIPPERS - reduced depth
@@ -417,10 +430,10 @@ function createVoxelPenguin(traits, THREE) {
   rect(32, 31, 34, 33, body, 4)
   rect(32, 32, 33, 33, bodyHighlight, 4)
   
-  // FEET - symmetric webbed penguin feet (identical left and right)
-  const footBase = traits.feet.base
-  const footHighlight = traits.feet.highlight
-  const footShadow = traits.feet.shadow
+  // FEET - symmetric webbed penguin feet (fixed orange color)
+  const footBase = '#FF9F43'
+  const footHighlight = '#FFBE76'
+  const footShadow = '#E67E22'
   
   // Left foot - webbed with 3 distinct toes
   // Main foot pad
@@ -483,7 +496,6 @@ function ThreeGenerator() {
     beak: { name: 'Small', type: 'small', base: '#FF9F43', highlight: '#FFBE76', shadow: '#E67E22' },
     eyes: { name: 'Normal', type: 'round' },
     head: { name: 'None', type: 'none' },
-    feet: { name: 'Default Orange', type: 'default', base: '#FF9F43', highlight: '#FFBE76', shadow: '#E67E22' },
     background: { name: 'Sky Blue', color: '#D4E6F1' },
   })
   const [isGenerating, setIsGenerating] = useState(false)
@@ -498,6 +510,11 @@ function ThreeGenerator() {
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
+    
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    const canvasSize = isMobile ? 320 : 420
+    const pixelRatio = isMobile ? 1 : Math.min(window.devicePixelRatio, 1.5)
+    const shadowMapSize = isMobile ? 512 : 1024
     
     const scene = new THREE.Scene()
     scene.background = new THREE.Color(traits.background.color)
@@ -518,11 +535,11 @@ function ThreeGenerator() {
     camera.position.set(10, 8, 10)
     camera.lookAt(0, 0, 0)
     
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
-    renderer.setSize(420, 420)
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    const renderer = new THREE.WebGLRenderer({ antialias: !isMobile, alpha: true })
+    renderer.setSize(canvasSize, canvasSize)
+    renderer.setPixelRatio(pixelRatio)
     renderer.shadowMap.enabled = true
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap
+    renderer.shadowMap.type = isMobile ? THREE.BasicShadowMap : THREE.PCFSoftShadowMap
     container.appendChild(renderer.domElement)
     rendererRef.current = renderer
     
@@ -538,28 +555,32 @@ function ThreeGenerator() {
     controls.target.set(0, 0, 0)
     controls.update()
     
-    // Mouse drag to rotate penguin
-    const onMouseDown = (e) => {
+    // Mouse/touch drag to rotate penguin
+    const onPointerDown = (e) => {
       isDragging.current = true
-      lastMouseX.current = e.clientX
+      lastMouseX.current = e.clientX || e.touches?.[0]?.clientX || 0
     }
     
-    const onMouseMove = (e) => {
+    const onPointerMove = (e) => {
       if (isDragging.current && penguinRef.current) {
-        const delta = e.clientX - lastMouseX.current
+        const clientX = e.clientX || e.touches?.[0]?.clientX || 0
+        const delta = clientX - lastMouseX.current
         penguinRef.current.rotation.y += delta * 0.01
-        lastMouseX.current = e.clientX
+        lastMouseX.current = clientX
       }
     }
     
-    const onMouseUp = () => {
+    const onPointerUp = () => {
       isDragging.current = false
     }
     
-    renderer.domElement.addEventListener('mousedown', onMouseDown)
-    renderer.domElement.addEventListener('mousemove', onMouseMove)
-    renderer.domElement.addEventListener('mouseup', onMouseUp)
-    renderer.domElement.addEventListener('mouseleave', onMouseUp)
+    renderer.domElement.addEventListener('mousedown', onPointerDown)
+    renderer.domElement.addEventListener('mousemove', onPointerMove)
+    renderer.domElement.addEventListener('mouseup', onPointerUp)
+    renderer.domElement.addEventListener('mouseleave', onPointerUp)
+    renderer.domElement.addEventListener('touchstart', onPointerDown, { passive: true })
+    renderer.domElement.addEventListener('touchmove', onPointerMove, { passive: true })
+    renderer.domElement.addEventListener('touchend', onPointerUp)
     
     // Ambient
     const ambient = new THREE.AmbientLight(0xffffff, 0.7)
@@ -573,15 +594,15 @@ function ThreeGenerator() {
     const keyLight = new THREE.DirectionalLight(0xffffff, 2.0)
     keyLight.position.set(0, 15, 20)
     keyLight.castShadow = true
-    keyLight.shadow.mapSize.width = 4096
-    keyLight.shadow.mapSize.height = 4096
+    keyLight.shadow.mapSize.width = shadowMapSize
+    keyLight.shadow.mapSize.height = shadowMapSize
     keyLight.shadow.camera.near = 1
     keyLight.shadow.camera.far = 60
     keyLight.shadow.camera.left = -15
     keyLight.shadow.camera.right = 15
     keyLight.shadow.camera.top = 15
     keyLight.shadow.camera.bottom = -15
-    keyLight.shadow.radius = 2
+    keyLight.shadow.radius = isMobile ? 0 : 2
     keyLight.shadow.bias = -0.0005
     scene.add(keyLight)
     
@@ -641,15 +662,18 @@ function ThreeGenerator() {
     
     return () => {
       if (frameRef.current) cancelAnimationFrame(frameRef.current)
-      renderer.domElement.removeEventListener('mousedown', onMouseDown)
-      renderer.domElement.removeEventListener('mousemove', onMouseMove)
-      renderer.domElement.removeEventListener('mouseup', onMouseUp)
-      renderer.domElement.removeEventListener('mouseleave', onMouseUp)
+      renderer.domElement.removeEventListener('mousedown', onPointerDown)
+      renderer.domElement.removeEventListener('mousemove', onPointerMove)
+      renderer.domElement.removeEventListener('mouseup', onPointerUp)
+      renderer.domElement.removeEventListener('mouseleave', onPointerUp)
+      renderer.domElement.removeEventListener('touchstart', onPointerDown)
+      renderer.domElement.removeEventListener('touchmove', onPointerMove)
+      renderer.domElement.removeEventListener('touchend', onPointerUp)
       if (rendererRef.current && container.contains(rendererRef.current.domElement)) {
         container.removeChild(rendererRef.current.domElement)
       }
     }
-  }, [])
+  }, [traits])
   
   const generate = () => {
     setIsGenerating(true)
@@ -660,7 +684,6 @@ function ThreeGenerator() {
         beak: randomItem(TRAITS.beak),
         eyes: randomItem(TRAITS.eyes),
         head: randomItem(TRAITS.head),
-        feet: randomItem(TRAITS.feet),
         background: randomItem(TRAITS.background),
       }
       setTraits(t)
@@ -681,15 +704,17 @@ function ThreeGenerator() {
       }
       
       setIsGenerating(false)
-    }, 800)
+    }, 300)
   }
   
   return (
     <div className="app three-page">
       <header>
-        <Link to="/" className="back-btn">← Back</Link>
-        <h1>3D Voxel Penguins</h1>
-        <p>8-bit style 3D penguins</p>
+        <h1>8bit Penguins</h1>
+        <p>3D Voxel Penguins</p>
+        <div className="header-links">
+          <a href="https://x.com/8bitpenguins" target="_blank" rel="noopener noreferrer" className="x-btn">Follow us on X</a>
+        </div>
       </header>
 
       <main>
@@ -714,7 +739,6 @@ function ThreeGenerator() {
             <li><span>Beak</span><span>{traits.beak.name}</span></li>
             <li><span>Eyes</span><span>{traits.eyes.name}</span></li>
             <li><span>Head</span><span>{traits.head.name}</span></li>
-            <li><span>Feet</span><span>{traits.feet.name}</span></li>
             <li><span>Background</span><span>{traits.background.name}</span></li>
           </ul>
         </div>

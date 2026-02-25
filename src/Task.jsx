@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react'
 import './Task.css'
 
 function Task() {
+  const [alreadySubmitted, setAlreadySubmitted] = useState(() => {
+    return !!localStorage.getItem('taskSubmission')
+  })
   const [clickedFollow, setClickedFollow] = useState(false)
   const [clickedLikeRetweet, setClickedLikeRetweet] = useState(false)
   const [clickedQuote, setClickedQuote] = useState(false)
@@ -19,6 +22,12 @@ function Task() {
   const [showForm, setShowForm] = useState(false)
   const [showLinkWarning, setShowLinkWarning] = useState({})
   const [taskError, setTaskError] = useState({})
+
+  useEffect(() => {
+    if (alreadySubmitted) {
+      setIsSubmitted(true)
+    }
+  }, [alreadySubmitted])
 
   const tasks = [
     {
@@ -136,6 +145,16 @@ function Task() {
 
     localStorage.setItem('taskSubmission', JSON.stringify(submission))
 
+    try {
+      await fetch('https://script.google.com/macros/s/AKfycbxRr9BhfN37AbiIaZNyb_fpYrcHVMa3WRWDYNApIKbBtuL91ZsyhT8GoYIqcFkGY6Km/exec', {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(submission)
+      })
+    } catch (err) {
+      console.log('Sheet sync skipped')
+    }
+
     await new Promise(resolve => setTimeout(resolve, 1000))
 
     setIsSubmitted(true)
@@ -150,13 +169,29 @@ function Task() {
     <div className="task-page">
       <div className="task-container">
         <header>
-          <h1>Complete Tasks</h1>
-          <p>Follow and interact to unlock generation</p>
+          <h1>8bit Penguins</h1>
+          {alreadySubmitted ? (
+            <p>You have already submitted</p>
+          ) : (
+            <p>Complete the tasks below</p>
+          )}
           <div className="header-links">
             <a href="https://x.com/8bitpenguins" target="_blank" rel="noopener noreferrer" className="x-btn">Follow us on X</a>
           </div>
         </header>
 
+        {alreadySubmitted ? (
+          <div className="form-section show">
+            <div className="unlock-message">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+              <h3>We only allow one submission per user</h3>
+            </div>
+          </div>
+        ) : (
+          <>
         <main>
           {!allTasksComplete && (
           <div className="tasks-list">
@@ -190,12 +225,14 @@ function Task() {
                       >
                         {task.clicked && !task.completed ? 'Opened - Click Verify' : task.action}
                       </a>
-                      <button 
-                        className="verify-btn"
-                        onClick={() => handleVerify(task.id)}
-                      >
-                        Verify
-                      </button>
+                      {!task.requiresLink && (
+                        <button 
+                          className="verify-btn"
+                          onClick={() => handleVerify(task.id)}
+                        >
+                          Verify
+                        </button>
+                      )}
                     </>
                   )}
                 </div>
@@ -211,6 +248,12 @@ function Task() {
                       value={tweetLink}
                       onChange={(e) => setTweetLink(e.target.value)}
                     />
+                    <button 
+                      className="verify-btn"
+                      onClick={() => handleVerify(task.id)}
+                    >
+                      Verify
+                    </button>
                   </div>
                 )}
 
@@ -295,6 +338,8 @@ function Task() {
             </div>
           )}
         </main>
+          </>
+        )}
       </div>
     </div>
   )

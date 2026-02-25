@@ -14,7 +14,7 @@
 }
 
 .task-container {
-  max-width: 600px;
+  max-width: 700px;
   margin: 0 auto;
   text-align: center;
   background: #161b22;
@@ -251,6 +251,12 @@
   color: #484f58;
 }
 
+.tweet-link-input .verify-btn {
+  margin-top: 10px;
+  width: auto;
+  padding: 8px 24px;
+}
+
 .link-warning {
   background: rgba(248, 81, 73, 0.1);
   border: 1px solid #f85149;
@@ -408,10 +414,17 @@
   }
 
   .task-container {
-    padding: 16px;
+    padding: 10px;
     width: 100%;
+    max-width: 100%;
     border-radius: 0;
     min-height: 100vh;
+    border: none;
+  }
+
+  .task-page header {
+    padding: 0 0 16px;
+    margin-bottom: 16px;
   }
 
   .task-page header h1 {
@@ -419,23 +432,29 @@
     letter-spacing: 2px;
   }
 
+  .task-page header p {
+    font-size: 0.65rem;
+  }
+
   .task-card {
-    padding: 12px;
+    padding: 10px;
   }
 
   .task-action {
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
   }
 
   .task-btn {
-    width: 100%;
+    flex: 1;
     text-align: center;
   }
 
   .verify-btn {
-    align-self: center;
-    width: 100%;
-    text-align: center;
+    flex: 0 0 auto;
+    width: auto;
+    padding: 6px 12px;
   }
 }

@@ -125,11 +125,13 @@ function convertToPenguinStyle(imageSrc, canvas) {
       ctx.fillStyle = bg.hex
       ctx.fillRect(0, 0, 400, 400)
       
-      const scale = 10
+      const scale = 9
+      const offsetX = 2
+      const offsetY = 1
       const set = (x, y, color) => {
         if (x >= 0 && x < 40 && y >= 0 && y < 40) {
           ctx.fillStyle = color
-          ctx.fillRect(x * scale, y * scale, scale, scale)
+          ctx.fillRect((x + offsetX) * scale, (y + offsetY) * scale, scale, scale)
         }
       }
       
@@ -322,11 +324,25 @@ const TRAITS = {
     { name: 'Sparkle', type: 'sparkle', weight: 10 },
   ],
   head: [
-    { name: 'None', type: 'none', weight: 30 },
-    { name: 'Scarf', type: 'scarf', weight: 20 },
-    { name: 'Beanie', type: 'beanie', weight: 18 },
-    { name: 'Crown', type: 'crown', weight: 15 },
-    { name: 'Halo', type: 'halo', weight: 10 },
+    { name: 'None', type: 'none', weight: 25 },
+    { name: 'Cap Blue', type: 'cap', color: '#1976D2', highlight: '#2196F3', shadow: '#1565C0', weight: 6 },
+    { name: 'Cap Red', type: 'cap', color: '#C62828', highlight: '#E53935', shadow: '#B71C1C', weight: 6 },
+    { name: 'Cap Black', type: 'cap', color: '#212121', highlight: '#424242', shadow: '#000000', weight: 6 },
+    { name: 'Cap Green', type: 'cap', color: '#2E7D32', highlight: '#43A047', shadow: '#1B5E20', weight: 6 },
+    { name: 'Beanie Red', type: 'beanie', color: '#D32F2F', highlight: '#E53935', shadow: '#B71C1C', weight: 6 },
+    { name: 'Beanie Blue', type: 'beanie', color: '#1565C0', highlight: '#1976D2', shadow: '#0D47A1', weight: 6 },
+    { name: 'Beanie Green', type: 'beanie', color: '#2E7D32', highlight: '#43A047', shadow: '#1B5E20', weight: 6 },
+    { name: 'Beanie Purple', type: 'beanie', color: '#7B1FA2', highlight: '#9C27B0', shadow: '#4A148C', weight: 6 },
+    { name: 'Scarf Green', type: 'scarf', color: '#388E3C', highlight: '#4CAF50', shadow: '#2E7D32', weight: 5 },
+    { name: 'Scarf Red', type: 'scarf', color: '#C62828', highlight: '#E53935', shadow: '#B71C1C', weight: 5 },
+    { name: 'Scarf Blue', type: 'scarf', color: '#1565C0', highlight: '#1976D2', shadow: '#0D47A1', weight: 5 },
+    { name: 'Scarf Purple', type: 'scarf', color: '#7B1FA2', highlight: '#9C27B0', shadow: '#4A148C', weight: 5 },
+    { name: 'Headband Red', type: 'headband', color: '#C62828', highlight: '#E53935', weight: 5 },
+    { name: 'Headband Blue', type: 'headband', color: '#1565C0', highlight: '#1976D2', weight: 5 },
+    { name: 'Headband Green', type: 'headband', color: '#2E7D32', highlight: '#43A047', weight: 5 },
+    { name: 'Headband Purple', type: 'headband', color: '#7B1FA2', highlight: '#9C27B0', weight: 5 },
+    { name: 'Crown', type: 'crown', weight: 10 },
+    { name: 'Halo', type: 'halo', weight: 8 },
   ],
   feet: [
     { name: 'Default Orange', type: 'default', base: '#FF9F43', highlight: '#FFBE76', shadow: '#E67E22', weight: 50 },
@@ -362,7 +378,7 @@ function drawAgent(traits, canvas) {
   if (!canvas) return
   
   const ctx = canvas.getContext('2d')
-  const scale = 10
+  const scale = 9
   canvas.width = 400
   canvas.height = 400
   
@@ -378,10 +394,13 @@ function drawAgent(traits, canvas) {
     ctx.fillRect(0, 0, canvas.width, canvas.height)
   }
   
+  const offsetX = 2
+  const offsetY = 1
+  
   const set = (x, y, color) => {
     if (x >= 0 && x < 40 && y >= 0 && y < 40) {
       ctx.fillStyle = color
-      ctx.fillRect(x * scale, y * scale, scale, scale)
+      ctx.fillRect((x + offsetX) * scale, (y + offsetY) * scale, scale, scale)
     }
   }
   
@@ -521,20 +540,17 @@ function drawAgent(traits, canvas) {
     rect(cx + 2, eyeY + 1, cx + 6, eyeY + 2, '#0A0A0A')
     rect(cx + 4, eyeY, cx + 5, eyeY, '#FFFFFF')
     rect(cx + 3, eyeY + 1, cx + 4, eyeY + 1, '#FFFFFF')
-  } else if (traits.eyes.type === 'tender') {
-    // Tender eyes - slightly closed
-    rect(cx - 5, eyeY + 1, cx - 3, eyeY + 2, '#0A0A0A')
-    rect(cx - 5, eyeY, cx - 4, eyeY + 1, '#FFFFFF')
-    rect(cx + 3, eyeY + 1, cx + 5, eyeY + 2, '#0A0A0A')
-    rect(cx + 4, eyeY, cx + 5, eyeY + 1, '#FFFFFF')
-  } else if (traits.eyes.type === 'curious') {
-    // Curious eyes - looking up
-    rect(cx - 5, eyeY - 1, cx - 3, eyeY + 1, '#0A0A0A')
-    rect(cx - 6, eyeY, cx - 2, eyeY + 1, '#0A0A0A')
-    rect(cx - 5, eyeY - 1, cx - 4, eyeY - 1, '#FFFFFF')
-    rect(cx + 3, eyeY - 1, cx + 5, eyeY + 1, '#0A0A0A')
-    rect(cx + 2, eyeY, cx + 6, eyeY + 1, '#0A0A0A')
-    rect(cx + 4, eyeY - 1, cx + 5, eyeY - 1, '#FFFFFF')
+  } else if (traits.eyes.type === 'angry') {
+    // Angry eyes - furrowed brows
+    rect(cx - 5, eyeY, cx - 3, eyeY + 2, '#0A0A0A')
+    rect(cx - 6, eyeY + 1, cx - 2, eyeY + 2, '#0A0A0A')
+    rect(cx - 4, eyeY, cx - 3, eyeY, '#FF0000')
+    rect(cx + 3, eyeY, cx + 5, eyeY + 2, '#0A0A0A')
+    rect(cx + 2, eyeY + 1, cx + 6, eyeY + 2, '#0A0A0A')
+    rect(cx + 4, eyeY, cx + 5, eyeY, '#FF0000')
+    // Angry eyebrows
+    rect(cx - 6, eyeY - 2, cx - 3, eyeY - 2, '#0A0A0A')
+    rect(cx + 3, eyeY - 2, cx + 6, eyeY - 2, '#0A0A0A')
   } else if (traits.eyes.type === 'sleepy') {
     // Sleepy eyes - half closed
     rect(cx - 5, eyeY + 1, cx - 3, eyeY + 2, '#0A0A0A')
@@ -595,7 +611,7 @@ function drawAgent(traits, canvas) {
   }
   
   // Eyebrows
-  if (traits.eyes.type !== 'sleepy') {
+  if (traits.eyes.type !== 'sleepy' && traits.eyes.type !== 'closed' && traits.eyes.type !== 'angry') {
     rect(cx - 7, 14, cx - 3, 14, bodyShadow)
     rect(cx + 3, 14, cx + 7, 14, bodyShadow)
     rect(cx - 8, 13, cx - 4, 13, bodyShadow)
@@ -667,11 +683,11 @@ function drawAgent(traits, canvas) {
     rect(cx - 11, 8, cx + 11, 9, '#8B0000')
     rect(cx - 2, 3, cx + 1, 4, '#C0C0C0')
   } else if (traits.head.type === 'beanie') {
-    rect(cx - 10, 6, cx + 10, 9, '#D32F2F')
-    rect(cx - 9, 4, cx + 9, 7, '#E53935')
-    rect(cx - 8, 3, cx + 8, 5, '#EF5350')
-    rect(cx - 3, 2, cx + 2, 4, '#FFCDD2')
-    rect(cx - 2, 1, cx + 1, 3, '#FFFFFF')
+    rect(cx - 10, 6, cx + 10, 9, traits.head.color)
+    rect(cx - 9, 4, cx + 9, 7, traits.head.highlight)
+    rect(cx - 8, 3, cx + 8, 5, traits.head.highlight)
+    rect(cx - 3, 2, cx + 2, 4, traits.head.shadow)
+    rect(cx - 2, 1, cx + 1, 3, traits.head.shadow)
   } else if (traits.head.type === 'bow') {
     rect(cx - 10, 7, cx - 7, 9, '#FF69B4')
     rect(cx + 7, 7, cx + 10, 9, '#FF69B4')
@@ -680,21 +696,27 @@ function drawAgent(traits, canvas) {
     rect(cx + 6, 6, cx + 8, 8, '#FFB6C1')
     rect(cx - 2, 8, cx + 1, 8, '#FF1493')
   } else if (traits.head.type === 'cap') {
-    rect(cx - 10, 7, cx + 9, 9, '#1976D2')
-    rect(cx - 9, 6, cx + 8, 8, '#2196F3')
-    rect(cx + 8, 8, cx + 12, 10, '#1565C0')
-    rect(cx + 10, 9, cx + 12, 10, '#0D47A1')
-    rect(cx - 11, 8, cx - 9, 9, '#1565C0')
+    rect(cx - 10, 7, cx + 9, 9, traits.head.color)
+    rect(cx - 9, 6, cx + 8, 8, traits.head.highlight)
+    rect(cx + 8, 8, cx + 12, 10, traits.head.shadow)
+    rect(cx + 10, 9, cx + 12, 10, traits.head.shadow)
+    rect(cx - 11, 8, cx - 9, 9, traits.head.shadow)
   } else if (traits.head.type === 'scarf') {
-    rect(cx - 10, 24, cx + 10, 27, '#388E3C')
-    rect(cx - 9, 23, cx + 9, 25, '#4CAF50')
-    rect(cx + 8, 24, cx + 11, 32, '#388E3C')
-    rect(cx + 9, 25, cx + 10, 31, '#4CAF50')
-    rect(cx - 2, 25, cx + 1, 26, '#2E7D32')
+    rect(cx - 10, 25, cx + 10, 28, traits.head.color)
+    rect(cx - 9, 24, cx + 9, 26, traits.head.highlight)
+    rect(cx + 8, 25, cx + 11, 33, traits.head.color)
+    rect(cx + 9, 26, cx + 10, 32, traits.head.highlight)
+    rect(cx - 2, 26, cx + 1, 27, traits.head.shadow)
   } else if (traits.head.type === 'halo') {
     rect(cx - 4, 3, cx + 3, 4, '#FFD700')
     rect(cx - 5, 4, cx + 4, 5, '#FFD700')
     rect(cx - 3, 2, cx + 2, 3, '#FFD700')
+  } else if (traits.head.type === 'headband') {
+    rect(cx - 10, 6, cx + 10, 9, traits.head.color)
+    rect(cx - 9, 5, cx + 9, 7, traits.head.highlight)
+    rect(cx - 7, 5, cx - 5, 8, traits.head.highlight)
+    rect(cx - 1, 5, cx + 1, 8, traits.head.highlight)
+    rect(cx + 5, 5, cx + 7, 8, traits.head.highlight)
   }
   
   // Flippers - detailed pixel art (fixed to stay in bounds)
