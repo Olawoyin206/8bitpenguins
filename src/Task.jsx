@@ -182,12 +182,14 @@ function Task() {
 
         {alreadySubmitted ? (
           <div className="form-section show">
-            <div className="unlock-message">
+            <div className="unlock-message already-submitted">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
               </svg>
-              <h3>We only allow one submission per user</h3>
+              <h3>Already Submitted</h3>
+              <p>We only allow one submission per user</p>
             </div>
           </div>
         ) : (
