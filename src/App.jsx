@@ -1007,10 +1007,19 @@ function App() {
   }
 
   const save = () => {
-    if (!canvasRef.current) return
+    if (!canvasRef.current || !traits) return
+    
+    const highResCanvas = document.createElement('canvas')
+    highResCanvas.width = 4096
+    highResCanvas.height = 4096
+    const ctx = highResCanvas.getContext('2d')
+    ctx.imageSmoothingEnabled = false
+    
+    ctx.drawImage(canvasRef.current, 0, 0, 4096, 4096)
+    
     const link = document.createElement('a')
-    link.download = ogMode ? 'og-penguin.png' : 'penguin.png'
-    link.href = canvasRef.current.toDataURL()
+    link.download = 'penguin-4k.png'
+    link.href = highResCanvas.toDataURL('image/png')
     link.click()
     setStatus('Downloaded!')
   }
