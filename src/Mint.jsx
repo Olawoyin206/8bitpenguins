@@ -1726,10 +1726,43 @@ function Mint() {
   const ITEMS_PER_PAGE = 8
   const previewCanvasRef = useRef(null)
   const mintedCanvasRef = useRef(null)
+  const lastKnownSupplyRef = useRef(0)
 
   useEffect(() => {
     fetchContractData(null)
     generatePreview()
+  }, [])
+
+  useEffect(() => {
+    lastKnownSupplyRef.current = totalSupply
+  }, [totalSupply])
+
+  useEffect(() => {
+    let cancelled = false
+    const provider = new ethers.JsonRpcProvider(BASE_SEPOLIA_RPC)
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, contractABI, provider)
+
+    const pollSupply = async () => {
+      try {
+        const latestSupply = Number(await contract.totalSupply())
+        if (!cancelled && latestSupply !== lastKnownSupplyRef.current) {
+          lastKnownSupplyRef.current = latestSupply
+          setTotalSupply(latestSupply)
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error('Supply polling error:', err)
+        }
+      }
+    }
+
+    pollSupply()
+    const intervalId = setInterval(pollSupply, 5000)
+
+    return () => {
+      cancelled = true
+      clearInterval(intervalId)
+    }
   }, [])
 
   useEffect(() => {
