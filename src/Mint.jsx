@@ -4,13 +4,12 @@ import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import './Mint.css'
 
-const CONTRACT_ADDRESS = '0xCc362C9812DFd88c7B476eeB425830Cc40d2C24D'
+const CONTRACT_ADDRESS = '0x80221b01c8eB071E553D21D5cE96442402B131b4'
 const BASE_SEPOLIA_RPC = 'https://sepolia.base.org'
 
 const contractABI = [
   "function mint(uint256 quantity, string[] calldata imageBase64s, string[] calldata names, string[] calldata attributesJson, uint256[] calldata rarityScores) public payable",
   "function balanceOf(address owner) public view returns (uint256)",
-  "function tokenOfOwnerByIndex(address owner, uint256 index) public view returns (uint256)",
   "function totalSupply() public view returns (uint256)",
   "function mintActive() public view returns (bool)",
   "function MAX_SUPPLY() public view returns (uint256)",
@@ -1773,12 +1772,6 @@ function Mint() {
   }, [account])
 
   useEffect(() => {
-    if (activeTab !== 'all') {
-      setActiveTab('all')
-    }
-  }, [activeTab])
-
-  useEffect(() => {
     if (previewTraits && previewCanvasRef.current) {
       drawAgent(previewTraits, previewCanvasRef.current)
     }
@@ -2004,6 +1997,8 @@ function Mint() {
       
       const newNFT = { tokenId, seed }
       setMintedNFT(newNFT)
+      setAllPage(1)
+      setMyPage(1)
       
       fetchContractData(account)
     } catch (err) {
@@ -2062,8 +2057,10 @@ function Mint() {
               <div className="mint-connected">
                 <div className="mint-wallet">
                   <div className="mint-wallet-main">
-                    <span className="mint-wallet-addr">{account.slice(0, 6)}...{account.slice(-4)}</span>
-                    <span className="mint-wallet-bal">{balance} penguins</span>
+                    <button className="mint-wallet-addr-btn" disabled>
+                      {account.slice(0, 4)}...{account.slice(-3)}
+                    </button>
+                    <span className="mint-wallet-bal">{balance} Penguins</span>
                   </div>
                   <button className="mint-disconnect-btn" onClick={disconnectWallet}>
                     Disconnect
@@ -2121,17 +2118,33 @@ function Mint() {
                 className={`mint-tab ${activeTab === 'all' ? 'active' : ''}`}
                 onClick={() => { setActiveTab('all'); setAllPage(1); }}
               >
-                {account ? `My NFTs (${myNFTs.length})` : `All (${allNFTs.length})`}
+                {`ALL NFTs (${allNFTs.length})`}
               </button>
+              {account && (
+                <button 
+                  className={`mint-tab ${activeTab === 'my' ? 'active' : ''}`}
+                  onClick={() => { setActiveTab('my'); setMyPage(1); }}
+                >
+                  {`My NFTs (${myNFTs.length})`}
+                </button>
+              )}
             </div>
 
             {/* Tab Content */}
             <div className="mint-tab-content">
               {activeTab === 'all' && (
                 <GalleryWithPagination
-                  nfts={account ? myNFTs : allNFTs}
+                  nfts={allNFTs}
                   currentPage={allPage}
                   setPage={setAllPage}
+                  refreshKey={metadataRefreshKey}
+                />
+              )}
+              {account && activeTab === 'my' && (
+                <GalleryWithPagination
+                  nfts={myNFTs}
+                  currentPage={myPage}
+                  setPage={setMyPage}
                   refreshKey={metadataRefreshKey}
                 />
               )}
@@ -2144,7 +2157,14 @@ function Mint() {
 
 function GalleryWithPagination({ nfts, currentPage, setPage, refreshKey }) {
   const ITEMS_PER_PAGE = 8
-  const totalPages = Math.ceil(nfts.length / ITEMS_PER_PAGE)
+  const totalPages = Math.max(1, Math.ceil(nfts.length / ITEMS_PER_PAGE))
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setPage(totalPages)
+    }
+  }, [currentPage, totalPages, setPage])
+
   const startIdx = (currentPage - 1) * ITEMS_PER_PAGE
   const paginatedNFTs = nfts.slice(startIdx, startIdx + ITEMS_PER_PAGE)
 

@@ -2,7 +2,7 @@ const hre = require("hardhat");
 const { createCanvas } = require("canvas");
 
 async function main() {
-  const contractAddress = "0xCc362C9812DFd88c7B476eeB425830Cc40d2C24D";
+  const contractAddress = "0x80221b01c8eB071E553D21D5cE96442402B131b4";
   const size = 400;
   const grid = 40;
   const px = size / grid;
@@ -14,6 +14,7 @@ async function main() {
     ctx.fillStyle = color;
     ctx.fillRect(x * px, y * px, w * px, h * px);
   };
+
   const glyphs = {
     "8": ["11111", "10001", "11111", "10001", "10001", "10001", "11111"],
     B: ["11110", "10001", "11110", "10001", "10001", "10001", "11110"],
@@ -26,6 +27,7 @@ async function main() {
     U: ["10001", "10001", "10001", "10001", "10001", "10001", "01110"],
     " ": ["000", "000", "000", "000", "000", "000", "000"],
   };
+
   const drawPixelText = (text, startX, startY, scale, color) => {
     let cursor = startX;
     for (const raw of text) {
@@ -61,7 +63,6 @@ async function main() {
 
   block(0, 0, 40, 40, "#5b0b1a");
 
-  // Pixel "water" bed with depth + ripple variation so it feels less flat.
   for (let y = 27; y < 40; y++) {
     const depth = (y - 27) / 12;
     const base = mix("#8f1730", "#4b0917", depth * 0.9);
@@ -74,8 +75,6 @@ async function main() {
       block(x, y, 1, 1, c);
     }
   }
-
-  // Thin reflective line near the top of the water.
   for (let x = 1; x < 39; x++) {
     if (x % 3 !== 0) block(x, 27, 1, 1, "#cf3658");
     if (x % 5 === 0) block(x, 28, 1, 1, "#b32645");
@@ -111,9 +110,7 @@ async function main() {
       color = mix(color, deepShadow, sideShade * 0.52 + underside * 0.28);
       color = mix(color, "#a86e1c", warmBounce * 0.25);
 
-      const edge = d > 0.88;
-      if (edge) color = mix(color, outline, 0.62);
-
+      if (d > 0.88) color = mix(color, outline, 0.62);
       block(x, y, 1, 1, color);
     }
   }

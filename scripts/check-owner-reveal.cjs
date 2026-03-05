@@ -1,6 +1,6 @@
 const hre = require('hardhat');
 (async()=>{
-  const addr='0xCc362C9812DFd88c7B476eeB425830Cc40d2C24D';
+  const addr='0x80221b01c8eB071E553D21D5cE96442402B131b4';
   const c = await hre.ethers.getContractAt('PixelPenguins',addr);
   const [s] = await hre.ethers.getSigners();
   console.log('contract:',addr);

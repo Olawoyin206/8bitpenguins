@@ -147,7 +147,7 @@ contract PixelPenguins is ERC721, Ownable, ReentrancyGuard {
                 '","description":"Unique 8bit Penguins on Base","image":"',
                 image,
                 '","revealed":true',
-                '","attributes":',
+                ',"attributes":',
                 attrs,
                 ',"rarity_score":',
                 score.toString(),

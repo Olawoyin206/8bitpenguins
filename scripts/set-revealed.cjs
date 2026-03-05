@@ -1,7 +1,7 @@
 const hre = require("hardhat");
 
 async function main() {
-  const contractAddress = "0xCc362C9812DFd88c7B476eeB425830Cc40d2C24D";
+  const contractAddress = "0x80221b01c8eB071E553D21D5cE96442402B131b4";
   const contract = await hre.ethers.getContractAt("PixelPenguins", contractAddress);
   const tx = await contract.setRevealed(true);
   console.log("Tx:", tx.hash);

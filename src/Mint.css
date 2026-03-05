@@ -216,46 +216,65 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 14px 16px;
-  background: var(--mint-bg);
-  border: 1px solid var(--mint-border);
-  border-radius: 10px;
+  padding: 12px 14px;
+  background: linear-gradient(180deg, #0f131a 0%, #0d1117 100%);
+  border: 1px solid #2b3139;
+  border-radius: 12px;
+  gap: 12px;
 }
 
 .mint-wallet-main {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
 }
 
-.mint-wallet-addr {
+.mint-wallet-addr-btn {
+  padding: 7px 11px;
+  border: 1px solid #3a4049;
+  background: #151a22;
+  color: #c9d1d9;
+  border-radius: 8px;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.8rem;
-  color: var(--mint-text);
+  font-size: 0.74rem;
+  letter-spacing: 0.03em;
+  cursor: default;
+  pointer-events: none;
+  opacity: 0.95;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
 }
 
 .mint-wallet-bal {
-  font-size: 0.75rem;
-  color: var(--mint-success);
-  font-weight: 500;
+  font-size: 0.74rem;
+  color: #9ee6b8;
+  font-weight: 600;
+  white-space: nowrap;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: rgba(31, 85, 52, 0.25);
+  border: 1px solid rgba(62, 143, 94, 0.45);
 }
 
 .mint-disconnect-btn {
   padding: 8px 12px;
-  border: 1px solid var(--mint-border);
-  background: transparent;
-  color: var(--mint-text-secondary);
+  border: 1px solid #3a4049;
+  background: #161b22;
+  color: #b8c2cc;
   border-radius: 8px;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   cursor: pointer;
   transition: all 0.2s ease;
+  min-height: 36px;
+  flex-shrink: 0;
 }
 
 .mint-disconnect-btn:hover {
-  border-color: var(--mint-accent);
-  color: var(--mint-accent);
+  border-color: #58a6ff;
+  color: #58a6ff;
+  background: #0f1622;
 }
 
 /* Quantity Selector */
@@ -840,10 +859,30 @@
   }
 
   .mint-wallet {
-    flex-direction: column;
-    align-items: stretch;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
     gap: 10px;
     padding: 10px 12px;
+  }
+
+  .mint-wallet-main {
+    min-width: 0;
+    gap: 7px;
+    flex-wrap: nowrap;
+  }
+
+  .mint-wallet-addr-btn {
+    padding: 6px 8px;
+    font-size: 0.68rem;
+  }
+
+  .mint-wallet-bal {
+    font-size: 0.72rem;
+  }
+
+  .mint-disconnect-btn {
+    flex-shrink: 0;
   }
 
   .mint-disconnect-btn,
@@ -917,6 +956,20 @@
 
   .mint-hero h1 {
     font-size: 1.05rem;
+  }
+
+  .mint-wallet {
+    gap: 8px;
+    padding: 9px 10px;
+  }
+
+  .mint-wallet-addr-btn {
+    font-size: 0.64rem;
+    padding: 5px 7px;
+  }
+
+  .mint-wallet-bal {
+    font-size: 0.68rem;
   }
 
   .mint-gallery-grid {
