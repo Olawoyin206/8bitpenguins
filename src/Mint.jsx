@@ -1747,6 +1747,7 @@ function Mint() {
         if (!cancelled && latestSupply !== lastKnownSupplyRef.current) {
           lastKnownSupplyRef.current = latestSupply
           setTotalSupply(latestSupply)
+          fetchContractData(account || null)
         }
       } catch (err) {
         if (!cancelled) {
@@ -1762,7 +1763,7 @@ function Mint() {
       cancelled = true
       clearInterval(intervalId)
     }
-  }, [])
+  }, [account])
 
   useEffect(() => {
     if (!account && (activeTab.startsWith('my'))) {
@@ -1851,16 +1852,8 @@ function Mint() {
       const totalNum = Number(supply)
       if (totalNum > 0) {
         const tokenIds = Array.from({ length: totalNum }, (_, idx) => idx + 1)
-        const nftResults = await Promise.allSettled(
-          tokenIds.map(async (tokenId) => {
-            const seedBigInt = await contract.tokenSeeds(tokenId)
-            return { tokenId, seed: seedBigInt }
-          })
-        )
-
-        const allNfts = nftResults
-          .filter((result) => result.status === 'fulfilled')
-          .map((result) => result.value)
+        const allNfts = tokenIds
+          .map((tokenId) => ({ tokenId }))
           .sort((a, b) => b.tokenId - a.tokenId)
 
         const dedupedAllNfts = Array.from(
@@ -1871,20 +1864,27 @@ function Mint() {
         setAllNFTs(dedupedAllNfts)
 
         if (address) {
-          const ownerResults = await Promise.allSettled(
-            dedupedAllNfts.map((nft) => contract.ownerOf(nft.tokenId))
-          )
-          const ownedNfts = dedupedAllNfts.filter((nft, idx) => {
-            const result = ownerResults[idx]
-            return result.status === 'fulfilled' && result.value.toLowerCase() === normalizedAddress
-          })
+          const ownedNfts = []
+          const CHUNK = 8
+          for (let i = 0; i < dedupedAllNfts.length; i += CHUNK) {
+            const batch = dedupedAllNfts.slice(i, i + CHUNK)
+            const ownerResults = await Promise.allSettled(
+              batch.map((nft) => contract.ownerOf(nft.tokenId))
+            )
+            ownerResults.forEach((result, idx) => {
+              if (result.status === 'fulfilled' && result.value.toLowerCase() === normalizedAddress) {
+                ownedNfts.push(batch[idx])
+              }
+            })
+          }
           const dedupedOwnedNfts = Array.from(
             new Map(ownedNfts.map((nft) => [nft.tokenId, nft])).values()
           ).sort((a, b) => b.tokenId - a.tokenId)
           setMyNFTs(dedupedOwnedNfts)
         }
-      } else if (address) {
-        setMyNFTs([])
+      } else {
+        setAllNFTs([])
+        if (address) setMyNFTs([])
       }
       setMetadataRefreshKey((k) => k + 1)
     } catch (err) {
