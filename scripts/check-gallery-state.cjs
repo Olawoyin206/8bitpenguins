@@ -1,6 +1,6 @@
 const hre = require('hardhat');
 (async()=>{
-  const c = await hre.ethers.getContractAt('PixelPenguins','0x80221b01c8eB071E553D21D5cE96442402B131b4');
+  const c = await hre.ethers.getContractAt('PixelPenguins','0x74583D54B3c42ab08c8031d849B350Ccf425060c');
   const supply = Number(await c.totalSupply());
   const revealed = await c.revealed();
   console.log('supply', supply);

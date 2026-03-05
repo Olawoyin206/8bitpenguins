@@ -6,8 +6,9 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Base64.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
+import "@openzeppelin/contracts/interfaces/IERC4906.sol";
 
-contract PixelPenguins is ERC721, Ownable, ReentrancyGuard {
+contract PixelPenguins is ERC721, IERC4906, Ownable, ReentrancyGuard {
     using Strings for uint256;
 
     uint256 public MAX_SUPPLY = 50;
@@ -29,9 +30,6 @@ contract PixelPenguins is ERC721, Ownable, ReentrancyGuard {
     event MintStatusChanged(bool status);
     event RevealStatusChanged(bool status);
     event PlaceholderImageChanged(string image);
-    event MetadataUpdate(uint256 _tokenId);
-    event BatchMetadataUpdate(uint256 _fromTokenId, uint256 _toTokenId);
-
     constructor() ERC721("8bit Penguins", "8BITP") Ownable() {
         placeholderImage = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 400'><rect width='400' height='400' fill='%23111827'/><text x='200' y='190' fill='%2393C5FD' font-size='24' text-anchor='middle' font-family='monospace'>8BIT PENGUINS</text><text x='200' y='225' fill='%23E5E7EB' font-size='20' text-anchor='middle' font-family='monospace'>UNREVEALED</text></svg>";
     }
@@ -103,6 +101,10 @@ contract PixelPenguins is ERC721, Ownable, ReentrancyGuard {
 
     function totalSupply() public view returns (uint256) {
         return _currentTokenId;
+    }
+
+    function supportsInterface(bytes4 interfaceId) public view override(ERC721, IERC165) returns (bool) {
+        return interfaceId == type(IERC4906).interfaceId || super.supportsInterface(interfaceId);
     }
 
     function tokenURI(uint256 tokenId) public view override returns (string memory) {

@@ -4,7 +4,7 @@ import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import './Mint.css'
 
-const CONTRACT_ADDRESS = '0x80221b01c8eB071E553D21D5cE96442402B131b4'
+const CONTRACT_ADDRESS = '0x74583D54B3c42ab08c8031d849B350Ccf425060c'
 const BASE_SEPOLIA_RPC = 'https://sepolia.base.org'
 
 const contractABI = [
@@ -202,6 +202,8 @@ function generateSVGFromTraits(traits) {
   svg += rectToSvg(11, 39, 15, 40, feetHighlight)
   svg += rectToSvg(24, 39, 29, 40, feet)
   svg += rectToSvg(24, 39, 28, 40, feetHighlight)
+  // Ground shadow (match App.jsx)
+  svg += rectToSvg(8, 39, 31, 39, 'rgba(0,0,0,0.3)')
   
   svg += '</svg>'
   return svg
@@ -1609,6 +1611,9 @@ function drawAgent(traits, canvas) {
   rect(27, 39, 28, 40, feetHighlight)
   rect(29, 39, 31, 39, feet)
   rect(30, 39, 31, 39, feetHighlight)
+
+  // Ground shadow (match App.jsx)
+  rect(8, 39, 31, 39, 'rgba(0,0,0,0.3)')
 }
 
 function NFTGalleryItem({ tokenId, onEvolve }) {
@@ -1970,7 +1975,7 @@ function Mint() {
           beak: randomItem(TRAITS.beak),
           eyes: randomItem(TRAITS.eyes),
           head: randomItem(TRAITS.head),
-          feet: randomItem(TRAITS.feet),
+          feet: { name: 'Default Orange', type: 'default', base: '#FF9F43', highlight: '#FFBE76', shadow: '#E67E22' },
         }
         names.push(randomItem(TRAITS.name).name)
 
