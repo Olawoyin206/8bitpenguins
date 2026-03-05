@@ -7,13 +7,18 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "hardhat run scripts/deploy.cjs --network baseSepolia"
   },
   "dependencies": {
+    "@openzeppelin/contracts": "^4.9.6",
+    "@openzeppelin/contracts-upgradeable": "^4.9.6",
     "@react-three/fiber": "^9.5.0",
     "canvas": "^3.2.1",
+    "electron": "^40.6.1",
     "ethers": "^6.16.0",
     "jsdom": "^28.1.0",
+    "playwright": "^1.58.2",
     "puppeteer": "^24.37.5",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
@@ -22,13 +27,17 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@openzeppelin/hardhat-upgrades": "^3.9.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
+    "dotenv": "^16.6.1",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
+    "hardhat": "^2.28.6",
     "vite": "^7.3.1"
   }
 }

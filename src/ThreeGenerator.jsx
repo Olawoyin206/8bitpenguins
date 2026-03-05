@@ -7,24 +7,26 @@ import './App.css'
 
 const TRAITS = {
   body: [
-    { name: 'Classic', base: '#2C3E50', highlight: '#34495E', shadow: '#1A252F', weight: 15 },
-    { name: 'Baby Blue', base: '#74B9FF', highlight: '#A3D1FF', shadow: '#0984E3', weight: 12 },
-    { name: 'Navy Blue', base: '#1A252F', highlight: '#2C3E50', shadow: '#0D1318', weight: 10 },
-    { name: 'Ice Blue', base: '#81ECEC', highlight: '#A9F5F5', shadow: '#00CEC9', weight: 10 },
-    { name: 'Grey', base: '#95A5A6', highlight: '#BDC3C7', shadow: '#7F8C8D', weight: 10 },
-    { name: 'Dark Grey', base: '#636E72', highlight: '#839192', shadow: '#2D3436', weight: 10 },
-    { name: 'Cream', base: '#F5F0E1', highlight: '#FFFAF2', shadow: '#E8DFD0', weight: 10 },
-    { name: 'Pink', base: '#E91E63', highlight: '#EC407A', shadow: '#C2185B', weight: 10 },
-    { name: 'Sky Blue', base: '#5DADE2', highlight: '#85C1E9', shadow: '#3498DB', weight: 10 },
-    { name: 'Ocean Blue', base: '#3498DB', highlight: '#5DADE2', shadow: '#2471A3', weight: 8 },
-    { name: 'Cobalt', base: '#2E86AB', highlight: '#54A0FF', shadow: '#1F618D', weight: 8 },
-    { name: 'Purple', base: '#8E44AD', highlight: '#A569BD', shadow: '#6C3483', weight: 8 },
-    { name: 'Green', base: '#27AE60', highlight: '#58D68D', shadow: '#1E8449', weight: 8 },
-    { name: 'Coral', base: '#E74C3C', highlight: '#EC7063', shadow: '#C0392B', weight: 8 },
-    { name: 'Yellow', base: '#F39C12', highlight: '#F7DC6F', shadow: '#D68910', weight: 6 },
-    { name: 'Zombie Green', base: '#6AB04C', highlight: '#78E08F', shadow: '#489918', weight: 5 },
-    { name: 'Skeleton White', base: '#F8F9F9', highlight: '#FFFFFF', shadow: '#DFE4E5', weight: 5 },
-    { name: 'Gold', base: '#F9CA24', highlight: '#F8EFBA', shadow: '#F39C12', weight: 3 },
+    { name: 'Skeleton Dark Bone', base: '#D6CCB8', highlight: '#E8E2D4', shadow: '#9F8B7D', weight: 8 },
+    { name: 'Snow White', base: '#F5F5F5', highlight: '#FFFFFF', shadow: '#C2C2C2', weight: 8 },
+    { name: 'Jet Black', base: '#1C1C1C', highlight: '#484848', shadow: '#000000', weight: 8 },
+    { name: 'Ash Gray', base: '#B2B2B2', highlight: '#D9D9D9', shadow: '#858585', weight: 8 },
+    { name: 'Cream', base: '#FFF3D6', highlight: '#FFFFEB', shadow: '#CCC2A3', weight: 8 },
+    { name: 'Light Brown', base: '#C68642', highlight: '#E0A86A', shadow: '#8E5C2B', weight: 8 },
+    { name: 'Chocolate Brown', base: '#5C3A21', highlight: '#8A6145', shadow: '#3A2514', weight: 8 },
+    { name: 'Golden Tan', base: '#D2A679', highlight: '#E8C9A4', shadow: '#9E7856', weight: 8 },
+    { name: 'Ice Blue', base: '#CFE9FF', highlight: '#F0F8FF', shadow: '#9FBFCD', weight: 8 },
+    { name: 'Baby Blue', base: '#A7C7E7', highlight: '#D4E9F5', shadow: '#7A96B0', weight: 8 },
+    { name: 'Ocean Blue', base: '#2B6CB0', highlight: '#5A9AD4', shadow: '#1D4D7E', weight: 8 },
+    { name: 'Soft Pink', base: '#F4A6B8', highlight: '#FAD2DD', shadow: '#B77A8B', weight: 8 },
+    { name: 'Bubblegum Pink', base: '#FF77AA', highlight: '#FFA5CC', shadow: '#CC4F7D', weight: 8 },
+    { name: 'Lavender Body', base: '#BFA2DB', highlight: '#D9C9EB', shadow: '#8F76A4', weight: 8 },
+    { name: 'Royal Purple', base: '#6B3FA0', highlight: '#9670BF', shadow: '#4D2A75', weight: 8 },
+    { name: 'Mint Body', base: '#A8E6CF', highlight: '#D4F5E8', shadow: '#7DB39C', weight: 8 },
+    { name: 'Olive Green', base: '#708238', highlight: '#96A65C', shadow: '#515D27', weight: 8 },
+    { name: 'Coral Body', base: '#FF8C69', highlight: '#FFB49B', shadow: '#CC634A', weight: 8 },
+    { name: 'Sunset Gold', base: '#E6B422', highlight: '#F0CC57', shadow: '#B38618', weight: 8 },
+    { name: 'Glass Style', base: '#E0FFFF', highlight: '#F0FFFF', shadow: '#A8C8C8', weight: 8 },
   ],
   belly: [
     { name: 'Cream', base: '#FDF5E6', highlight: '#FFFAF0', shadow: '#F5E6D3', weight: 45 },
@@ -55,32 +57,52 @@ const TRAITS = {
   ],
   head: [
     { name: 'None', type: 'none', weight: 25 },
-    { name: 'Cap Blue', type: 'cap', color: '#1976D2', highlight: '#2196F3', shadow: '#1565C0', weight: 6 },
-    { name: 'Cap Red', type: 'cap', color: '#C62828', highlight: '#E53935', shadow: '#B71C1C', weight: 6 },
-    { name: 'Cap Black', type: 'cap', color: '#212121', highlight: '#424242', shadow: '#000000', weight: 6 },
-    { name: 'Cap Green', type: 'cap', color: '#2E7D32', highlight: '#43A047', shadow: '#1B5E20', weight: 6 },
-    { name: 'Beanie Red', type: 'beanie', color: '#D32F2F', highlight: '#E53935', shadow: '#B71C1C', weight: 6 },
-    { name: 'Beanie Blue', type: 'beanie', color: '#1565C0', highlight: '#1976D2', shadow: '#0D47A1', weight: 6 },
-    { name: 'Beanie Green', type: 'beanie', color: '#2E7D32', highlight: '#43A047', shadow: '#1B5E20', weight: 6 },
-    { name: 'Beanie Purple', type: 'beanie', color: '#7B1FA2', highlight: '#9C27B0', shadow: '#4A148C', weight: 6 },
-    { name: 'Scarf Green', type: 'scarf', color: '#388E3C', highlight: '#4CAF50', shadow: '#2E7D32', weight: 5 },
-    { name: 'Scarf Red', type: 'scarf', color: '#C62828', highlight: '#E53935', shadow: '#B71C1C', weight: 5 },
-    { name: 'Scarf Blue', type: 'scarf', color: '#1565C0', highlight: '#1976D2', shadow: '#0D47A1', weight: 5 },
-    { name: 'Scarf Purple', type: 'scarf', color: '#7B1FA2', highlight: '#9C27B0', shadow: '#4A148C', weight: 5 },
-    { name: 'Headband Red', type: 'headband', color: '#C62828', highlight: '#E53935', weight: 5 },
-    { name: 'Headband Blue', type: 'headband', color: '#1565C0', highlight: '#1976D2', weight: 5 },
-    { name: 'Headband Green', type: 'headband', color: '#2E7D32', highlight: '#43A047', weight: 5 },
-    { name: 'Headband Purple', type: 'headband', color: '#7B1FA2', highlight: '#9C27B0', weight: 5 },
-    { name: 'Crown', type: 'crown', weight: 10 },
+    { name: 'Cap Gold', type: 'cap', color: '#FFD700', highlight: '#FFE44D', shadow: '#CCAC00', weight: 8 },
+    { name: 'Cap Matte Black', type: 'cap', color: '#2B2B2B', highlight: '#545454', shadow: '#141414', weight: 8 },
+    { name: 'Cap Sapphire Blue', type: 'cap', color: '#0F52BA', highlight: '#3D71D1', shadow: '#0A3A8C', weight: 7 },
+    { name: 'Cap Crimson', type: 'cap', color: '#DC143C', highlight: '#E54767', shadow: '#A00F2C', weight: 7 },
+    { name: 'Cap Royal Gold', type: 'cap', color: '#FAD02E', highlight: '#FFE170', shadow: '#C9A823', weight: 7 },
+    { name: 'Beanie Gold', type: 'beanie', color: '#FFD700', highlight: '#FFE44D', shadow: '#CCAC00', weight: 6 },
+    { name: 'Beanie Matte Black', type: 'beanie', color: '#2B2B2B', highlight: '#545454', shadow: '#141414', weight: 6 },
+    { name: 'Beanie Sapphire Blue', type: 'beanie', color: '#0F52BA', highlight: '#3D71D1', shadow: '#0A3A8C', weight: 6 },
+    { name: 'Beanie Crimson', type: 'beanie', color: '#DC143C', highlight: '#E54767', shadow: '#A00F2C', weight: 6 },
+    { name: 'Beanie Royal Gold', type: 'beanie', color: '#FAD02E', highlight: '#FFE170', shadow: '#C9A823', weight: 6 },
+    { name: 'Scarf Gold', type: 'scarf', color: '#FFD700', highlight: '#FFE44D', shadow: '#CCAC00', weight: 5 },
+    { name: 'Scarf Matte Black', type: 'scarf', color: '#2B2B2B', highlight: '#545454', shadow: '#141414', weight: 5 },
+    { name: 'Scarf Sapphire Blue', type: 'scarf', color: '#0F52BA', highlight: '#3D71D1', shadow: '#0A3A8C', weight: 5 },
+    { name: 'Scarf Crimson', type: 'scarf', color: '#DC143C', highlight: '#E54767', shadow: '#A00F2C', weight: 5 },
+    { name: 'Scarf Royal Gold', type: 'scarf', color: '#FAD02E', highlight: '#FFE170', shadow: '#C9A823', weight: 5 },
+    { name: 'Headband Gold', type: 'headband', color: '#FFD700', highlight: '#FFE44D', shadow: '#CCAC00', weight: 5 },
+    { name: 'Headband Matte Black', type: 'headband', color: '#2B2B2B', highlight: '#545454', shadow: '#141414', weight: 5 },
+    { name: 'Headband Sapphire Blue', type: 'headband', color: '#0F52BA', highlight: '#3D71D1', shadow: '#0A3A8C', weight: 5 },
+    { name: 'Headband Crimson', type: 'headband', color: '#DC143C', highlight: '#E54767', shadow: '#A00F2C', weight: 5 },
+    { name: 'Headband Royal Gold', type: 'headband', color: '#FAD02E', highlight: '#FFE170', shadow: '#C9A823', weight: 5 },
+    { name: 'Crown Imperial', type: 'crown', style: 'imperial', weight: 6 },
+    { name: 'Crown Elegant', type: 'crown', style: 'elegant', weight: 4 },
     { name: 'Halo', type: 'halo', weight: 8 },
   ],
   background: [
-    { name: 'Soft Pink', color: '#FADBD8' },
-    { name: 'Mint Green', color: '#D5F5E3' },
-    { name: 'Peach', color: '#FAD7A0' },
-    { name: 'Lavender', color: '#E8DAEF' },
-    { name: 'Sky Blue', color: '#D4E6F1' },
-    { name: 'Cream', color: '#FCF3CF' },
+    { name: 'Light Blue', color: '#ADD8E6', weight: 12 },
+    { name: 'Baby Pink', color: '#F4A6B8', weight: 12 },
+    { name: 'Sky Blue', color: '#87CEEB', weight: 12 },
+    { name: 'Arctic White', color: '#F8FBFF', weight: 4, fx: 'snowflakes' },
+    { name: 'Soft Lavender', color: '#C8B6FF', weight: 10 },
+    { name: 'Mint Green', color: '#98FFCC', weight: 10 },
+    { name: 'Pastel Pink', color: '#FFD1DC', weight: 10 },
+    { name: 'Royal Blue', color: '#4169E1', weight: 4, fx: 'softdots' },
+    { name: 'Peach Cream', color: '#FFE5B4', weight: 10 },
+    { name: 'Lilac Purple', color: '#D8B4F8', weight: 8 },
+    { name: 'Warm Beige', color: '#F5F5DC', weight: 8 },
+    { name: 'Coral Red', color: '#FF6B6B', weight: 8 },
+    { name: 'Midnight Blue', color: '#1A1A2E', weight: 3, fx: 'snowflakes' },
+    { name: 'Sunset Orange', color: '#FF7A18', weight: 8 },
+    { name: 'Deep Teal', color: '#0F4C5C', weight: 3, fx: 'softdots' },
+    { name: 'Forest Green', color: '#2E8B57', weight: 6 },
+    { name: 'Charcoal Gray', color: '#36454F', weight: 6 },
+    { name: 'Neon Yellow', color: '#F5FF3B', weight: 5 },
+    { name: 'Electric Cyan', color: '#00FFFF', weight: 5 },
+    { name: 'Golden Glow', color: '#FFD700', weight: 2, fx: 'softdots' },
+    { name: 'Crimson Red', color: '#DC143C', weight: 5 },
   ],
 }
 
@@ -128,7 +150,7 @@ function createVoxelPenguin(traits, THREE) {
     mesh.receiveShadow = true
     return mesh
   }
-  
+
   const rect = (x1, y1, x2, y2, color, depth = 4, z = 1) => {
     for (let y = y1; y <= y2; y++) {
       for (let x = x1; x <= x2; x++) {
@@ -136,7 +158,7 @@ function createVoxelPenguin(traits, THREE) {
       }
     }
   }
-  
+
   const rectFront = (x1, y1, x2, y2, color, depth = 4, z = 1) => {
     for (let y = y1; y <= y2; y++) {
       for (let x = x1; x <= x2; x++) {
@@ -242,79 +264,63 @@ function createVoxelPenguin(traits, THREE) {
   const eyeY = 17
   
   if (traits.eyes.type === 'round') {
-    rectFront(cx - 5, eyeY, cx - 3, eyeY + 2, '#0A0A0A', 12)
-    rectFront(cx - 6, eyeY + 1, cx - 2, eyeY + 2, '#0A0A0A', 12)
-    rectFront(cx - 5, eyeY, cx - 4, eyeY, '#FFFFFF', 12)
-    rectFront(cx - 4, eyeY + 1, cx - 3, eyeY + 1, '#FFFFFF', 12)
-    rectFront(cx + 3, eyeY, cx + 5, eyeY + 2, '#0A0A0A', 12)
-    rectFront(cx + 2, eyeY + 1, cx + 6, eyeY + 2, '#0A0A0A', 12)
-    rectFront(cx + 4, eyeY, cx + 5, eyeY, '#FFFFFF', 12)
-    rectFront(cx + 3, eyeY + 1, cx + 4, eyeY + 1, '#FFFFFF', 12)
+    rectFront(cx - 4, eyeY, cx - 3, eyeY + 1, '#0A0A0A', 12)
+    rectFront(cx - 5, eyeY + 1, cx - 2, eyeY + 1, '#0A0A0A', 12)
+    rectFront(cx + 3, eyeY, cx + 4, eyeY + 1, '#0A0A0A', 12)
+    rectFront(cx + 2, eyeY + 1, cx + 5, eyeY + 1, '#0A0A0A', 12)
   } else if (traits.eyes.type === 'happy') {
-    rectFront(cx - 6, eyeY, cx - 2, eyeY + 2, '#0A0A0A', 12)
-    rectFront(cx - 5, eyeY + 1, cx - 3, eyeY + 2, '#0A0A0A', 12)
-    rectFront(cx + 2, eyeY, cx + 6, eyeY + 2, '#0A0A0A', 12)
-    rectFront(cx + 3, eyeY + 1, cx + 5, eyeY + 2, '#0A0A0A', 12)
+    rectFront(cx - 5, eyeY, cx - 2, eyeY + 1, '#0A0A0A', 12)
+    rectFront(cx - 4, eyeY + 1, cx - 3, eyeY + 1, '#0A0A0A', 12)
+    rectFront(cx + 2, eyeY, cx + 5, eyeY + 1, '#0A0A0A', 12)
+    rectFront(cx + 3, eyeY + 1, cx + 4, eyeY + 1, '#0A0A0A', 12)
   } else if (traits.eyes.type === 'sad') {
-    rectFront(cx - 5, eyeY + 1, cx - 3, eyeY + 2, '#0A0A0A', 12)
-    rectFront(cx - 4, eyeY + 2, cx - 3, eyeY + 2, '#0A0A0A', 12)
-    rectFront(cx + 3, eyeY + 1, cx + 5, eyeY + 2, '#0A0A0A', 12)
-    rectFront(cx + 4, eyeY + 2, cx + 5, eyeY + 2, '#0A0A0A', 12)
-  } else if (traits.eyes.type === 'angry') {
-    rectFront(cx - 5, eyeY, cx - 3, eyeY + 2, '#0A0A0A', 12)
-    rectFront(cx - 6, eyeY + 1, cx - 2, eyeY + 2, '#0A0A0A', 12)
-    rectFront(cx - 4, eyeY, cx - 3, eyeY, '#FF0000', 12)
-    rectFront(cx + 3, eyeY, cx + 5, eyeY + 2, '#0A0A0A', 12)
-    rectFront(cx + 2, eyeY + 1, cx + 6, eyeY + 2, '#0A0A0A', 12)
-    rectFront(cx + 4, eyeY, cx + 5, eyeY, '#FF0000', 12)
+    rectFront(cx - 4, eyeY + 1, cx - 3, eyeY + 1, '#0A0A0A', 12)
+    rectFront(cx - 3, eyeY + 1, cx - 3, eyeY + 1, '#0A0A0A', 12)
+    rectFront(cx + 3, eyeY + 1, cx + 4, eyeY + 1, '#0A0A0A', 12)
+    rectFront(cx + 4, eyeY + 1, cx + 4, eyeY + 1, '#0A0A0A', 12)
   } else if (traits.eyes.type === 'sleepy') {
-    rectFront(cx - 5, eyeY + 1, cx - 3, eyeY + 2, '#0A0A0A', 12)
-    rectFront(cx - 6, eyeY + 1, cx - 2, eyeY + 2, '#0A0A0A', 12)
-    rectFront(cx + 3, eyeY + 1, cx + 5, eyeY + 2, '#0A0A0A', 12)
-    rectFront(cx + 2, eyeY + 1, cx + 6, eyeY + 2, '#0A0A0A', 12)
+    rectFront(cx - 4, eyeY + 1, cx - 3, eyeY + 1, '#0A0A0A', 12)
+    rectFront(cx - 5, eyeY + 1, cx - 2, eyeY + 1, '#0A0A0A', 12)
+    rectFront(cx - 4, eyeY + 2, cx - 3, eyeY + 2, '#0A0A0A', 12)
+    rectFront(cx + 3, eyeY + 1, cx + 4, eyeY + 1, '#0A0A0A', 12)
+    rectFront(cx + 2, eyeY + 1, cx + 5, eyeY + 1, '#0A0A0A', 12)
+    rectFront(cx + 3, eyeY + 2, cx + 4, eyeY + 2, '#0A0A0A', 12)
   } else if (traits.eyes.type === 'surprised') {
-    rectFront(cx - 5, eyeY - 1, cx - 3, eyeY + 2, '#0A0A0A', 12)
-    rectFront(cx - 6, eyeY, cx - 2, eyeY + 2, '#0A0A0A', 12)
-    rectFront(cx - 5, eyeY - 1, cx - 4, eyeY - 1, '#FFFFFF', 12)
-    rectFront(cx - 4, eyeY, cx - 3, eyeY, '#FFFFFF', 12)
-    rectFront(cx - 4, eyeY + 1, cx - 3, eyeY + 1, '#FFFFFF', 12)
-    rectFront(cx + 3, eyeY - 1, cx + 5, eyeY + 2, '#0A0A0A', 12)
-    rectFront(cx + 2, eyeY, cx + 6, eyeY + 2, '#0A0A0A', 12)
-    rectFront(cx + 4, eyeY - 1, cx + 5, eyeY - 1, '#FFFFFF', 12)
-    rectFront(cx + 4, eyeY, cx + 5, eyeY, '#FFFFFF', 12)
-    rectFront(cx + 3, eyeY + 1, cx + 4, eyeY + 1, '#FFFFFF', 12)
+    rectFront(cx - 4, eyeY, cx - 3, eyeY + 1, '#0A0A0A', 12)
+    rectFront(cx - 5, eyeY, cx - 2, eyeY + 1, '#0A0A0A', 12)
+    rectFront(cx + 3, eyeY, cx + 4, eyeY + 1, '#0A0A0A', 12)
+    rectFront(cx + 2, eyeY, cx + 5, eyeY + 1, '#0A0A0A', 12)
   } else if (traits.eyes.type === 'wink') {
-    rectFront(cx - 5, eyeY, cx - 3, eyeY + 2, '#0A0A0A', 12)
-    rectFront(cx - 6, eyeY + 1, cx - 2, eyeY + 2, '#0A0A0A', 12)
-    rectFront(cx - 5, eyeY, cx - 4, eyeY, '#FFFFFF', 12)
-    rectFront(cx - 4, eyeY + 1, cx - 3, eyeY + 1, '#FFFFFF', 12)
-    rectFront(cx + 3, eyeY + 1, cx + 5, eyeY + 2, '#0A0A0A', 12)
+    rectFront(cx - 4, eyeY, cx - 3, eyeY + 1, '#0A0A0A', 12)
+    rectFront(cx - 5, eyeY + 1, cx - 2, eyeY + 1, '#0A0A0A', 12)
+    rectFront(cx + 3, eyeY + 1, cx + 4, eyeY + 1, '#0A0A0A', 12)
   } else if (traits.eyes.type === 'sideeye') {
-    rectFront(cx - 5, eyeY, cx - 3, eyeY + 2, '#0A0A0A', 12)
-    rectFront(cx - 6, eyeY + 1, cx - 4, eyeY + 2, '#0A0A0A', 12)
-    rectFront(cx - 3, eyeY + 1, cx - 2, eyeY + 1, '#0A0A0A', 12)
-    rectFront(cx + 3, eyeY, cx + 5, eyeY + 2, '#0A0A0A', 12)
-    rectFront(cx + 4, eyeY + 1, cx + 6, eyeY + 1, '#0A0A0A', 12)
+    rectFront(cx - 4, eyeY, cx - 3, eyeY + 1, '#0A0A0A', 12)
+    rectFront(cx - 5, eyeY + 1, cx - 4, eyeY + 1, '#0A0A0A', 12)
+    rectFront(cx + 3, eyeY, cx + 4, eyeY + 1, '#0A0A0A', 12)
+    rectFront(cx + 4, eyeY + 1, cx + 5, eyeY + 1, '#0A0A0A', 12)
   } else if (traits.eyes.type === 'closed') {
-    rectFront(cx - 6, eyeY + 1, cx - 2, eyeY + 1, '#0A0A0A', 12)
-    rectFront(cx + 2, eyeY + 1, cx + 6, eyeY + 1, '#0A0A0A', 12)
+    rectFront(cx - 5, eyeY + 1, cx - 2, eyeY + 1, '#0A0A0A', 12)
+    rectFront(cx + 2, eyeY + 1, cx + 5, eyeY + 1, '#0A0A0A', 12)
   } else if (traits.eyes.type === 'sparkle') {
-    rectFront(cx - 5, eyeY, cx - 3, eyeY + 2, '#0A0A0A', 12)
-    rectFront(cx - 6, eyeY + 1, cx - 2, eyeY + 2, '#0A0A0A', 12)
-    rectFront(cx - 5, eyeY, cx - 4, eyeY, '#FFFFFF', 12)
-    rectFront(cx - 3, eyeY + 2, cx - 3, eyeY + 2, '#FFFFFF', 12)
-    rectFront(cx + 3, eyeY, cx + 5, eyeY + 2, '#0A0A0A', 12)
-    rectFront(cx + 2, eyeY + 1, cx + 6, eyeY + 2, '#0A0A0A', 12)
-    rectFront(cx + 4, eyeY, cx + 5, eyeY, '#FFFFFF', 12)
-    rectFront(cx + 5, eyeY + 2, cx + 5, eyeY + 2, '#FFFFFF', 12)
+    rectFront(cx - 4, eyeY, cx - 3, eyeY + 1, '#0A0A0A', 12)
+    rectFront(cx - 5, eyeY + 1, cx - 2, eyeY + 1, '#0A0A0A', 12)
+    rectFront(cx + 3, eyeY, cx + 4, eyeY + 1, '#0A0A0A', 12)
+    rectFront(cx + 2, eyeY + 1, cx + 5, eyeY + 1, '#0A0A0A', 12)
+  } else if (traits.eyes.type === 'angry') {
+    rectFront(cx - 4, eyeY, cx - 3, eyeY, '#0A0A0A', 12)
+    rectFront(cx - 5, eyeY + 1, cx - 2, eyeY + 1, '#0A0A0A', 12)
+    rectFront(cx - 3, eyeY, cx - 3, eyeY, '#FF0000', 12)
+    rectFront(cx + 3, eyeY, cx + 4, eyeY, '#0A0A0A', 12)
+    rectFront(cx + 2, eyeY + 1, cx + 5, eyeY + 1, '#0A0A0A', 12)
+    rectFront(cx + 4, eyeY, cx + 4, eyeY, '#FF0000', 12)
   }
   
-  if (traits.eyes.type !== 'sleepy' && traits.eyes.type !== 'closed' && traits.eyes.type !== 'angry') {
-    rectFront(cx - 7, 14, cx - 3, 14, bodyShadow, 11)
-    rectFront(cx + 3, 14, cx + 7, 14, bodyShadow, 11)
-    rectFront(cx - 8, 13, cx - 4, 13, bodyShadow, 11)
-    rectFront(cx + 4, 13, cx + 8, 13, bodyShadow, 11)
-  }
+  // Eyebrows - all penguins have eyebrows (darker than body)
+  rectFront(cx - 7, 14, cx - 3, 14, bodyShadow, 11, 1.1)
+  rectFront(cx + 3, 14, cx + 7, 14, bodyShadow, 11, 1.1)
+  rectFront(cx - 8, 13, cx - 4, 13, bodyShadow, 11, 1.1)
+  rectFront(cx + 4, 13, cx + 8, 13, bodyShadow, 11, 1.1)
   
   // BEAK - front only
   if (traits.beak.type === 'small') {
@@ -322,10 +328,10 @@ function createVoxelPenguin(traits, THREE) {
     rectFront(cx - 1, 20, cx, 22, beak, 14)
     rectFront(cx - 1, 22, cx, 22, beakShadow, 14)
   } else if (traits.beak.type === 'large') {
-    rectFront(cx - 4, 20, cx + 3, 24, beak, 14)
-    rectFront(cx - 3, 19, cx + 2, 23, beak, 14)
-    rectFront(cx - 2, 19, cx + 1, 20, beak, 14)
-    rectFront(cx - 3, 24, cx + 2, 24, beakShadow, 14)
+    rectFront(cx - 3, 20, cx + 2, 23, beak, 14)
+    rectFront(cx - 2, 19, cx + 1, 22, beak, 14)
+    rectFront(cx - 1, 18, cx, 20, beak, 14)
+    rectFront(cx - 2, 23, cx + 1, 23, beakShadow, 14)
   } else if (traits.beak.type === 'wide') {
     rectFront(cx - 4, 21, cx + 3, 23, beak, 14)
     rectFront(cx - 3, 20, cx + 2, 24, beak, 14)
@@ -341,6 +347,12 @@ function createVoxelPenguin(traits, THREE) {
     rectFront(cx - 2, 20, cx + 1, 24, beak, 14)
     rectFront(cx - 1, 20, cx, 20, beak, 14)
     rectFront(cx - 2, 24, cx + 1, 24, beakShadow, 14)
+  } else if (traits.beak.type === 'puffy') {
+    rectFront(cx - 3, 20, cx + 2, 22, beak, 14)
+    rectFront(cx - 2, 19, cx + 1, 21, beakHighlight, 14)
+    rectFront(cx - 1, 18, cx, 20, beakHighlight, 14)
+    rectFront(cx - 2, 22, cx + 1, 22, beakShadow, 14)
+    rectFront(cx + 1, 21, cx + 2, 21, beakShadow, 14)
   } else {
     rectFront(cx - 3, 21, cx + 2, 23, beak, 14)
     rectFront(cx - 2, 20, cx + 1, 22, beak, 14)
@@ -350,61 +362,179 @@ function createVoxelPenguin(traits, THREE) {
   }
   
   // CHEEKS - front only
-  rectFront(cx - 9, 19, cx - 7, 21, '#FFB6C1', 11)
-  rectFront(cx + 7, 19, cx + 9, 21, '#FFB6C1', 11)
-  rectFront(cx - 8, 20, cx - 7, 20, '#FFC5CD', 11)
-  rectFront(cx + 7, 20, cx + 8, 20, '#FFC5CD', 11)
+  rectFront(cx - 9, 19, cx - 7, 21, '#FFB6C1', 11, 1.1)
+  rectFront(cx + 7, 19, cx + 9, 21, '#FFB6C1', 11, 1.1)
+  rectFront(cx - 8, 20, cx - 7, 20, '#FFC5CD', 11, 1.1)
+  rectFront(cx + 7, 20, cx + 8, 20, '#FFC5CD', 11, 1.1)
   
-  // HEAD ACCESSORIES - match head depth
+  // HEAD ACCESSORIES
+  const headColor = traits.head.color || '#404040'
+  const parseHex = (hex) => {
+    const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex || '')
+    if (!m) return null
+    return { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) }
+  }
+  const mixHex = (a, b, t) => {
+    const ca = parseHex(a)
+    const cb = parseHex(b)
+    if (!ca || !cb) return a
+    const mix = (x, y) => Math.round(x + (y - x) * t)
+    const toHex = (n) => n.toString(16).padStart(2, '0')
+    return `#${toHex(mix(ca.r, cb.r))}${toHex(mix(ca.g, cb.g))}${toHex(mix(ca.b, cb.b))}`
+  }
+  const headHighlight = traits.head.highlight || mixHex(headColor, '#FFFFFF', 0.28)
+  const headShadow = traits.head.shadow || mixHex(headColor, '#000000', 0.38)
+  const headSpec = mixHex(headHighlight, '#FFFFFF', 0.42)
+  const headMid = mixHex(headColor, headShadow, 0.45)
+  const headDeep = mixHex(headShadow, '#000000', 0.35)
+  const clothFold = mixHex(headColor, headShadow, 0.25)
   if (traits.head.type === 'crown') {
-    rect(cx - 9, 6, cx + 9, 8, '#FFD700', 20)
-    rect(cx - 8, 4, cx - 6, 8, '#FFD700', 20)
-    rect(cx - 3, 2, cx - 1, 8, '#FFD700', 20)
-    rect(cx + 1, 2, cx + 3, 8, '#FFD700', 20)
-    rect(cx + 6, 4, cx + 8, 8, '#FFD700', 20)
-    rect(cx - 4, 5, cx - 2, 6, '#FF0000', 20)
-    rect(cx + 2, 5, cx + 4, 6, '#FF0000', 20)
+    const crownStyle = traits.head.style || 'imperial'
+    if (crownStyle === 'elegant') {
+      rect(cx - 9, 7, cx + 9, 9, '#CDA349', 20)
+      rect(cx - 8, 6, cx + 8, 7, '#F6D98A', 20)
+      rect(cx - 9, 9, cx + 9, 9, '#775314', 20)
+      rect(cx - 7, 4, cx - 5, 7, '#E8C86E', 20)
+      rect(cx - 3, 3, cx - 1, 7, '#F1D786', 20)
+      rect(cx + 1, 3, cx + 3, 7, '#F1D786', 20)
+      rect(cx + 5, 4, cx + 7, 7, '#E8C86E', 20)
+      rect(cx - 6, 2, cx - 5, 3, '#FFF5C8', 20)
+      rect(cx - 1, 1, cx, 2, '#FFF5C8', 20)
+      rect(cx + 5, 2, cx + 6, 3, '#FFF5C8', 20)
+      rect(cx - 8, 7, cx - 8, 8, '#8A651F', 20)
+      rect(cx + 8, 7, cx + 8, 8, '#8A651F', 20)
+      rect(cx - 4, 6, cx - 4, 8, '#8A651F', 20)
+      rect(cx + 4, 6, cx + 4, 8, '#8A651F', 20)
+      rect(cx - 8, 6, cx + 8, 6, '#FFE4A0', 20)
+      rect(cx - 6, 7, cx - 5, 8, '#B80F2E', 20)
+      rect(cx - 1, 7, cx, 8, '#0E7EEA', 20)
+      rect(cx + 4, 7, cx + 5, 8, '#23A455', 20)
+      rect(cx - 2, 5, cx + 1, 6, '#B78A2C', 20)
+    } else {
+      rect(cx - 10, 7, cx + 10, 9, '#C69214', 20)
+      rect(cx - 9, 6, cx + 9, 7, '#F2C94C', 20)
+      rect(cx - 10, 9, cx + 10, 9, '#7A5200', 20)
+      rect(cx - 8, 3, cx - 6, 7, '#E5B93A', 20)
+      rect(cx - 5, 4, cx - 3, 7, '#DCAA2D', 20)
+      rect(cx - 1, 1, cx + 1, 7, '#F7D55C', 20)
+      rect(cx + 3, 4, cx + 5, 7, '#DCAA2D', 20)
+      rect(cx + 6, 3, cx + 8, 7, '#E5B93A', 20)
+      rect(cx - 7, 2, cx - 6, 3, '#FFF3B0', 20)
+      rect(cx, 0, cx, 2, '#FFF3B0', 20)
+      rect(cx + 6, 2, cx + 7, 3, '#FFF3B0', 20)
+      rect(cx - 9, 6, cx - 9, 8, '#8A6108', 20)
+      rect(cx + 9, 6, cx + 9, 8, '#8A6108', 20)
+      rect(cx - 4, 6, cx - 4, 7, '#8A6108', 20)
+      rect(cx + 4, 6, cx + 4, 7, '#8A6108', 20)
+      rect(cx - 8, 6, cx + 8, 6, '#FFD76A', 20)
+      rect(cx - 7, 7, cx - 6, 8, '#B80F2E', 20)
+      rect(cx - 1, 7, cx, 8, '#0E7EEA', 20)
+      rect(cx + 5, 7, cx + 6, 8, '#23A455', 20)
+      rect(cx - 2, 5, cx + 2, 6, '#BF8F1A', 20)
+    }
   } else if (traits.head.type === 'tophat') {
-    rect(cx - 10, 6, cx + 10, 9, '#1A1A1A', 20)
-    rect(cx - 9, 5, cx + 9, 7, '#2D2D2D', 20)
-    rect(cx - 4, 2, cx + 3, 6, '#1A1A1A', 20)
-    rect(cx - 11, 8, cx + 11, 9, '#8B0000', 20)
-    rect(cx - 2, 3, cx + 1, 4, '#C0C0C0', 20)
+    rect(cx - 11, 8, cx + 11, 9, '#111111', 20)
+    rect(cx - 10, 6, cx + 10, 8, '#1B1B1B', 20)
+    rect(cx - 9, 5, cx + 9, 6, '#2E2E2E', 20)
+    rect(cx - 5, 1, cx + 4, 6, '#1A1A1A', 20)
+    rect(cx - 4, 1, cx + 3, 2, '#3B3B3B', 20)
+    rect(cx - 5, 7, cx + 4, 7, '#8B0000', 20)
+    rect(cx - 2, 2, cx - 1, 4, '#7A7A7A', 20)
+    rect(cx - 5, 5, cx - 5, 6, '#2F2F2F', 20)
+    rect(cx, 2, cx + 1, 5, '#101010', 20)
+    rect(cx + 3, 2, cx + 4, 5, '#0B0B0B', 20)
+    rect(cx - 9, 9, cx + 9, 9, '#050505', 20)
+    rect(cx - 8, 6, cx - 7, 8, '#353535', 20)
+    rect(cx + 5, 2, cx + 5, 6, '#080808', 20)
+    rect(cx - 3, 1, cx - 1, 1, '#4A4A4A', 20)
+    rect(cx - 4, 8, cx + 4, 8, '#2A0000', 20)
+    rect(cx + 7, 7, cx + 9, 8, '#080808', 20)
   } else if (traits.head.type === 'beanie') {
-    rect(cx - 10, 6, cx + 10, 9, traits.head.color, 20)
-    rect(cx - 9, 4, cx + 9, 7, traits.head.highlight, 20)
-    rect(cx - 8, 3, cx + 8, 5, traits.head.highlight, 20)
-    rect(cx - 3, 2, cx + 2, 4, traits.head.shadow, 20)
-    rect(cx - 2, 1, cx + 1, 3, traits.head.shadow, 20)
+    rect(cx - 10, 7, cx + 9, 10, headColor, 20)
+    rect(cx - 9, 5, cx + 8, 7, headHighlight, 20)
+    rect(cx - 7, 3, cx + 6, 6, headColor, 20)
+    rect(cx - 4, 2, cx + 3, 3, headSpec, 20)
+    rect(cx - 10, 10, cx + 9, 10, headShadow, 20)
+    rect(cx - 9, 9, cx + 8, 9, clothFold, 20)
+    rect(cx - 8, 8, cx + 7, 8, headMid, 20)
+    rect(cx - 6, 4, cx - 6, 10, headMid, 20)
+    rect(cx - 3, 4, cx - 3, 10, headShadow, 20)
+    rect(cx, 4, cx, 10, headMid, 20)
+    rect(cx + 3, 4, cx + 3, 10, headShadow, 20)
+    rect(cx + 6, 4, cx + 6, 10, headMid, 20)
+    rect(cx - 5, 6, cx - 5, 8, headSpec, 20)
+    rect(cx + 1, 6, cx + 1, 8, headSpec, 20)
+    rect(cx - 2, 10, cx + 1, 10, headDeep, 20)
+    rect(cx - 7, 3, cx - 6, 3, headSpec, 20)
+    rect(cx + 4, 3, cx + 5, 3, headSpec, 20)
   } else if (traits.head.type === 'bow') {
-    rect(cx - 10, 7, cx - 7, 9, '#FF69B4', 20)
-    rect(cx + 7, 7, cx + 10, 9, '#FF69B4', 20)
-    rect(cx - 6, 7, cx + 6, 9, '#FF1493', 20)
-    rect(cx - 8, 6, cx - 6, 8, '#FFB6C1', 20)
-    rect(cx + 6, 6, cx + 8, 8, '#FFB6C1', 20)
-    rect(cx - 2, 8, cx + 1, 8, '#FF1493', 20)
+    rect(cx - 10, 7, cx - 7, 9, '#E754A6', 20)
+    rect(cx + 7, 7, cx + 10, 9, '#E754A6', 20)
+    rect(cx - 6, 7, cx + 6, 9, '#D81B78', 20)
+    rect(cx - 8, 6, cx - 6, 8, '#FFC1DC', 20)
+    rect(cx + 6, 6, cx + 8, 8, '#FFC1DC', 20)
+    rect(cx - 2, 7, cx + 1, 9, '#B3135F', 20)
+    rect(cx - 1, 8, cx, 8, '#8A0D48', 20)
+    rect(cx - 9, 9, cx - 8, 9, '#9C0F50', 20)
+    rect(cx + 8, 9, cx + 9, 9, '#9C0F50', 20)
+    rect(cx - 10, 8, cx - 9, 8, '#B3135F', 20)
+    rect(cx + 9, 8, cx + 10, 8, '#B3135F', 20)
+    rect(cx - 7, 8, cx - 6, 9, '#8A0D48', 20)
+    rect(cx + 6, 8, cx + 7, 9, '#8A0D48', 20)
+    rect(cx - 4, 7, cx - 3, 8, '#F77FBC', 20)
+    rect(cx + 3, 7, cx + 4, 8, '#F77FBC', 20)
   } else if (traits.head.type === 'cap') {
-    rect(cx - 10, 7, cx + 9, 9, traits.head.color, 20)
-    rect(cx - 9, 6, cx + 8, 8, traits.head.highlight, 20)
-    rect(cx + 8, 8, cx + 12, 10, traits.head.shadow, 20)
-    rect(cx + 10, 9, cx + 12, 10, traits.head.shadow, 20)
-    rect(cx - 11, 8, cx - 9, 9, traits.head.shadow, 20)
+    rect(cx - 11, 7, cx + 9, 9, headColor, 20)
+    rect(cx - 10, 6, cx + 8, 7, headHighlight, 20)
+    rect(cx - 8, 5, cx + 5, 6, headSpec, 20)
+    rect(cx - 10, 8, cx + 8, 8, headMid, 20)
+    rect(cx - 10, 9, cx + 8, 9, headShadow, 20)
+    rect(cx - 3, 8, cx + 6, 8, headDeep, 20)
+    rect(cx - 1, 7, cx + 3, 7, headHighlight, 20)
+    rect(cx + 8, 8, cx + 12, 11, headShadow, 20)
+    rect(cx + 9, 9, cx + 12, 10, headColor, 20)
+    rect(cx + 10, 10, cx + 12, 11, headDeep, 20)
+    rect(cx - 12, 8, cx - 8, 9, headShadow, 20)
+    rect(cx - 11, 9, cx - 9, 10, headDeep, 20)
+    rect(cx + 9, 11, cx + 11, 11, '#111111', 20)
+    rect(cx - 9, 9, cx + 4, 9, headDeep, 20)
+    rect(cx - 7, 6, cx - 6, 7, headSpec, 20)
+    rect(cx + 4, 6, cx + 5, 7, headMid, 20)
+    rect(cx + 8, 10, cx + 10, 11, '#121212', 20)
   } else if (traits.head.type === 'scarf') {
     rect(cx - 10, 25, cx + 10, 28, traits.head.color, 20)
     rect(cx - 9, 24, cx + 9, 26, traits.head.highlight, 20)
     rect(cx + 8, 25, cx + 11, 33, traits.head.color, 20)
     rect(cx + 9, 26, cx + 10, 32, traits.head.highlight, 20)
-    rect(cx - 2, 26, cx + 1, 27, traits.head.shadow, 20)
+    rect(cx - 3, 26, cx + 2, 27, traits.head.shadow, 20)
+    rect(cx - 2, 27, cx + 1, 28, traits.head.shadow, 20)
   } else if (traits.head.type === 'halo') {
-    rect(cx - 4, 3, cx + 3, 4, '#FFD700', 20)
-    rect(cx - 5, 4, cx + 4, 5, '#FFD700', 20)
-    rect(cx - 3, 2, cx + 2, 3, '#FFD700', 20)
+    rect(cx - 4, 3, cx + 3, 4, '#E8BF2F', 20)
+    rect(cx - 5, 4, cx + 4, 5, '#D1A91E', 20)
+    rect(cx - 3, 2, cx + 2, 3, '#FFE27A', 20)
+    rect(cx - 5, 5, cx + 4, 5, '#AD8614', 20)
+    rect(cx - 2, 2, cx - 1, 2, '#FFF1A3', 20)
+    rect(cx + 1, 2, cx + 2, 2, '#FFF1A3', 20)
   } else if (traits.head.type === 'headband') {
-    rect(cx - 10, 6, cx + 10, 9, traits.head.color, 20)
-    rect(cx - 9, 5, cx + 9, 7, traits.head.highlight, 20)
-    rect(cx - 7, 5, cx - 5, 8, traits.head.highlight, 20)
-    rect(cx - 1, 5, cx + 1, 8, traits.head.highlight, 20)
-    rect(cx + 5, 5, cx + 7, 8, traits.head.highlight, 20)
+    rect(cx - 11, 6, cx + 10, 9, headColor, 20)
+    rect(cx - 10, 5, cx + 9, 6, headSpec, 20)
+    rect(cx - 11, 9, cx + 10, 9, headShadow, 20)
+    rect(cx - 10, 8, cx + 9, 8, headMid, 20)
+    rect(cx - 9, 7, cx + 8, 7, clothFold, 20)
+    rect(cx - 8, 6, cx - 7, 8, headHighlight, 20)
+    rect(cx - 4, 6, cx - 3, 8, headHighlight, 20)
+    rect(cx, 6, cx + 1, 8, headHighlight, 20)
+    rect(cx + 4, 6, cx + 5, 8, headHighlight, 20)
+    rect(cx + 8, 6, cx + 9, 8, headHighlight, 20)
+    rect(cx - 2, 5, cx + 1, 6, headSpec, 20)
+    rect(cx + 2, 6, cx + 3, 8, headDeep, 20)
+    rect(cx - 6, 8, cx - 5, 9, headDeep, 20)
+    rect(cx + 6, 8, cx + 7, 9, headDeep, 20)
+    rect(cx - 10, 9, cx - 9, 9, headDeep, 20)
+    rect(cx + 8, 9, cx + 10, 9, headDeep, 20)
+    rect(cx - 2, 9, cx + 1, 9, headDeep, 20)
+    rect(cx + 9, 7, cx + 10, 8, headDeep, 20)
+    rect(cx - 11, 7, cx - 10, 8, headDeep, 20)
   }
   
   // FLIPPERS - reduced depth
@@ -630,7 +760,7 @@ function ThreeGenerator() {
     const groundMat = new THREE.ShadowMaterial({ opacity: 0.35 })
     const ground = new THREE.Mesh(groundGeo, groundMat)
     ground.rotation.x = -Math.PI / 2
-    ground.position.y = -4.5
+    ground.position.y = -5
     ground.receiveShadow = true
     scene.add(ground)
     
@@ -667,6 +797,36 @@ function ThreeGenerator() {
         head: randomItem(TRAITS.head),
         background: randomItem(TRAITS.background),
       }
+      
+      const hexToRgb = (hex) => {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
+        return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : null
+      }
+      const diff = (c1, c2) => Math.abs(c1.r - c2.r) + Math.abs(c1.g - c2.g) + Math.abs(c1.b - c2.b)
+      
+      let bgColor = t.background.color
+      let bodyBase = t.body.base
+      
+      while (diff(hexToRgb(bgColor), hexToRgb(bodyBase)) < 80) {
+        t.body = randomItem(TRAITS.body)
+        bodyBase = t.body.base
+      }
+      
+      while (diff(hexToRgb(t.belly.base), hexToRgb(bodyBase)) < 80) {
+        t.belly = randomItem(TRAITS.belly)
+      }
+      
+      while (diff(hexToRgb(bgColor), hexToRgb(t.belly.base)) < 80) {
+        t.belly = randomItem(TRAITS.belly)
+      }
+      
+      const hasHeadAccessory = t.head.type !== 'none' && t.head.type !== 'crown' && t.head.type !== 'halo'
+      if (hasHeadAccessory && t.head.color) {
+        while (diff(hexToRgb(t.head.color), hexToRgb(bodyBase)) < 80) {
+          t.head = randomItem(TRAITS.head)
+        }
+      }
+      
       setTraits(t)
       
       if (sceneRef.current && penguinRef.current) {

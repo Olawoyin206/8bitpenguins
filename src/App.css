@@ -20,13 +20,13 @@ html {
 }
 
 .app {
-  max-width: 1100px;
+  max-width: 1400px;
   margin: 0 auto;
   text-align: center;
   background: #161b22;
   border: 1px solid #30363d;
   border-radius: 6px;
-  padding: 30px;
+  padding: 40px;
 }
 
 header {
@@ -404,6 +404,68 @@ main {
   min-height: 16px;
 }
 
+.tx-link {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 8px 16px;
+  font-size: 0.75rem;
+  color: #58a6ff;
+  text-decoration: none;
+  border: 1px solid #58a6ff;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.tx-link:hover {
+  background: #58a6ff;
+  color: #0d1117;
+}
+
+.minted-nft {
+  margin-top: 30px;
+  padding: 30px;
+  background: linear-gradient(135deg, #1a1f29 0%, #21262d 100%);
+  border: 2px solid #39ff14;
+  border-radius: 12px;
+  animation: glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+  from { box-shadow: 0 0 10px rgba(57, 255, 20, 0.3); }
+  to { box-shadow: 0 0 25px rgba(57, 255, 20, 0.6); }
+}
+
+.minted-nft h3 {
+  margin-bottom: 20px;
+  color: #39ff14;
+  font-size: 1.4rem;
+}
+
+.minted-nft-image {
+  width: 320px;
+  height: 320px;
+  margin: 0 auto 15px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid #30363d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+}
+
+.minted-nft-image canvas {
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+.minted-nft-id {
+  font-size: 1.2rem;
+  color: #ffffff;
+  font-weight: bold;
+}
+
 .last-refresh {
   font-size: 0.65rem;
   color: #8b949e;
@@ -561,7 +623,7 @@ main {
 
 .gallery-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
 }
 
@@ -750,310 +812,640 @@ main {
   color: #c9d1d9;
 }
 
+.nft-traits {
+  display: flex;
+  gap: 6px;
+  font-size: 0.5rem;
+  color: #888;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* ========================================
+   PREMIUM MINIMAL MINT PAGE UI
+   White/Black/Cyan Theme - Two Column Layout
+   ======================================== */
+
+:root {
+  --mint-bg: #0a0a0a;
+  --mint-card: #141414;
+  --mint-card-hover: #1a1a1a;
+  --mint-border: #2a2a2a;
+  --mint-border-light: #3a3a3a;
+  --mint-text: #ffffff;
+  --mint-text-secondary: #888888;
+  --mint-text-muted: #555555;
+  --mint-accent: #00d4ff;
+  --mint-accent-dim: #00a8cc;
+  --mint-accent-glow: rgba(0, 212, 255, 0.3);
+  --mint-success: #00ff88;
+}
+
+.mint-page {
+  min-height: 100vh;
+  background: var(--mint-bg);
+  padding: 40px 20px;
+}
+
 .mint-page .app > header {
   display: none;
 }
 
-.mint-page {
-  padding-top: 20px;
-  max-width: 900px;
+.mint-container {
+  max-width: 1200px;
   margin: 0 auto;
 }
 
-.mint-header {
+/* Hero Section */
+.mint-hero {
+  text-align: center;
+  margin-bottom: 48px;
+  padding: 40px 20px;
+  position: relative;
+}
+
+.mint-hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, var(--mint-accent-glow) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.mint-hero h1 {
+  font-size: 3rem;
+  font-weight: 800;
+  color: var(--mint-text);
+  margin: 0 0 12px 0;
+  letter-spacing: -1px;
+  position: relative;
+  z-index: 1;
+}
+
+.mint-hero h1 span {
+  background: linear-gradient(135deg, var(--mint-accent), #fff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.mint-hero p {
+  font-size: 1rem;
+  color: var(--mint-text-secondary);
+  margin: 0;
+  font-weight: 400;
+}
+
+/* Main Two Column Layout */
+.mint-layout {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 32px;
+  align-items: start;
+}
+
+/* Left Column - Mint Card */
+.mint-card {
+  background: var(--mint-card);
+  border: 1px solid var(--mint-border);
+  border-radius: 16px;
+  padding: 32px;
+  position: sticky;
+  top: 24px;
+}
+
+.mint-card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px;
-  background: #0d1117;
-  border: 1px solid #30363d;
-  border-radius: 4px;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--mint-border);
 }
 
-.phase-box {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 14px 20px;
-  background: #0d1117;
-  border: 1px solid #30363d;
-  border-radius: 4px;
-}
-
-.phase-box .phase-label {
+.mint-card-title {
   font-size: 0.75rem;
-  color: #8b949e;
+  color: var(--mint-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 2px;
 }
 
-.phase-box .phase-value {
-  font-size: 0.9rem;
-  color: #39ff14;
-  font-weight: 600;
-}
-
-.phases-bar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 16px 20px;
-  background: #0d1117;
-  border: 1px solid #30363d;
-  border-radius: 4px;
-}
-
-.phase-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.phase-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #21262d;
-  border: 2px solid #30363d;
-  transition: all 0.3s ease;
-}
-
-.phase-item.active .phase-dot {
-  background: #39ff14;
-  border-color: #39ff14;
-  box-shadow: 0 0 8px rgba(57, 255, 20, 0.5);
-}
-
-.phase-name {
-  font-size: 0.7rem;
-  color: #8b949e;
+.mint-card-badge {
+  background: var(--mint-accent);
+  color: #000;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
   text-transform: uppercase;
   letter-spacing: 1px;
 }
 
-.phase-item.active .phase-name {
-  color: #39ff14;
-}
-
-.phase-line {
-  width: 40px;
-  height: 2px;
-  background: #30363d;
-}
-
-.mint-header-left {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.mint-logo {
-  font-size: 1.8rem;
-  color: #39ff14;
-  font-weight: 700;
-}
-
-.mint-header-left h1 {
-  font-size: 1.2rem;
-  color: #ffffff;
-  margin-bottom: 2px;
-}
-
-.mint-header-left p {
-  font-size: 0.7rem;
-  color: #8b949e;
-}
-
-.phase-indicator {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-}
-
-.phase-label {
-  font-size: 0.55rem;
-  color: #8b949e;
-  letter-spacing: 1px;
-}
-
-.phase-value {
-  font-size: 1rem;
-  color: #39ff14;
-  font-weight: 700;
-}
-
-.mint-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
+/* Supply Display */
 .mint-supply {
-  background: #0d1117;
-  border: 1px solid #30363d;
-  border-radius: 4px;
-  padding: 16px 20px;
+  margin-bottom: 28px;
 }
 
-.supply-row {
+.mint-supply-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
+  align-items: baseline;
+  margin-bottom: 12px;
 }
 
-.supply-label {
-  font-size: 0.7rem;
-  color: #8b949e;
+.mint-supply-label {
+  font-size: 0.8rem;
+  color: var(--mint-text-secondary);
 }
 
-.supply-value {
-  font-size: 0.9rem;
-  color: #ffffff;
-  font-weight: 600;
+.mint-supply-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--mint-text);
 }
 
-.supply-bar {
-  height: 6px;
-  background: #21262d;
-  border-radius: 3px;
+.mint-supply-value span {
+  color: var(--mint-text-muted);
+  font-weight: 400;
+}
+
+.mint-supply-bar {
+  height: 4px;
+  background: var(--mint-border);
+  border-radius: 2px;
   overflow: hidden;
-  margin-bottom: 8px;
 }
 
-.supply-fill {
+.mint-supply-fill {
   height: 100%;
-  background: #39ff14;
-  border-radius: 3px;
-  transition: width 0.3s ease;
+  background: linear-gradient(90deg, var(--mint-accent), var(--mint-accent-dim));
+  border-radius: 2px;
+  transition: width 0.5s ease;
 }
 
-.mint-action-box {
-  background: #0d1117;
-  border: 1px solid #30363d;
-  border-radius: 4px;
-  padding: 24px;
-}
-
-.connect-wrap {
+.mint-supply-footer {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  padding: 40px 20px;
+  justify-content: space-between;
+  margin-top: 10px;
+  font-size: 0.7rem;
+  color: var(--mint-text-muted);
 }
 
-.connect-icon {
-  font-size: 3rem;
-  color: #39ff14;
-  margin-bottom: 8px;
+/* Network Button */
+.mint-network-btn {
+  width: 100%;
+  padding: 14px;
+  background: transparent;
+  border: 1px solid var(--mint-border);
+  border-radius: 10px;
+  color: var(--mint-text-secondary);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 16px;
 }
 
-.connect-wrap p {
-  font-size: 0.85rem;
-  color: #8b949e;
-  margin-bottom: 8px;
+.mint-network-btn:hover {
+  border-color: var(--mint-accent);
+  color: var(--mint-accent);
 }
 
-.connect-btn {
-  padding: 16px 48px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  margin-top: 8px;
-  width: auto;
-  min-width: 200px;
-}
-
+/* Connect / Mint Form */
 .mint-form {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.wallet-row {
+.mint-connected {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.mint-wallet {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
-  background: #21262d;
-  border: 1px solid #30363d;
-  border-radius: 4px;
+  padding: 14px 16px;
+  background: var(--mint-bg);
+  border: 1px solid var(--mint-border);
+  border-radius: 10px;
 }
 
-.wallet-addr {
-  font-size: 0.8rem;
-  color: #ffffff;
+.mint-wallet-addr {
   font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  color: var(--mint-text);
 }
 
-.wallet-bal {
-  font-size: 0.7rem;
-  color: #39ff14;
-}
-
-.mint-btn {
-  padding: 16px;
-  font-size: 0.85rem;
-}
-
-.status {
-  text-align: center;
-  color: #58a6ff;
+.mint-wallet-bal {
   font-size: 0.75rem;
+  color: var(--mint-success);
+  font-weight: 500;
 }
 
-.my-penguins {
-  background: #0d1117;
-  border: 1px solid #30363d;
-  border-radius: 4px;
-  padding: 16px 20px;
+/* Quantity Selector */
+.mint-quantity {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: var(--mint-bg);
+  border: 1px solid var(--mint-border);
+  border-radius: 10px;
 }
 
-.penguins-header {
+.mint-quantity-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--mint-card);
+  border: 1px solid var(--mint-border);
+  border-radius: 8px;
+  color: var(--mint-text);
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mint-quantity-btn:hover:not(:disabled) {
+  border-color: var(--mint-accent);
+  color: var(--mint-accent);
+}
+
+.mint-quantity-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.mint-quantity-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--mint-text);
+  min-width: 40px;
+  text-align: center;
+}
+
+.mint-quantity-limit {
+  font-size: 0.7rem;
+  color: var(--mint-text-muted);
+}
+
+/* Mint Button */
+.mint-submit-btn {
+  width: 100%;
+  padding: 18px;
+  background: var(--mint-accent);
+  border: none;
+  border-radius: 10px;
+  color: #000;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.mint-submit-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  transition: left 0.5s ease;
+}
+
+.mint-submit-btn:hover:not(:disabled)::before {
+  left: 100%;
+}
+
+.mint-submit-btn:hover:not(:disabled) {
+  background: #00e5ff;
+  box-shadow: 0 0 30px var(--mint-accent-glow);
+  transform: translateY(-2px);
+}
+
+.mint-submit-btn:disabled {
+  background: var(--mint-border);
+  color: var(--mint-text-muted);
+  cursor: not-allowed;
+}
+
+/* Status Messages */
+.mint-status {
+  text-align: center;
+  padding: 12px;
+  font-size: 0.8rem;
+  color: var(--mint-accent);
+  background: rgba(0, 212, 255, 0.1);
+  border-radius: 8px;
+  border: 1px solid rgba(0, 212, 255, 0.2);
+}
+
+.mint-status.error {
+  color: #ff4444;
+  background: rgba(255, 68, 68, 0.1);
+  border-color: rgba(255, 68, 68, 0.2);
+}
+
+.mint-tx-link {
+  display: block;
+  text-align: center;
+  padding: 10px;
+  font-size: 0.75rem;
+  color: var(--mint-accent);
+  text-decoration: none;
+  border: 1px solid var(--mint-border);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.mint-tx-link:hover {
+  border-color: var(--mint-accent);
+  background: rgba(0, 212, 255, 0.05);
+}
+
+/* Right Column - Display */
+.mint-display {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+/* Preview Card */
+.mint-preview-card {
+  background: var(--mint-card);
+  border: 1px solid var(--mint-border);
+  border-radius: 16px;
+  padding: 32px;
+}
+
+.mint-preview-header {
   display: flex;
   justify-content: space-between;
-  font-size: 0.75rem;
-  color: #8b949e;
-  margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #21262d;
+  align-items: center;
+  margin-bottom: 24px;
 }
 
-.penguins-list {
+.mint-preview-title {
+  font-size: 0.75rem;
+  color: var(--mint-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.mint-preview-badge {
+  font-size: 0.65rem;
+  color: var(--mint-text-muted);
+  padding: 4px 10px;
+  background: var(--mint-bg);
+  border-radius: 20px;
+}
+
+.mint-preview-image {
+  width: 100%;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--mint-bg);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.mint-preview-image canvas {
+  max-width: 100%;
+  max-height: 400px;
+  image-rendering: pixelated;
+}
+
+/* Minted NFT Display */
+.mint-minted {
+  text-align: center;
+  padding: 24px;
+}
+
+.mint-minted h3 {
+  font-size: 1.2rem;
+  color: var(--mint-success);
+  margin-bottom: 16px;
+}
+
+.mint-minted-image {
+  width: 200px;
+  height: 200px;
+  margin: 0 auto 12px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 2px solid var(--mint-success);
+}
+
+.mint-minted-image canvas {
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+.mint-minted-id {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--mint-text);
+}
+
+/* Connect State */
+.mint-connect {
+  text-align: center;
+  padding: 48px 24px;
+}
+
+.mint-connect-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 20px;
+  background: var(--mint-bg);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+
+.mint-connect p {
+  color: var(--mint-text-secondary);
+  margin-bottom: 20px;
+}
+
+.mint-connect-btn {
+  padding: 14px 40px;
+  background: var(--mint-accent);
+  border: none;
+  border-radius: 10px;
+  color: #000;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.mint-connect-btn:hover {
+  background: #00e5ff;
+  box-shadow: 0 0 30px var(--mint-accent-glow);
+}
+
+/* Gallery Sections */
+.mint-gallery {
+  margin-top: 16px;
+}
+
+.mint-gallery-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--mint-border);
+}
+
+.mint-gallery-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--mint-text);
+}
+
+.mint-gallery-count {
+  font-size: 0.8rem;
+  color: var(--mint-accent);
+  font-weight: 500;
+}
+
+.mint-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 16px;
+}
+
+.mint-gallery-item {
+  background: var(--mint-card);
+  border: 1px solid var(--mint-border);
+  border-radius: 12px;
+  padding: 16px;
+  transition: all 0.3s ease;
+}
+
+.mint-gallery-item:hover {
+  border-color: var(--mint-border-light);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+}
+
+.mint-gallery-item.evolved {
+  border-color: var(--mint-accent);
+  box-shadow: 0 0 20px var(--mint-accent-glow);
+}
+
+.mint-gallery-image {
+  width: 100%;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--mint-bg);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.mint-gallery-image canvas,
+.mint-gallery-image img {
+  max-width: 100%;
+  max-height: 140px;
+  image-rendering: pixelated;
+}
+
+.mint-gallery-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mint-gallery-id {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--mint-text);
+}
+
+.mint-gallery-traits {
   display: flex;
   flex-wrap: wrap;
+  gap: 4px;
+}
+
+.mint-gallery-trait {
+  font-size: 0.6rem;
+  color: var(--mint-text-muted);
+  background: var(--mint-bg);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.mint-gallery-actions {
+  display: flex;
   gap: 8px;
+  margin-top: 10px;
 }
 
-.penguin-id {
-  padding: 4px 10px;
-  background: #21262d;
-  border: 1px solid #30363d;
-  border-radius: 3px;
-  font-size: 0.7rem;
-  color: #c9d1d9;
-  font-family: 'JetBrains Mono', monospace;
+.mint-evolve-btn {
+  flex: 1;
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid var(--mint-border);
+  border-radius: 6px;
+  color: var(--mint-text-secondary);
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.penguin-more {
-  padding: 4px 10px;
-  font-size: 0.7rem;
-  color: #8b949e;
+.mint-evolve-btn:hover:not(:disabled) {
+  border-color: var(--mint-accent);
+  color: var(--mint-accent);
 }
 
-@media (max-width: 600px) {
-  .mint-header {
-    flex-direction: column;
-    gap: 16px;
-    text-align: center;
+.mint-evolve-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .mint-layout {
+    grid-template-columns: 1fr;
   }
   
-  .phase-indicator {
-    align-items: center;
+  .mint-card {
+    position: static;
   }
   
-  .mint-header-left {
-    flex-direction: column;
+  .mint-hero h1 {
+    font-size: 2rem;
   }
 }
 
@@ -1194,4 +1586,115 @@ main {
   .three-page .traits ul {
     grid-template-columns: 1fr;
   }
+}
+
+.nft-gallery {
+  grid-column: 1 / -1;
+  margin-top: 20px;
+}
+
+.gallery-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  font-family: 'Press Start 2P', monospace;
+}
+
+.gallery-title {
+  color: #00ff88;
+  font-size: 1rem;
+  letter-spacing: 2px;
+}
+
+.gallery-count {
+  color: #00ff88;
+  font-size: 0.8rem;
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.nft-gallery-item {
+  background: rgba(0, 255, 136, 0.05);
+  border: 2px solid #00ff88;
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.nft-gallery-item:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 255, 136, 0.3);
+}
+
+.nft-gallery-item canvas {
+  width: 160px;
+  height: 160px;
+  image-rendering: pixelated;
+  border-radius: 4px;
+}
+
+.nft-token-id {
+  margin-top: 8px;
+  color: #00ff88;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.7rem;
+}
+
+.nft-gallery-item canvas.nft-2d-canvas {
+  width: 160px;
+  height: 160px;
+  image-rendering: pixelated;
+  border-radius: 4px;
+}
+
+.nft-3d-image {
+  width: 160px;
+  height: 160px;
+  border-radius: 4px;
+  object-fit: contain;
+}
+
+.nft-gallery-item.evolved {
+  border-color: #ff6b6b;
+  box-shadow: 0 0 20px rgba(255, 107, 107, 0.4);
+}
+
+.nft-gallery-item.evolved:hover {
+  box-shadow: 0 8px 24px rgba(255, 107, 107, 0.4);
+}
+
+.evolve-btn {
+  margin-top: 8px;
+  padding: 6px 12px;
+  font-size: 0.6rem;
+  font-family: 'Press Start 2P', monospace;
+}
+
+.evolve-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.nft-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.nft-traits {
+  display: flex;
+  gap: 6px;
+  font-size: 0.5rem;
+  color: #888;
+  flex-wrap: wrap;
+  justify-content: center;
 }

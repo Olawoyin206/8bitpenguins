@@ -4,6 +4,11 @@ import { uploadToIPFS, saveToSharedGallery, fetchFreshGallery } from './ipfs'
 import './App.css'
 
 const GRID_SIZE = 80
+const EFFECT_VARIANTS = [
+  { name: 'White', weight: 5 },
+  { name: 'Light', weight: 3 },
+  { name: 'Golden', weight: 1 },
+]
 
 function convertToPenguinStyle(imageSrc, canvas) {
   return new Promise((resolve) => {
@@ -64,23 +69,14 @@ function convertToPenguinStyle(imageSrc, canvas) {
       const diff = (c1, c2) => Math.abs(c1.r - c2.r) + Math.abs(c1.g - c2.g) + Math.abs(c1.b - c2.b)
       const brightness = (c) => c.r + c.g + c.b
       
-      // Sample ALL corners and edges for background
       const bgPixels = []
-      // Top row
       for (let x = 0; x < 40; x++) bgPixels.push(getPixel(x, 0))
-      // Bottom row  
       for (let x = 0; x < 40; x++) bgPixels.push(getPixel(x, 39))
-      // Left column
       for (let y = 0; y < 40; y++) bgPixels.push(getPixel(0, y))
-      // Right column
       for (let y = 0; y < 40; y++) bgPixels.push(getPixel(39, y))
-      // Top-left corner area
       for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) bgPixels.push(getPixel(x, y))
-      // Top-right corner area
       for (let y = 0; y < 8; y++) for (let x = 32; x < 40; x++) bgPixels.push(getPixel(x, y))
-      // Bottom-left corner area
       for (let y = 32; y < 40; y++) for (let x = 0; x < 8; x++) bgPixels.push(getPixel(x, y))
-      // Bottom-right corner area
       for (let y = 32; y < 40; y++) for (let x = 32; x < 40; x++) bgPixels.push(getPixel(x, y))
       
       const faceColors = getRegionColors(10, 12, 29, 26)
@@ -90,9 +86,7 @@ function convertToPenguinStyle(imageSrc, canvas) {
       let face = avgColor(faceColors)
       let shirt = avgColor(shirtColors)
       
-      // Ensure differentiation - bg must be different from shirt
       if (diff(bg, shirt) < 60) {
-        // Find a color that's different enough from both face and shirt
         for (let i = 0; i < bgPixels.length; i += 5) {
           const p = bgPixels[i]
           if (!isTransparent(p) && diff(p, shirt) > 50 && diff(p, face) > 40) {
@@ -203,22 +197,18 @@ function convertToPenguinStyle(imageSrc, canvas) {
       
       rect(cx - 5, eyeY, cx - 3, eyeY + 2, '#0A0A0A')
       rect(cx - 6, eyeY + 1, cx - 2, eyeY + 2, '#0A0A0A')
-      rect(cx - 5, eyeY, cx - 4, eyeY, '#FFFFFF')
       rect(cx + 3, eyeY, cx + 5, eyeY + 2, '#0A0A0A')
       rect(cx + 2, eyeY + 1, cx + 6, eyeY + 2, '#0A0A0A')
-      rect(cx + 4, eyeY, cx + 5, eyeY, '#FFFFFF')
       
       rect(cx - 7, 14, cx - 3, 14, shirtShadow.hex)
       rect(cx + 3, 14, cx + 7, 14, shirtShadow.hex)
       rect(cx - 8, 13, cx - 4, 13, shirtShadow.hex)
       rect(cx + 4, 13, cx + 8, 13, shirtShadow.hex)
       
-      // Beak
       rect(cx - 2, 21, cx + 1, 23, '#FF9F43')
       rect(cx - 1, 20, cx, 22, '#FF9F43')
       rect(cx - 1, 22, cx, 22, '#E67E22')
       
-      // Cheeks
       rect(cx - 9, 19, cx - 7, 21, '#FFB6C1')
       rect(cx + 7, 19, cx + 9, 21, '#FFB6C1')
       rect(cx - 8, 20, cx - 7, 20, '#FFC5CD')
@@ -231,7 +221,6 @@ function convertToPenguinStyle(imageSrc, canvas) {
       rect(33, 27, 38, 31, shirt.hex)
       rect(34, 28, 37, 30, shirtHighlight.hex)
       
-      // Feet
       rect(10, 37, 14, 38, traits.feet.base)
       rect(9, 38, 15, 38, traits.feet.base)
       rect(11, 36, 13, 37, traits.feet.highlight)
@@ -253,7 +242,7 @@ function convertToPenguinStyle(imageSrc, canvas) {
       rect(29, 39, 31, 39, traits.feet.base)
       rect(30, 39, 31, 39, traits.feet.highlight)
       
-      rect(8, 38, 31, 38, 'rgba(0,0,0,0.3)')
+      rect(8, 39, 31, 39, 'rgba(0,0,0,0.3)')
       
       resolve(traits)
     }
@@ -263,38 +252,49 @@ function convertToPenguinStyle(imageSrc, canvas) {
 
 const TRAITS = {
   background: [
-    { name: 'Light Blue', color: '#ADD8E6', weight: 15 },
-    { name: 'Sky Blue', color: '#87CEEB', weight: 15 },
-    { name: 'Lavender', color: '#E6E6FA', weight: 12 },
-    { name: 'Baby Pink', color: '#FFB6C1', weight: 12 },
-    { name: 'Cream', color: '#FFFDD0', weight: 12 },
-    { name: 'Peach', color: '#FFDAB9', weight: 12 },
-    { name: 'Teal', color: '#008080', weight: 10 },
-    { name: 'Ice Blue', color: '#F0F8FF', weight: 10 },
-    { name: 'Arctic White', color: '#F0FFFF', weight: 8 },
-    { name: 'Gold', color: '#FFD700', weight: 3 },
-    { name: 'Rainbow', color: 'rainbow', weight: 1 },
+    { name: 'Light Blue', color: '#ADD8E6', weight: 12 },
+    { name: 'Baby Pink', color: '#F4A6B8', weight: 12 },
+    { name: 'Sky Blue', color: '#87CEEB', weight: 12 },
+    { name: 'Arctic White', color: '#F8FBFF', weight: 4, fx: 'snowflakes' },
+    { name: 'Soft Lavender', color: '#C8B6FF', weight: 10 },
+    { name: 'Mint Green', color: '#98FFCC', weight: 10 },
+    { name: 'Pastel Pink', color: '#FFD1DC', weight: 10 },
+    { name: 'Royal Blue', color: '#4169E1', weight: 4, fx: 'softdots' },
+    { name: 'Peach Cream', color: '#FFE5B4', weight: 10 },
+    { name: 'Lilac Purple', color: '#D8B4F8', weight: 8 },
+    { name: 'Warm Beige', color: '#F5F5DC', weight: 8 },
+    { name: 'Coral Red', color: '#FF6B6B', weight: 8 },
+    { name: 'Midnight Blue', color: '#1A1A2E', weight: 3, fx: 'snowflakes' },
+    { name: 'Sunset Orange', color: '#FF7A18', weight: 8 },
+    { name: 'Deep Teal', color: '#0F4C5C', weight: 3, fx: 'softdots' },
+    { name: 'Forest Green', color: '#2E8B57', weight: 6 },
+    { name: 'Charcoal Gray', color: '#36454F', weight: 6 },
+    { name: 'Neon Yellow', color: '#F5FF3B', weight: 5 },
+    { name: 'Electric Cyan', color: '#00FFFF', weight: 5 },
+    { name: 'Golden Glow', color: '#FFD700', weight: 2, fx: 'softdots' },
+    { name: 'Crimson Red', color: '#DC143C', weight: 5 },
   ],
   body: [
-    { name: 'Classic', base: '#2C3E50', highlight: '#34495E', shadow: '#1A252F', weight: 15 },
-    { name: 'Baby Blue', base: '#74B9FF', highlight: '#A3D1FF', shadow: '#0984E3', weight: 12 },
-    { name: 'Navy Blue', base: '#1A252F', highlight: '#2C3E50', shadow: '#0D1318', weight: 10 },
-    { name: 'Ice Blue', base: '#81ECEC', highlight: '#A9F5F5', shadow: '#00CEC9', weight: 10 },
-    { name: 'Grey', base: '#95A5A6', highlight: '#BDC3C7', shadow: '#7F8C8D', weight: 10 },
-    { name: 'Dark Grey', base: '#636E72', highlight: '#839192', shadow: '#2D3436', weight: 10 },
-    { name: 'Cream', base: '#F5F0E1', highlight: '#FFFAF2', shadow: '#E8DFD0', weight: 10 },
-    { name: 'Pink', base: '#E91E63', highlight: '#EC407A', shadow: '#C2185B', weight: 10 },
-    { name: 'Sky Blue', base: '#5DADE2', highlight: '#85C1E9', shadow: '#3498DB', weight: 10 },
-    { name: 'Ocean Blue', base: '#3498DB', highlight: '#5DADE2', shadow: '#2471A3', weight: 8 },
-    { name: 'Cobalt', base: '#2E86AB', highlight: '#54A0FF', shadow: '#1F618D', weight: 8 },
-    { name: 'Purple', base: '#8E44AD', highlight: '#A569BD', shadow: '#6C3483', weight: 8 },
-    { name: 'Green', base: '#27AE60', highlight: '#58D68D', shadow: '#1E8449', weight: 8 },
-    { name: 'Coral', base: '#E74C3C', highlight: '#EC7063', shadow: '#C0392B', weight: 8 },
-    { name: 'Yellow', base: '#F39C12', highlight: '#F7DC6F', shadow: '#D68910', weight: 6 },
-    { name: 'Zombie Green', base: '#6AB04C', highlight: '#78E08F', shadow: '#489918', weight: 5 },
-    { name: 'Skeleton White', base: '#F8F9F9', highlight: '#FFFFFF', shadow: '#DFE4E5', weight: 5 },
-    { name: 'Gold', base: '#F9CA24', highlight: '#F8EFBA', shadow: '#F39C12', weight: 3 },
-    { name: 'Rainbow', base: 'rainbow', highlight: 'rainbow', shadow: 'rainbow', weight: 1 },
+    { name: 'Skeleton Dark Bone', base: '#D6CCB8', highlight: '#E8E2D4', shadow: '#9F8B7D', weight: 8 },
+    { name: 'Snow White', base: '#F5F5F5', highlight: '#FFFFFF', shadow: '#C2C2C2', weight: 8 },
+    { name: 'Jet Black', base: '#1C1C1C', highlight: '#484848', shadow: '#000000', weight: 8 },
+    { name: 'Ash Gray', base: '#B2B2B2', highlight: '#D9D9D9', shadow: '#858585', weight: 8 },
+    { name: 'Cream', base: '#FFF3D6', highlight: '#FFFFEB', shadow: '#CCC2A3', weight: 8 },
+    { name: 'Light Brown', base: '#C68642', highlight: '#E0A86A', shadow: '#8E5C2B', weight: 8 },
+    { name: 'Chocolate Brown', base: '#5C3A21', highlight: '#8A6145', shadow: '#3A2514', weight: 8 },
+    { name: 'Golden Tan', base: '#D2A679', highlight: '#E8C9A4', shadow: '#9E7856', weight: 8 },
+    { name: 'Ice Blue', base: '#CFE9FF', highlight: '#F0F8FF', shadow: '#9FBFCD', weight: 8 },
+    { name: 'Baby Blue', base: '#A7C7E7', highlight: '#D4E9F5', shadow: '#7A96B0', weight: 8 },
+    { name: 'Ocean Blue', base: '#2B6CB0', highlight: '#5A9AD4', shadow: '#1D4D7E', weight: 8 },
+    { name: 'Soft Pink', base: '#F4A6B8', highlight: '#FAD2DD', shadow: '#B77A8B', weight: 8 },
+    { name: 'Bubblegum Pink', base: '#FF77AA', highlight: '#FFA5CC', shadow: '#CC4F7D', weight: 8 },
+    { name: 'Lavender Body', base: '#BFA2DB', highlight: '#D9C9EB', shadow: '#8F76A4', weight: 8 },
+    { name: 'Royal Purple', base: '#6B3FA0', highlight: '#9670BF', shadow: '#4D2A75', weight: 8 },
+    { name: 'Mint Body', base: '#A8E6CF', highlight: '#D4F5E8', shadow: '#7DB39C', weight: 8 },
+    { name: 'Olive Green', base: '#708238', highlight: '#96A65C', shadow: '#515D27', weight: 8 },
+    { name: 'Coral Body', base: '#FF8C69', highlight: '#FFB49B', shadow: '#CC634A', weight: 8 },
+    { name: 'Sunset Gold', base: '#E6B422', highlight: '#F0CC57', shadow: '#B38618', weight: 8 },
+    { name: 'Glass Style', base: '#E0FFFF', highlight: '#F0FFFF', shadow: '#A8C8C8', weight: 8 },
   ],
   belly: [
     { name: 'Cream', base: '#FDF5E6', highlight: '#FFFAF0', shadow: '#F5E6D3', weight: 45 },
@@ -325,23 +325,28 @@ const TRAITS = {
   ],
   head: [
     { name: 'None', type: 'none', weight: 25 },
-    { name: 'Cap Blue', type: 'cap', color: '#1976D2', highlight: '#2196F3', shadow: '#1565C0', weight: 6 },
-    { name: 'Cap Red', type: 'cap', color: '#C62828', highlight: '#E53935', shadow: '#B71C1C', weight: 6 },
-    { name: 'Cap Black', type: 'cap', color: '#212121', highlight: '#424242', shadow: '#000000', weight: 6 },
-    { name: 'Cap Green', type: 'cap', color: '#2E7D32', highlight: '#43A047', shadow: '#1B5E20', weight: 6 },
-    { name: 'Beanie Red', type: 'beanie', color: '#D32F2F', highlight: '#E53935', shadow: '#B71C1C', weight: 6 },
-    { name: 'Beanie Blue', type: 'beanie', color: '#1565C0', highlight: '#1976D2', shadow: '#0D47A1', weight: 6 },
-    { name: 'Beanie Green', type: 'beanie', color: '#2E7D32', highlight: '#43A047', shadow: '#1B5E20', weight: 6 },
-    { name: 'Beanie Purple', type: 'beanie', color: '#7B1FA2', highlight: '#9C27B0', shadow: '#4A148C', weight: 6 },
-    { name: 'Scarf Green', type: 'scarf', color: '#388E3C', highlight: '#4CAF50', shadow: '#2E7D32', weight: 5 },
-    { name: 'Scarf Red', type: 'scarf', color: '#C62828', highlight: '#E53935', shadow: '#B71C1C', weight: 5 },
-    { name: 'Scarf Blue', type: 'scarf', color: '#1565C0', highlight: '#1976D2', shadow: '#0D47A1', weight: 5 },
-    { name: 'Scarf Purple', type: 'scarf', color: '#7B1FA2', highlight: '#9C27B0', shadow: '#4A148C', weight: 5 },
-    { name: 'Headband Red', type: 'headband', color: '#C62828', highlight: '#E53935', weight: 5 },
-    { name: 'Headband Blue', type: 'headband', color: '#1565C0', highlight: '#1976D2', weight: 5 },
-    { name: 'Headband Green', type: 'headband', color: '#2E7D32', highlight: '#43A047', weight: 5 },
-    { name: 'Headband Purple', type: 'headband', color: '#7B1FA2', highlight: '#9C27B0', weight: 5 },
-    { name: 'Crown', type: 'crown', weight: 10 },
+    { name: 'Cap Gold', type: 'cap', color: '#FFD700', highlight: '#FFE44D', shadow: '#CCAC00', weight: 8 },
+    { name: 'Cap Matte Black', type: 'cap', color: '#2B2B2B', highlight: '#545454', shadow: '#141414', weight: 8 },
+    { name: 'Cap Sapphire Blue', type: 'cap', color: '#0F52BA', highlight: '#3D71D1', shadow: '#0A3A8C', weight: 7 },
+    { name: 'Cap Crimson', type: 'cap', color: '#DC143C', highlight: '#E54767', shadow: '#A00F2C', weight: 7 },
+    { name: 'Cap Royal Gold', type: 'cap', color: '#FAD02E', highlight: '#FFE170', shadow: '#C9A823', weight: 7 },
+    { name: 'Beanie Gold', type: 'beanie', color: '#FFD700', highlight: '#FFE44D', shadow: '#CCAC00', weight: 6 },
+    { name: 'Beanie Matte Black', type: 'beanie', color: '#2B2B2B', highlight: '#545454', shadow: '#141414', weight: 6 },
+    { name: 'Beanie Sapphire Blue', type: 'beanie', color: '#0F52BA', highlight: '#3D71D1', shadow: '#0A3A8C', weight: 6 },
+    { name: 'Beanie Crimson', type: 'beanie', color: '#DC143C', highlight: '#E54767', shadow: '#A00F2C', weight: 6 },
+    { name: 'Beanie Royal Gold', type: 'beanie', color: '#FAD02E', highlight: '#FFE170', shadow: '#C9A823', weight: 6 },
+    { name: 'Scarf Gold', type: 'scarf', color: '#FFD700', highlight: '#FFE44D', shadow: '#CCAC00', weight: 5 },
+    { name: 'Scarf Matte Black', type: 'scarf', color: '#2B2B2B', highlight: '#545454', shadow: '#141414', weight: 5 },
+    { name: 'Scarf Sapphire Blue', type: 'scarf', color: '#0F52BA', highlight: '#3D71D1', shadow: '#0A3A8C', weight: 5 },
+    { name: 'Scarf Crimson', type: 'scarf', color: '#DC143C', highlight: '#E54767', shadow: '#A00F2C', weight: 5 },
+    { name: 'Scarf Royal Gold', type: 'scarf', color: '#FAD02E', highlight: '#FFE170', shadow: '#C9A823', weight: 5 },
+    { name: 'Headband Gold', type: 'headband', color: '#FFD700', highlight: '#FFE44D', shadow: '#CCAC00', weight: 5 },
+    { name: 'Headband Matte Black', type: 'headband', color: '#2B2B2B', highlight: '#545454', shadow: '#141414', weight: 5 },
+    { name: 'Headband Sapphire Blue', type: 'headband', color: '#0F52BA', highlight: '#3D71D1', shadow: '#0A3A8C', weight: 5 },
+    { name: 'Headband Crimson', type: 'headband', color: '#DC143C', highlight: '#E54767', shadow: '#A00F2C', weight: 5 },
+    { name: 'Headband Royal Gold', type: 'headband', color: '#FAD02E', highlight: '#FFE170', shadow: '#C9A823', weight: 5 },
+    { name: 'Crown Imperial', type: 'crown', style: 'imperial', weight: 6 },
+    { name: 'Crown Elegant', type: 'crown', style: 'elegant', weight: 4 },
     { name: 'Halo', type: 'halo', weight: 8 },
   ],
   feet: [
@@ -382,17 +387,8 @@ function drawAgent(traits, canvas) {
   canvas.width = 400
   canvas.height = 400
   
-  // Handle rainbow background
-  if (traits.background.color === 'rainbow') {
-    const rainbowColors = ['#FF6B6B', '#FF9F43', '#F9CA24', '#6AB04C', '#48DBFB', '#9B59B6']
-    for (let y = 0; y < 40; y++) {
-      ctx.fillStyle = rainbowColors[y % rainbowColors.length]
-      ctx.fillRect(0, y * scale, canvas.width, scale)
-    }
-  } else {
-    ctx.fillStyle = traits.background.color
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-  }
+  ctx.fillStyle = traits.background.color
+  ctx.fillRect(0, 0, canvas.width, canvas.height)
   
   const offsetX = 2
   const offsetY = 1
@@ -409,18 +405,72 @@ function drawAgent(traits, canvas) {
       for (let x = x1; x <= x2; x++) set(x, y, color)
     }
   }
-  
-  const rainbowColors = ['#FF6B6B', '#FF9F43', '#F9CA24', '#6AB04C', '#48DBFB', '#9B59B6', '#FF6B9D']
-  const getRainbow = (x, y) => rainbowColors[((x + y) % 7)]
-  
-  const getColor = (color, x = 20, y = 30) => {
-    if (color === 'rainbow') return getRainbow(x, y)
-    return color
+  const softDot = (x, y, core, mid, outer) => {
+    set(x, y, core)
+    set(x - 1, y, mid)
+    set(x + 1, y, mid)
+    set(x, y - 1, mid)
+    set(x, y + 1, mid)
+    set(x - 1, y - 1, outer)
+    set(x + 1, y - 1, outer)
+    set(x - 1, y + 1, outer)
+    set(x + 1, y + 1, outer)
+  }
+
+  const fxType = traits.background.fx
+  const effectVariant = traits.effect?.variant || 'White'
+  const effectPalette = (() => {
+    if (effectVariant === 'Golden') {
+      return {
+        snowCore: 'rgba(255,232,170,0.92)',
+        snowMid: 'rgba(255,214,120,0.40)',
+        snowOuter: 'rgba(255,203,90,0.18)',
+        snowFar: 'rgba(255,196,80,0.11)',
+        dotCore: 'rgba(255,226,150,0.30)',
+        dotMid: 'rgba(255,208,110,0.15)',
+        dotOuter: 'rgba(255,194,80,0.07)',
+      }
+    }
+    if (effectVariant === 'Light') {
+      return {
+        snowCore: 'rgba(215,246,255,0.9)',
+        snowMid: 'rgba(180,230,255,0.36)',
+        snowOuter: 'rgba(150,216,255,0.15)',
+        snowFar: 'rgba(130,206,255,0.09)',
+        dotCore: 'rgba(205,236,255,0.26)',
+        dotMid: 'rgba(165,220,255,0.12)',
+        dotOuter: 'rgba(140,210,255,0.05)',
+      }
+    }
+    return {
+      snowCore: 'rgba(255,255,255,0.9)',
+      snowMid: 'rgba(255,255,255,0.35)',
+      snowOuter: 'rgba(255,255,255,0.14)',
+      snowFar: 'rgba(255,255,255,0.08)',
+      dotCore: 'rgba(255,255,255,0.24)',
+      dotMid: 'rgba(255,255,255,0.11)',
+      dotOuter: 'rgba(255,255,255,0.05)',
+    }
+  })()
+  if (fxType === 'snowflakes') {
+    const flakes = [[3, 4], [10, 7], [32, 5], [36, 10], [6, 33], [14, 35], [29, 32], [35, 27], [2, 20], [38, 22]]
+    for (const [x, y] of flakes) {
+      softDot(x, y, effectPalette.snowCore, effectPalette.snowMid, effectPalette.snowOuter)
+      set(x - 2, y, effectPalette.snowFar)
+      set(x + 2, y, effectPalette.snowFar)
+      set(x, y - 2, effectPalette.snowFar)
+      set(x, y + 2, effectPalette.snowFar)
+    }
+  } else if (fxType === 'softdots') {
+    const dots = [[4, 5], [8, 11], [13, 4], [18, 8], [25, 4], [30, 9], [35, 6], [6, 29], [12, 34], [20, 36], [28, 33], [34, 29]]
+    for (const [x, y] of dots) {
+      softDot(x, y, effectPalette.dotCore, effectPalette.dotMid, effectPalette.dotOuter)
+    }
   }
   
-  const body = getColor(traits.body.base)
-  const bodyHighlight = getColor(traits.body.highlight)
-  const bodyShadow = getColor(traits.body.shadow)
+  const body = traits.body.base
+  const bodyHighlight = traits.body.highlight
+  const bodyShadow = traits.body.shadow
   const belly = traits.belly.base
   const bellyHighlight = traits.belly.highlight
   const beak = traits.beak.base
@@ -432,8 +482,6 @@ function drawAgent(traits, canvas) {
   
   const cx = 20
   
-  // Body - detailed pixel art
-  // Main body shape
   rect(8, 25, 31, 38, body)
   rect(7, 26, 32, 37, body)
   rect(6, 27, 33, 36, body)
@@ -443,18 +491,15 @@ function drawAgent(traits, canvas) {
   rect(9, 31, 30, 32, body)
   rect(10, 32, 29, 32, body)
   
-  // Body highlights
   rect(10, 26, 29, 27, bodyHighlight)
   rect(9, 28, 30, 28, bodyHighlight)
   rect(10, 30, 29, 30, bodyHighlight)
   rect(11, 32, 28, 32, bodyHighlight)
   
-  // Body shadows
   rect(8, 38, 31, 38, bodyShadow)
   rect(7, 37, 32, 37, bodyShadow)
   rect(6, 36, 33, 36, bodyShadow)
   
-  // Body texture/detail pixels
   rect(12, 27, 12, 27, bodyShadow)
   rect(28, 27, 28, 27, bodyShadow)
   rect(10, 29, 10, 29, bodyShadow)
@@ -462,7 +507,6 @@ function drawAgent(traits, canvas) {
   rect(8, 31, 8, 31, bodyShadow)
   rect(32, 31, 32, 31, bodyShadow)
   
-  // Belly - white front
   rect(12, 28, 27, 38, belly)
   rect(11, 29, 28, 37, belly)
   rect(11, 30, 28, 36, belly)
@@ -471,18 +515,15 @@ function drawAgent(traits, canvas) {
   rect(14, 33, 25, 34, belly)
   rect(15, 34, 24, 35, belly)
   
-  // Belly highlights
   rect(14, 29, 25, 30, bellyHighlight)
   rect(14, 31, 25, 32, bellyHighlight)
   rect(15, 33, 24, 34, bellyHighlight)
   
-  // Belly texture
   rect(15, 35, 15, 35, bellyHighlight)
   rect(24, 35, 24, 35, bellyHighlight)
   rect(16, 36, 16, 36, bellyHighlight)
   rect(23, 36, 23, 36, bellyHighlight)
   
-  // Head
   rect(10, 8, 29, 26, body)
   rect(9, 9, 30, 25, body)
   rect(8, 10, 31, 24, body)
@@ -494,19 +535,16 @@ function drawAgent(traits, canvas) {
   rect(13, 16, 26, 18, body)
   rect(14, 17, 25, 18, body)
   
-  // Head highlights
   rect(12, 9, 27, 10, bodyHighlight)
   rect(11, 11, 28, 12, bodyHighlight)
   rect(12, 13, 27, 14, bodyHighlight)
   rect(13, 15, 26, 16, bodyHighlight)
   rect(14, 17, 25, 17, bodyHighlight)
   
-  // Head shadow
   rect(10, 26, 29, 26, bodyShadow)
   rect(9, 25, 30, 25, bodyShadow)
   rect(8, 24, 31, 24, bodyShadow)
   
-  // Head texture/details
   rect(11, 10, 11, 10, bodyShadow)
   rect(28, 10, 28, 10, bodyShadow)
   rect(10, 12, 10, 12, bodyShadow)
@@ -514,7 +552,6 @@ function drawAgent(traits, canvas) {
   rect(10, 14, 10, 14, bodyShadow)
   rect(29, 14, 29, 14, bodyShadow)
   
-  // Face - white area
   rect(12, 14, 27, 24, belly)
   rect(11, 15, 28, 23, belly)
   rect(12, 16, 27, 22, belly)
@@ -522,112 +559,101 @@ function drawAgent(traits, canvas) {
   rect(14, 18, 25, 20, belly)
   rect(15, 19, 24, 20, belly)
   
-  // Face highlights
   rect(14, 15, 25, 16, bellyHighlight)
   rect(14, 17, 25, 18, bellyHighlight)
   rect(15, 19, 24, 20, bellyHighlight)
   
-  // Eyes - based on type
   const eyeY = 17
   
   if (traits.eyes.type === 'round') {
-    // Round eyes
-    rect(cx - 5, eyeY, cx - 3, eyeY + 2, '#0A0A0A')
-    rect(cx - 6, eyeY + 1, cx - 2, eyeY + 2, '#0A0A0A')
-    rect(cx - 5, eyeY, cx - 4, eyeY, '#FFFFFF')
-    rect(cx - 4, eyeY + 1, cx - 3, eyeY + 1, '#FFFFFF')
-    rect(cx + 3, eyeY, cx + 5, eyeY + 2, '#0A0A0A')
-    rect(cx + 2, eyeY + 1, cx + 6, eyeY + 2, '#0A0A0A')
-    rect(cx + 4, eyeY, cx + 5, eyeY, '#FFFFFF')
-    rect(cx + 3, eyeY + 1, cx + 4, eyeY + 1, '#FFFFFF')
+    rect(cx - 4, eyeY, cx - 3, eyeY + 1, '#0A0A0A')
+    rect(cx - 5, eyeY + 1, cx - 2, eyeY + 1, '#0A0A0A')
+    rect(cx + 3, eyeY, cx + 4, eyeY + 1, '#0A0A0A')
+    rect(cx + 2, eyeY + 1, cx + 5, eyeY + 1, '#0A0A0A')
   } else if (traits.eyes.type === 'angry') {
-    // Angry eyes - furrowed brows
-    rect(cx - 5, eyeY, cx - 3, eyeY + 2, '#0A0A0A')
-    rect(cx - 6, eyeY + 1, cx - 2, eyeY + 2, '#0A0A0A')
-    rect(cx - 4, eyeY, cx - 3, eyeY, '#FF0000')
-    rect(cx + 3, eyeY, cx + 5, eyeY + 2, '#0A0A0A')
-    rect(cx + 2, eyeY + 1, cx + 6, eyeY + 2, '#0A0A0A')
-    rect(cx + 4, eyeY, cx + 5, eyeY, '#FF0000')
-    // Angry eyebrows
-    rect(cx - 6, eyeY - 2, cx - 3, eyeY - 2, '#0A0A0A')
-    rect(cx + 3, eyeY - 2, cx + 6, eyeY - 2, '#0A0A0A')
+    rect(cx - 4, eyeY, cx - 3, eyeY, '#0A0A0A')
+    rect(cx - 5, eyeY + 1, cx - 2, eyeY + 1, '#0A0A0A')
+    rect(cx - 3, eyeY, cx - 3, eyeY, '#FF0000')
+    rect(cx + 3, eyeY, cx + 4, eyeY, '#0A0A0A')
+    rect(cx + 2, eyeY + 1, cx + 5, eyeY + 1, '#0A0A0A')
+    rect(cx + 4, eyeY, cx + 4, eyeY, '#FF0000')
   } else if (traits.eyes.type === 'sleepy') {
-    // Sleepy eyes - half closed
-    rect(cx - 5, eyeY + 1, cx - 3, eyeY + 2, '#0A0A0A')
-    rect(cx - 6, eyeY + 1, cx - 2, eyeY + 2, '#0A0A0A')
-    rect(cx + 3, eyeY + 1, cx + 5, eyeY + 2, '#0A0A0A')
-    rect(cx + 2, eyeY + 1, cx + 6, eyeY + 2, '#0A0A0A')
+    rect(cx - 4, eyeY + 1, cx - 3, eyeY + 1, '#0A0A0A')
+    rect(cx - 5, eyeY + 1, cx - 2, eyeY + 1, '#0A0A0A')
+    rect(cx - 4, eyeY + 2, cx - 3, eyeY + 2, '#0A0A0A')
+    rect(cx + 3, eyeY + 1, cx + 4, eyeY + 1, '#0A0A0A')
+    rect(cx + 2, eyeY + 1, cx + 5, eyeY + 1, '#0A0A0A')
+    rect(cx + 3, eyeY + 2, cx + 4, eyeY + 2, '#0A0A0A')
   } else if (traits.eyes.type === 'sparkle') {
-    // Sparkle eyes - star highlights
-    rect(cx - 5, eyeY, cx - 3, eyeY + 2, '#0A0A0A')
-    rect(cx - 6, eyeY + 1, cx - 2, eyeY + 2, '#0A0A0A')
-    rect(cx - 5, eyeY, cx - 4, eyeY, '#FFFFFF')
-    rect(cx - 3, eyeY + 2, cx - 3, eyeY + 2, '#FFFFFF')
-    rect(cx + 3, eyeY, cx + 5, eyeY + 2, '#0A0A0A')
-    rect(cx + 2, eyeY + 1, cx + 6, eyeY + 2, '#0A0A0A')
-    rect(cx + 4, eyeY, cx + 5, eyeY, '#FFFFFF')
-    rect(cx + 5, eyeY + 2, cx + 5, eyeY + 2, '#FFFFFF')
+    rect(cx - 4, eyeY, cx - 3, eyeY + 1, '#0A0A0A')
+    rect(cx - 5, eyeY + 1, cx - 2, eyeY + 1, '#0A0A0A')
+    rect(cx + 3, eyeY, cx + 4, eyeY + 1, '#0A0A0A')
+    rect(cx + 2, eyeY + 1, cx + 5, eyeY + 1, '#0A0A0A')
   } else if (traits.eyes.type === 'happy') {
-    // Happy eyes - curved
-    rect(cx - 6, eyeY, cx - 2, eyeY + 2, '#0A0A0A')
-    rect(cx - 5, eyeY + 1, cx - 3, eyeY + 2, '#0A0A0A')
-    rect(cx + 2, eyeY, cx + 6, eyeY + 2, '#0A0A0A')
-    rect(cx + 3, eyeY + 1, cx + 5, eyeY + 2, '#0A0A0A')
+    rect(cx - 5, eyeY, cx - 2, eyeY + 1, '#0A0A0A')
+    rect(cx - 4, eyeY + 1, cx - 3, eyeY + 1, '#0A0A0A')
+    rect(cx + 2, eyeY, cx + 5, eyeY + 1, '#0A0A0A')
+    rect(cx + 3, eyeY + 1, cx + 4, eyeY + 1, '#0A0A0A')
   } else if (traits.eyes.type === 'wink') {
-    // Wink - one eye closed
-    rect(cx - 5, eyeY, cx - 3, eyeY + 2, '#0A0A0A')
-    rect(cx - 6, eyeY + 1, cx - 2, eyeY + 2, '#0A0A0A')
-    rect(cx - 5, eyeY, cx - 4, eyeY, '#FFFFFF')
-    rect(cx - 4, eyeY + 1, cx - 3, eyeY + 1, '#FFFFFF')
-    // Right eye winking
-    rect(cx + 3, eyeY + 1, cx + 5, eyeY + 2, '#0A0A0A')
+    rect(cx - 4, eyeY, cx - 3, eyeY + 1, '#0A0A0A')
+    rect(cx - 5, eyeY + 1, cx - 2, eyeY + 1, '#0A0A0A')
+    rect(cx + 3, eyeY + 1, cx + 4, eyeY + 1, '#0A0A0A')
   } else if (traits.eyes.type === 'sad') {
-    // Sad eyes - droopy
-    rect(cx - 5, eyeY, cx - 3, eyeY + 1, '#0A0A0A')
-    rect(cx - 6, eyeY + 1, cx - 2, eyeY + 1, '#0A0A0A')
-    rect(cx + 3, eyeY, cx + 5, eyeY + 1, '#0A0A0A')
-    rect(cx + 2, eyeY + 1, cx + 6, eyeY + 1, '#0A0A0A')
-    // Sad eyebrows
-    rect(cx - 6, eyeY - 2, cx - 3, eyeY - 2, bodyShadow)
-    rect(cx + 3, eyeY - 2, cx + 6, eyeY - 2, bodyShadow)
+    rect(cx - 4, eyeY, cx - 3, eyeY, '#0A0A0A')
+    rect(cx - 5, eyeY + 1, cx - 2, eyeY + 1, '#0A0A0A')
+    rect(cx + 3, eyeY, cx + 4, eyeY, '#0A0A0A')
+    rect(cx + 2, eyeY + 1, cx + 5, eyeY + 1, '#0A0A0A')
   } else if (traits.eyes.type === 'surprised') {
-    // Surprised eyes - wide open
-    rect(cx - 6, eyeY - 1, cx - 2, eyeY + 2, '#0A0A0A')
-    rect(cx - 5, eyeY - 1, cx - 3, eyeY + 2, '#FFFFFF')
-    rect(cx - 5, eyeY, cx - 4, eyeY + 1, '#0A0A0A')
-    rect(cx + 2, eyeY - 1, cx + 6, eyeY + 2, '#0A0A0A')
-    rect(cx + 3, eyeY - 1, cx + 5, eyeY + 2, '#FFFFFF')
-    rect(cx + 4, eyeY, cx + 5, eyeY + 1, '#0A0A0A')
+    rect(cx - 5, eyeY, cx - 2, eyeY + 1, '#0A0A0A')
+    rect(cx - 4, eyeY, cx - 3, eyeY + 1, '#0A0A0A')
+    rect(cx + 2, eyeY, cx + 5, eyeY + 1, '#0A0A0A')
+    rect(cx + 3, eyeY, cx + 4, eyeY + 1, '#0A0A0A')
   } else if (traits.eyes.type === 'sideeye') {
-    // Side-eye - looking sideways
-    rect(cx - 6, eyeY, cx - 3, eyeY + 2, '#0A0A0A')
-    rect(cx - 5, eyeY + 1, cx - 4, eyeY + 2, '#0A0A0A')
-    rect(cx + 3, eyeY, cx + 6, eyeY + 2, '#0A0A0A')
-    rect(cx + 4, eyeY + 1, cx + 5, eyeY + 2, '#0A0A0A')
+    rect(cx - 5, eyeY, cx - 3, eyeY + 1, '#0A0A0A')
+    rect(cx - 4, eyeY + 1, cx - 3, eyeY + 1, '#0A0A0A')
+    rect(cx + 3, eyeY, cx + 5, eyeY + 1, '#0A0A0A')
+    rect(cx + 4, eyeY + 1, cx + 5, eyeY + 1, '#0A0A0A')
   } else if (traits.eyes.type === 'closed') {
-    // Closed eyes - straight line
-    rect(cx - 6, eyeY + 1, cx - 2, eyeY + 1, '#0A0A0A')
-    rect(cx + 2, eyeY + 1, cx + 6, eyeY + 1, '#0A0A0A')
+    rect(cx - 5, eyeY + 1, cx - 2, eyeY + 1, '#0A0A0A')
+    rect(cx + 2, eyeY + 1, cx + 5, eyeY + 1, '#0A0A0A')
   }
   
-  // Eyebrows
-  if (traits.eyes.type !== 'sleepy' && traits.eyes.type !== 'closed' && traits.eyes.type !== 'angry') {
-    rect(cx - 7, 14, cx - 3, 14, bodyShadow)
-    rect(cx + 3, 14, cx + 7, 14, bodyShadow)
-    rect(cx - 8, 13, cx - 4, 13, bodyShadow)
-    rect(cx + 4, 13, cx + 8, 13, bodyShadow)
-  }
+  rect(cx - 7, 14, cx - 3, 14, bodyShadow)
+  rect(cx + 3, 14, cx + 7, 14, bodyShadow)
+  rect(cx - 8, 13, cx - 4, 13, bodyShadow)
+  rect(cx + 4, 13, cx + 8, 13, bodyShadow)
   
-  // Beak - based on type
+  rect(2, 26, 5, 32, body)
+  rect(1, 27, 6, 31, body)
+  rect(2, 28, 5, 30, bodyHighlight)
+  rect(3, 29, 5, 29, bodyHighlight)
+  rect(2, 30, 4, 31, bodyShadow)
+  rect(1, 31, 3, 32, bodyShadow)
+  rect(1, 30, 3, 33, body)
+  rect(2, 31, 3, 32, bodyHighlight)
+  rect(5, 31, 7, 33, body)
+  rect(6, 32, 7, 33, bodyHighlight)
+  
+  rect(34, 26, 37, 32, body)
+  rect(33, 27, 38, 31, body)
+  rect(34, 28, 37, 30, bodyHighlight)
+  rect(34, 29, 36, 29, bodyHighlight)
+  rect(35, 30, 37, 31, bodyShadow)
+  rect(36, 31, 38, 32, bodyShadow)
+  rect(36, 30, 38, 33, body)
+  rect(36, 31, 37, 32, bodyHighlight)
+  rect(32, 31, 34, 33, body)
+  rect(32, 32, 33, 33, bodyHighlight)
+  
   if (traits.beak.type === 'small') {
     rect(cx - 2, 21, cx + 1, 23, beak)
     rect(cx - 1, 20, cx, 22, beak)
     rect(cx - 1, 22, cx, 22, beakShadow)
   } else if (traits.beak.type === 'large') {
-    rect(cx - 4, 20, cx + 3, 24, beak)
-    rect(cx - 3, 19, cx + 2, 23, beak)
-    rect(cx - 2, 19, cx + 1, 20, beak)
-    rect(cx - 3, 24, cx + 2, 24, beakShadow)
+    rect(cx - 3, 20, cx + 2, 23, beak)
+    rect(cx - 2, 19, cx + 1, 22, beak)
+    rect(cx - 1, 18, cx, 20, beak)
+    rect(cx - 2, 23, cx + 1, 23, beakShadow)
   } else if (traits.beak.type === 'wide') {
     rect(cx - 4, 21, cx + 3, 23, beak)
     rect(cx - 3, 20, cx + 2, 24, beak)
@@ -644,13 +670,12 @@ function drawAgent(traits, canvas) {
     rect(cx - 1, 20, cx, 20, beak)
     rect(cx - 2, 24, cx + 1, 24, beakShadow)
   } else if (traits.beak.type === 'puffy') {
-    rect(cx - 4, 20, cx + 3, 23, beak)
-    rect(cx - 3, 19, cx + 2, 22, beakHighlight)
-    rect(cx - 2, 18, cx + 1, 20, beakHighlight)
-    rect(cx - 3, 23, cx + 2, 23, beakShadow)
-    rect(cx + 2, 22, cx + 3, 22, beakShadow)
+    rect(cx - 3, 20, cx + 2, 22, beak)
+    rect(cx - 2, 19, cx + 1, 21, beakHighlight)
+    rect(cx - 1, 18, cx, 20, beakHighlight)
+    rect(cx - 2, 22, cx + 1, 22, beakShadow)
+    rect(cx + 1, 21, cx + 2, 21, beakShadow)
   } else {
-    // Default small
     rect(cx - 3, 21, cx + 2, 23, beak)
     rect(cx - 2, 20, cx + 1, 22, beak)
     rect(cx - 1, 20, cx, 21, beak)
@@ -658,7 +683,6 @@ function drawAgent(traits, canvas) {
     rect(cx - 3, 21, cx - 3, 22, beakShadow)
   }
   
-  // Cheeks
   const cheeksColor = traits.cheeks?.base || '#FFB6C1'
   const cheeksHighlightColor = traits.cheeks?.highlight || '#FFC5CD'
   rect(cx - 9, 19, cx - 7, 21, cheeksColor)
@@ -666,104 +690,215 @@ function drawAgent(traits, canvas) {
   rect(cx - 8, 20, cx - 7, 20, cheeksHighlightColor)
   rect(cx + 7, 20, cx + 8, 20, cheeksHighlightColor)
   
-  // Head accessories
+  const headColor = traits.head.color || '#404040'
+  const parseHex = (hex) => {
+    const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex || '')
+    if (!m) return null
+    return { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) }
+  }
+  const mixHex = (a, b, t) => {
+    const ca = parseHex(a)
+    const cb = parseHex(b)
+    if (!ca || !cb) return a
+    const mix = (x, y) => Math.round(x + (y - x) * t)
+    const toHex = (n) => n.toString(16).padStart(2, '0')
+    return `#${toHex(mix(ca.r, cb.r))}${toHex(mix(ca.g, cb.g))}${toHex(mix(ca.b, cb.b))}`
+  }
+  const headHighlight = traits.head.highlight || mixHex(headColor, '#FFFFFF', 0.28)
+  const headShadow = traits.head.shadow || mixHex(headColor, '#000000', 0.38)
+  const headSpec = mixHex(headHighlight, '#FFFFFF', 0.42)
+  const headMid = mixHex(headColor, headShadow, 0.45)
+  const headDeep = mixHex(headShadow, '#000000', 0.35)
+  const clothFold = mixHex(headColor, headShadow, 0.25)
   if (traits.head.type === 'crown') {
-    rect(cx - 9, 6, cx + 9, 8, '#FFD700')
-    rect(cx - 8, 4, cx - 6, 8, '#FFD700')
-    rect(cx - 3, 2, cx - 1, 8, '#FFD700')
-    rect(cx + 1, 2, cx + 3, 8, '#FFD700')
-    rect(cx + 6, 4, cx + 8, 8, '#FFD700')
-    // Crown jewels
-    rect(cx - 4, 5, cx - 2, 6, '#FF0000')
-    rect(cx + 2, 5, cx + 4, 6, '#FF0000')
+    const crownStyle = traits.head.style || 'imperial'
+    if (crownStyle === 'elegant') {
+      rect(cx - 9, 7, cx + 9, 9, '#CDA349')
+      rect(cx - 8, 6, cx + 8, 7, '#F6D98A')
+      rect(cx - 9, 9, cx + 9, 9, '#775314')
+      rect(cx - 7, 4, cx - 5, 7, '#E8C86E')
+      rect(cx - 3, 3, cx - 1, 7, '#F1D786')
+      rect(cx + 1, 3, cx + 3, 7, '#F1D786')
+      rect(cx + 5, 4, cx + 7, 7, '#E8C86E')
+      rect(cx - 6, 2, cx - 5, 3, '#FFF5C8')
+      rect(cx - 1, 1, cx, 2, '#FFF5C8')
+      rect(cx + 5, 2, cx + 6, 3, '#FFF5C8')
+      rect(cx - 8, 7, cx - 8, 8, '#8A651F')
+      rect(cx + 8, 7, cx + 8, 8, '#8A651F')
+      rect(cx - 4, 6, cx - 4, 8, '#8A651F')
+      rect(cx + 4, 6, cx + 4, 8, '#8A651F')
+      rect(cx - 8, 6, cx + 8, 6, '#FFE4A0')
+      rect(cx - 6, 7, cx - 5, 8, '#B80F2E')
+      rect(cx - 1, 7, cx, 8, '#0E7EEA')
+      rect(cx + 4, 7, cx + 5, 8, '#23A455')
+      rect(cx - 2, 5, cx + 1, 6, '#B78A2C')
+    } else {
+      rect(cx - 10, 7, cx + 10, 9, '#C69214')
+      rect(cx - 9, 6, cx + 9, 7, '#F2C94C')
+      rect(cx - 10, 9, cx + 10, 9, '#7A5200')
+      rect(cx - 8, 3, cx - 6, 7, '#E5B93A')
+      rect(cx - 5, 4, cx - 3, 7, '#DCAA2D')
+      rect(cx - 1, 1, cx + 1, 7, '#F7D55C')
+      rect(cx + 3, 4, cx + 5, 7, '#DCAA2D')
+      rect(cx + 6, 3, cx + 8, 7, '#E5B93A')
+      rect(cx - 7, 2, cx - 6, 3, '#FFF3B0')
+      rect(cx, 0, cx, 2, '#FFF3B0')
+      rect(cx + 6, 2, cx + 7, 3, '#FFF3B0')
+      rect(cx - 9, 6, cx - 9, 8, '#8A6108')
+      rect(cx + 9, 6, cx + 9, 8, '#8A6108')
+      rect(cx - 4, 6, cx - 4, 7, '#8A6108')
+      rect(cx + 4, 6, cx + 4, 7, '#8A6108')
+      rect(cx - 8, 6, cx + 8, 6, '#FFD76A')
+      rect(cx - 7, 7, cx - 6, 8, '#B80F2E')
+      rect(cx - 1, 7, cx, 8, '#0E7EEA')
+      rect(cx + 5, 7, cx + 6, 8, '#23A455')
+      rect(cx - 2, 5, cx + 2, 6, '#BF8F1A')
+    }
   } else if (traits.head.type === 'tophat') {
-    rect(cx - 10, 6, cx + 10, 9, '#1A1A1A')
-    rect(cx - 9, 5, cx + 9, 7, '#2D2D2D')
-    rect(cx - 4, 2, cx + 3, 6, '#1A1A1A')
-    rect(cx - 11, 8, cx + 11, 9, '#8B0000')
-    rect(cx - 2, 3, cx + 1, 4, '#C0C0C0')
+    rect(cx - 11, 8, cx + 11, 9, '#111111')
+    rect(cx - 10, 6, cx + 10, 8, '#1B1B1B')
+    rect(cx - 9, 5, cx + 9, 6, '#2E2E2E')
+    rect(cx - 5, 1, cx + 4, 6, '#1A1A1A')
+    rect(cx - 4, 1, cx + 3, 2, '#3B3B3B')
+    rect(cx - 5, 7, cx + 4, 7, '#8B0000')
+    rect(cx - 2, 2, cx - 1, 4, '#7A7A7A')
+    rect(cx - 5, 5, cx - 5, 6, '#2F2F2F')
+    rect(cx, 2, cx + 1, 5, '#101010')
+    rect(cx + 3, 2, cx + 4, 5, '#0B0B0B')
+    rect(cx - 9, 9, cx + 9, 9, '#050505')
+    rect(cx - 8, 6, cx - 7, 8, '#353535')
+    rect(cx + 5, 2, cx + 5, 6, '#080808')
+    rect(cx - 3, 1, cx - 1, 1, '#4A4A4A')
+    rect(cx - 4, 8, cx + 4, 8, '#2A0000')
+    rect(cx + 7, 7, cx + 9, 8, '#080808')
   } else if (traits.head.type === 'beanie') {
-    rect(cx - 10, 6, cx + 10, 9, traits.head.color)
-    rect(cx - 9, 4, cx + 9, 7, traits.head.highlight)
-    rect(cx - 8, 3, cx + 8, 5, traits.head.highlight)
-    rect(cx - 3, 2, cx + 2, 4, traits.head.shadow)
-    rect(cx - 2, 1, cx + 1, 3, traits.head.shadow)
+    rect(cx - 10, 7, cx + 9, 10, headColor)
+    rect(cx - 9, 5, cx + 8, 7, headHighlight)
+    rect(cx - 7, 3, cx + 6, 6, headColor)
+    rect(cx - 4, 2, cx + 3, 3, headSpec)
+    rect(cx - 10, 10, cx + 9, 10, headShadow)
+    rect(cx - 9, 9, cx + 8, 9, clothFold)
+    rect(cx - 8, 8, cx + 7, 8, headMid)
+    rect(cx - 6, 4, cx - 6, 10, headMid)
+    rect(cx - 3, 4, cx - 3, 10, headShadow)
+    rect(cx, 4, cx, 10, headMid)
+    rect(cx + 3, 4, cx + 3, 10, headShadow)
+    rect(cx + 6, 4, cx + 6, 10, headMid)
+    rect(cx - 5, 6, cx - 5, 8, headSpec)
+    rect(cx + 1, 6, cx + 1, 8, headSpec)
+    rect(cx - 2, 10, cx + 1, 10, headDeep)
+    rect(cx - 7, 3, cx - 6, 3, headSpec)
+    rect(cx + 4, 3, cx + 5, 3, headSpec)
   } else if (traits.head.type === 'bow') {
-    rect(cx - 10, 7, cx - 7, 9, '#FF69B4')
-    rect(cx + 7, 7, cx + 10, 9, '#FF69B4')
-    rect(cx - 6, 7, cx + 6, 9, '#FF1493')
-    rect(cx - 8, 6, cx - 6, 8, '#FFB6C1')
-    rect(cx + 6, 6, cx + 8, 8, '#FFB6C1')
-    rect(cx - 2, 8, cx + 1, 8, '#FF1493')
+    rect(cx - 10, 7, cx - 7, 9, '#E754A6')
+    rect(cx + 7, 7, cx + 10, 9, '#E754A6')
+    rect(cx - 6, 7, cx + 6, 9, '#D81B78')
+    rect(cx - 8, 6, cx - 6, 8, '#FFC1DC')
+    rect(cx + 6, 6, cx + 8, 8, '#FFC1DC')
+    rect(cx - 2, 7, cx + 1, 9, '#B3135F')
+    rect(cx - 1, 8, cx, 8, '#8A0D48')
+    rect(cx - 9, 9, cx - 8, 9, '#9C0F50')
+    rect(cx + 8, 9, cx + 9, 9, '#9C0F50')
+    rect(cx - 10, 8, cx - 9, 8, '#B3135F')
+    rect(cx + 9, 8, cx + 10, 8, '#B3135F')
+    rect(cx - 7, 8, cx - 6, 9, '#8A0D48')
+    rect(cx + 6, 8, cx + 7, 9, '#8A0D48')
+    rect(cx - 4, 7, cx - 3, 8, '#F77FBC')
+    rect(cx + 3, 7, cx + 4, 8, '#F77FBC')
   } else if (traits.head.type === 'cap') {
-    rect(cx - 10, 7, cx + 9, 9, traits.head.color)
-    rect(cx - 9, 6, cx + 8, 8, traits.head.highlight)
-    rect(cx + 8, 8, cx + 12, 10, traits.head.shadow)
-    rect(cx + 10, 9, cx + 12, 10, traits.head.shadow)
-    rect(cx - 11, 8, cx - 9, 9, traits.head.shadow)
+    rect(cx - 11, 7, cx + 9, 9, headColor)
+    rect(cx - 10, 6, cx + 8, 7, headHighlight)
+    rect(cx - 8, 5, cx + 5, 6, headSpec)
+    rect(cx - 10, 8, cx + 8, 8, headMid)
+    rect(cx - 10, 9, cx + 8, 9, headShadow)
+    rect(cx - 3, 8, cx + 6, 8, headDeep)
+    rect(cx - 1, 7, cx + 3, 7, headHighlight)
+    rect(cx + 8, 8, cx + 12, 11, headShadow)
+    rect(cx + 9, 9, cx + 12, 10, headColor)
+    rect(cx + 10, 10, cx + 12, 11, headDeep)
+    rect(cx - 12, 8, cx - 8, 9, headShadow)
+    rect(cx - 11, 9, cx - 9, 10, headDeep)
+    rect(cx + 9, 11, cx + 11, 11, '#111111')
+    rect(cx - 9, 9, cx + 4, 9, headDeep)
+    rect(cx - 7, 6, cx - 6, 7, headSpec)
+    rect(cx + 4, 6, cx + 5, 7, headMid)
+    rect(cx + 8, 10, cx + 10, 11, '#121212')
   } else if (traits.head.type === 'scarf') {
     rect(cx - 10, 25, cx + 10, 28, traits.head.color)
     rect(cx - 9, 24, cx + 9, 26, traits.head.highlight)
     rect(cx + 8, 25, cx + 11, 33, traits.head.color)
     rect(cx + 9, 26, cx + 10, 32, traits.head.highlight)
-    rect(cx - 2, 26, cx + 1, 27, traits.head.shadow)
+    rect(cx - 3, 26, cx + 2, 27, traits.head.shadow)
+    rect(cx - 2, 27, cx + 1, 28, traits.head.shadow)
   } else if (traits.head.type === 'halo') {
-    rect(cx - 4, 3, cx + 3, 4, '#FFD700')
-    rect(cx - 5, 4, cx + 4, 5, '#FFD700')
-    rect(cx - 3, 2, cx + 2, 3, '#FFD700')
+    rect(cx - 4, 3, cx + 3, 4, '#E8BF2F')
+    rect(cx - 5, 4, cx + 4, 5, '#D1A91E')
+    rect(cx - 3, 2, cx + 2, 3, '#FFE27A')
+    rect(cx - 5, 5, cx + 4, 5, '#AD8614')
+    rect(cx - 2, 2, cx - 1, 2, '#FFF1A3')
+    rect(cx + 1, 2, cx + 2, 2, '#FFF1A3')
   } else if (traits.head.type === 'headband') {
-    rect(cx - 10, 6, cx + 10, 9, traits.head.color)
-    rect(cx - 9, 5, cx + 9, 7, traits.head.highlight)
-    rect(cx - 7, 5, cx - 5, 8, traits.head.highlight)
-    rect(cx - 1, 5, cx + 1, 8, traits.head.highlight)
-    rect(cx + 5, 5, cx + 7, 8, traits.head.highlight)
+    rect(cx - 11, 6, cx + 10, 9, headColor)
+    rect(cx - 10, 5, cx + 9, 6, headSpec)
+    rect(cx - 11, 9, cx + 10, 9, headShadow)
+    rect(cx - 10, 8, cx + 9, 8, headMid)
+    rect(cx - 9, 7, cx + 8, 7, clothFold)
+    rect(cx - 8, 6, cx - 7, 8, headHighlight)
+    rect(cx - 4, 6, cx - 3, 8, headHighlight)
+    rect(cx, 6, cx + 1, 8, headHighlight)
+    rect(cx + 4, 6, cx + 5, 8, headHighlight)
+    rect(cx + 8, 6, cx + 9, 8, headHighlight)
+    rect(cx - 2, 5, cx + 1, 6, headSpec)
+    rect(cx + 2, 6, cx + 3, 8, headDeep)
+    rect(cx - 6, 8, cx - 5, 9, headDeep)
+    rect(cx + 6, 8, cx + 7, 9, headDeep)
+    rect(cx - 10, 9, cx - 9, 9, headDeep)
+    rect(cx + 8, 9, cx + 10, 9, headDeep)
+    rect(cx - 2, 9, cx + 1, 9, headDeep)
+    rect(cx + 9, 7, cx + 10, 8, headDeep)
+    rect(cx - 11, 7, cx - 10, 8, headDeep)
+    rect(cx - 3, 10, cx + 2, 10, 'rgba(0,0,0,0.16)')
+  }
+
+  if (traits.head.type !== 'none' && traits.head.type !== 'scarf') {
+    rect(cx - 8, 10, cx + 8, 10, 'rgba(0,0,0,0.12)')
   }
   
-  // Flippers - detailed pixel art (fixed to stay in bounds)
-  // Left flipper
   rect(2, 26, 5, 32, body)
   rect(1, 27, 6, 31, body)
   rect(2, 28, 5, 30, bodyHighlight)
   rect(3, 29, 5, 29, bodyHighlight)
   rect(2, 30, 4, 31, bodyShadow)
   rect(1, 31, 3, 32, bodyShadow)
-  // Flipper fingers
   rect(1, 30, 3, 33, body)
   rect(2, 31, 3, 32, bodyHighlight)
   rect(5, 31, 7, 33, body)
   rect(6, 32, 7, 33, bodyHighlight)
   
-  // Right flipper
   rect(34, 26, 37, 32, body)
   rect(33, 27, 38, 31, body)
   rect(34, 28, 37, 30, bodyHighlight)
   rect(34, 29, 36, 29, bodyHighlight)
   rect(35, 30, 37, 31, bodyShadow)
   rect(36, 31, 38, 32, bodyShadow)
-  // Flipper fingers
   rect(36, 30, 38, 33, body)
   rect(36, 31, 37, 32, bodyHighlight)
   rect(32, 31, 34, 33, body)
   rect(32, 32, 33, 33, bodyHighlight)
   
-  // Feet - detailed (fixed to stay in bounds)
-  // Left foot
   rect(10, 37, 14, 38, feet)
   rect(9, 38, 15, 38, feet)
   rect(11, 36, 13, 37, feetHighlight)
   rect(10, 38, 13, 38, feetShadow)
-  // Toes
   rect(8, 38, 10, 39, feet)
   rect(9, 38, 10, 39, feetHighlight)
   rect(12, 38, 14, 39, feet)
   rect(13, 38, 14, 39, feetHighlight)
   
-  // Right foot
   rect(25, 37, 29, 38, feet)
   rect(24, 38, 30, 38, feet)
   rect(26, 36, 28, 37, feetHighlight)
   rect(25, 38, 28, 38, feetShadow)
-  // Toes
   rect(25, 38, 27, 39, feet)
   rect(26, 38, 27, 39, feetHighlight)
   rect(29, 38, 31, 39, feet)
@@ -773,8 +908,7 @@ function drawAgent(traits, canvas) {
   rect(29, 39, 31, 39, feet)
   rect(30, 39, 31, 39, feetHighlight)
   
-  // Ground shadow
-  rect(8, 38, 31, 38, 'rgba(0,0,0,0.3)')
+  rect(8, 39, 31, 39, 'rgba(0,0,0,0.3)')
 }
 
 function App() {
@@ -798,7 +932,6 @@ function App() {
     return saved ? JSON.parse(saved) : []
   })
   
-  // Load cached gallery immediately, then refresh in background
   const [sharedGallery, setSharedGallery] = useState(() => {
     const cached = localStorage.getItem('cachedGallery')
     return cached ? JSON.parse(cached) : []
@@ -824,7 +957,6 @@ function App() {
     }
   }, [sharedGallery])
 
-  // Fetch on page load and when user generates/transforms
   useEffect(() => {
     fetchFreshGallery().then(gallery => {
       setSharedGallery(gallery)
@@ -852,7 +984,7 @@ function App() {
     }
   }, [traits, ogMode, hasGenerated])
 
-  const [mode, setMode] = useState('generate') // 'generate' or 'og'
+  const [mode, setMode] = useState('generate')
 
   const handleImageUpload = async (e) => {
     const file = e.target.files[0]
@@ -863,7 +995,6 @@ function App() {
     setConfetti([])
     setUploadCooldown(10)
     
-    // Refresh gallery to see latest from other users
     fetchFreshGallery().then(gallery => setSharedGallery(gallery))
     
     const reader = new FileReader()
@@ -880,7 +1011,6 @@ function App() {
             setIsGenerating(false)
             setIsRevealing(true)
             
-            // Generate confetti
             const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#FF8C00', '#39FF14', '#FF1493']
             const newConfetti = Array.from({ length: 40 }, (_, i) => ({
               id: i,
@@ -891,10 +1021,8 @@ function App() {
             }))
             setConfetti(newConfetti)
             
-            // Clear confetti after animation
             setTimeout(() => setConfetti([]), 1200)
             
-            // Save penguin immediately with local image
             const newPenguin = {
               id: Date.now(),
               cid: null,
@@ -906,7 +1034,6 @@ function App() {
             setSavedPenguins(prev => [newPenguin, ...prev])
             setSharedGallery(prev => [newPenguin, ...prev])
             
-            // Upload to IPFS first, then save to shared gallery
             uploadToIPFS(canvasRef).then(ipfsData => {
               if (ipfsData) {
                 const updatedPenguin = { ...newPenguin, cid: ipfsData.cid, image: ipfsData.url }
@@ -917,7 +1044,6 @@ function App() {
                 saveToSharedGallery(newPenguin)
               }
               
-              // Fetch latest gallery and update timestamp
               fetchFreshGallery().then(gallery => {
                 setSharedGallery(gallery)
                 setLastRefresh(new Date())
@@ -939,72 +1065,119 @@ function App() {
     setCooldown(10)
     
     setTimeout(() => {
-      const t = {
-        background: randomItem(TRAITS.background),
-        body: randomItem(TRAITS.body),
-        belly: randomItem(TRAITS.belly),
-        beak: randomItem(TRAITS.beak),
-        eyes: randomItem(TRAITS.eyes),
-        head: randomItem(TRAITS.head),
-        feet: { name: 'Default Orange', base: '#FF9F43', highlight: '#FFBE76', shadow: '#E67E22' },
-        name: randomItem(TRAITS.name),
-      }
-      setTraits(t)
-      
-      setTimeout(async () => {
-        setOgMode(false)
-        drawAgent(t, canvasRef.current)
-        setIsGenerating(false)
-        
-        // Trigger reveal animation
-        setIsRevealing(true)
-        
-        // Generate confetti from top
-        const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#FF8C00', '#39FF14', '#FF1493']
-        const newConfetti = Array.from({ length: 40 }, (_, i) => ({
-          id: i,
-          left: 2 + Math.random() * 96,
-          color: colors[Math.floor(Math.random() * colors.length)],
-          delay: Math.random() * 0.25,
-          size: 6 + Math.random() * 8
-        }))
-        setConfetti(newConfetti)
-        
-        // Clear confetti after animation
-        setTimeout(() => setConfetti([]), 1200)
-        
-        // Save penguin immediately with local image
-        const newPenguin = {
-          id: Date.now(),
-          cid: null,
-          image: canvasRef.current.toDataURL(),
-          traits: t,
-          isOg: false,
-          timestamp: Date.now()
+      try {
+        const t = {
+          background: randomItem(TRAITS.background),
+          body: randomItem(TRAITS.body),
+          belly: randomItem(TRAITS.belly),
+          beak: randomItem(TRAITS.beak),
+          eyes: randomItem(TRAITS.eyes),
+          head: randomItem(TRAITS.head),
+          effect: { name: 'None' },
+          feet: { name: 'Default Orange', base: '#FF9F43', highlight: '#FFBE76', shadow: '#E67E22' },
+          name: randomItem(TRAITS.name),
         }
-        setSavedPenguins(prev => [newPenguin, ...prev])
-        setSharedGallery(prev => [newPenguin, ...prev])
         
-        // Upload to IPFS first, then save to shared gallery
-        uploadToIPFS(canvasRef).then(ipfsData => {
-          if (ipfsData) {
-            const updatedPenguin = { ...newPenguin, cid: ipfsData.cid, image: ipfsData.url }
-            setSavedPenguins(prev => prev.map(p => p.id === newPenguin.id ? updatedPenguin : p))
-            setSharedGallery(prev => prev.map(p => p.id === newPenguin.id ? updatedPenguin : p))
-            saveToSharedGallery(updatedPenguin)
-          } else {
-            saveToSharedGallery(newPenguin)
+        const pickEffectVariant = () => randomItem(EFFECT_VARIANTS).name
+        const hexToRgb = (hex) => {
+          const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex || '')
+          return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : null
+        }
+        const diff = (c1, c2) => {
+          if (!c1 || !c2) return 999
+          return Math.abs(c1.r - c2.r) + Math.abs(c1.g - c2.g) + Math.abs(c1.b - c2.b)
+        }
+        const contrast = (a, b) => diff(hexToRgb(a), hexToRgb(b))
+        const rerollWithLimit = (item, pool, colorGetter, target, minDiff = 80, maxAttempts = 100) => {
+          let next = item
+          for (let i = 0; i < maxAttempts && contrast(colorGetter(next), target) < minDiff; i++) {
+            next = randomItem(pool)
+          }
+          return next
+        }
+        
+        const bgColor = t.background.color
+        if (t.background.fx === 'snowflakes') t.effect = { name: 'Snow', variant: pickEffectVariant() }
+        if (t.background.fx === 'softdots') t.effect = { name: 'Stone', variant: pickEffectVariant() }
+        t.body = rerollWithLimit(t.body, TRAITS.body, (x) => x.base, bgColor)
+        const bodyBase = t.body.base
+        t.belly = rerollWithLimit(t.belly, TRAITS.belly, (x) => x.base, bodyBase)
+        t.belly = rerollWithLimit(t.belly, TRAITS.belly, (x) => x.base, bgColor)
+        
+        const coloredHeadPool = TRAITS.head.filter((h) => h.color && h.type !== 'none' && h.type !== 'crown' && h.type !== 'halo')
+        const hasHeadAccessory = t.head.type !== 'none' && t.head.type !== 'crown' && t.head.type !== 'halo'
+        if (hasHeadAccessory && t.head.color && coloredHeadPool.length) {
+          t.head = rerollWithLimit(t.head, coloredHeadPool, (x) => x.color, bodyBase)
+        }
+        
+        setTraits(t)
+        
+        setTimeout(async () => {
+          try {
+            setOgMode(false)
+            drawAgent(t, canvasRef.current)
+          } finally {
+            setIsGenerating(false)
           }
           
-          // Fetch latest gallery and update timestamp
-          fetchFreshGallery().then(gallery => {
-            setSharedGallery(gallery)
-            setLastRefresh(new Date())
+          setIsRevealing(true)
+          
+          const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#FF8C00', '#39FF14', '#FF1493']
+          const newConfetti = Array.from({ length: 40 }, (_, i) => ({
+            id: i,
+            left: 2 + Math.random() * 96,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            delay: Math.random() * 0.25,
+            size: 6 + Math.random() * 8
+          }))
+          setConfetti(newConfetti)
+          
+          setTimeout(() => setConfetti([]), 1200)
+          
+          const newPenguin = {
+            id: Date.now(),
+            cid: null,
+            image: canvasRef.current.toDataURL(),
+            traits: t,
+            isOg: false,
+            timestamp: Date.now()
+          }
+          setSavedPenguins(prev => [newPenguin, ...prev])
+          setSharedGallery(prev => [newPenguin, ...prev])
+          
+          uploadToIPFS(canvasRef).then(ipfsData => {
+            if (ipfsData) {
+              const updatedPenguin = { ...newPenguin, cid: ipfsData.cid, image: ipfsData.url }
+              setSavedPenguins(prev => prev.map(p => p.id === newPenguin.id ? updatedPenguin : p))
+              setSharedGallery(prev => prev.map(p => p.id === newPenguin.id ? updatedPenguin : p))
+              saveToSharedGallery(updatedPenguin)
+            } else {
+              saveToSharedGallery(newPenguin)
+            }
+            
+            fetchFreshGallery().then(gallery => {
+              setSharedGallery(gallery)
+              setLastRefresh(new Date())
+            })
           })
-        })
-      }, 200)
+        }, 200)
+      } catch (err) {
+        console.error('Generate failed:', err)
+        setIsGenerating(false)
+      }
     }, 1500)
   }
+
+  const effectName = (traitSet) => {
+    if (!traitSet) return 'None'
+    if (traitSet.effect?.name === 'None') return 'None'
+    const variant = traitSet.effect?.variant || 'White'
+    if (traitSet.effect?.name) return `${traitSet.effect.name} (${variant})`
+    if (traitSet.background?.fx === 'snowflakes') return `Snow (${variant})`
+    if (traitSet.background?.fx === 'softdots') return `Stone (${variant})`
+    return 'None'
+  }
+  const hasEffect = (traitSet) => effectName(traitSet) !== 'None'
 
   const save = () => {
     if (!canvasRef.current || !traits) return
@@ -1135,6 +1308,7 @@ function App() {
               {!ogMode ? (
                 <>
                   <li><span>Background</span><span>{traits.background.name}</span></li>
+                  {hasEffect(traits) && <li><span>Effect</span><span>{effectName(traits)}</span></li>}
                   <li><span>Body</span><span>{traits.body.name}</span></li>
                   <li><span>Belly</span><span>{traits.belly.name}</span></li>
                   <li><span>Beak</span><span>{traits.beak.name}</span></li>
@@ -1153,28 +1327,22 @@ function App() {
         </div>
         
         {(() => {
-          // First, deduplicate by ID (savedPenguins take precedence)
           const allById = new Map()
           
-          // Add shared gallery first
           sharedGallery.forEach(p => {
             if (!allById.has(p.id)) {
               allById.set(p.id, p)
             }
           })
           
-          // Add saved penguins (will overwrite if duplicate ID)
           savedPenguins.forEach(p => {
             allById.set(p.id, p)
           })
           
-          // Convert to array
           const allUnique = Array.from(allById.values())
           
-          // Sort by timestamp (latest first)
           const sortedPenguins = allUnique.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
           
-          // Filter by tab
           const filteredPenguins = sortedPenguins.filter(p => galleryTab === 'generated' ? !p.isOg : p.isOg)
           
           const generatedCount = sortedPenguins.filter(p => !p.isOg).length
@@ -1248,6 +1416,7 @@ function App() {
                 {!modalPenguin.isOg ? (
                   <ul>
                     <li><span>Background</span><span>{modalPenguin.traits.background.name}</span></li>
+                    {hasEffect(modalPenguin.traits) && <li><span>Effect</span><span>{effectName(modalPenguin.traits)}</span></li>}
                     <li><span>Body</span><span>{modalPenguin.traits.body.name}</span></li>
                     <li><span>Belly</span><span>{modalPenguin.traits.belly.name}</span></li>
                     <li><span>Beak</span><span>{modalPenguin.traits.beak.name}</span></li>
