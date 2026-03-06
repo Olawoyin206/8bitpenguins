@@ -5,10 +5,12 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import './Mint.css'
 
 const CONTRACT_ADDRESS = '0x74583D54B3c42ab08c8031d849B350Ccf425060c'
-const BASE_SEPOLIA_RPC = 'https://sepolia.base.org'
+const BASE_SEPOLIA_RPC = 'https://base-sepolia-rpc.publicnode.com'
+const SHARED_RPC_PROVIDER = new ethers.JsonRpcProvider(BASE_SEPOLIA_RPC)
 
 const contractABI = [
   "function mint(uint256 quantity, string[] calldata imageBase64s, string[] calldata names, string[] calldata attributesJson, uint256[] calldata rarityScores) public payable",
+  "function evolveTo3D(uint256 tokenId, string calldata imageBase64, string calldata attributesJson) external",
   "function balanceOf(address owner) public view returns (uint256)",
   "function totalSupply() public view returns (uint256)",
   "function mintActive() public view returns (bool)",
@@ -275,12 +277,12 @@ function extractMetadataFromMetadataString(raw) {
   }
 }
 
-async function fetchOnchainMetadataFromTokenURI(tokenId) {
+async function fetchOnchainMetadataFromTokenURI(tokenId, rpcProvider = SHARED_RPC_PROVIDER) {
   const providers = []
   if (typeof window !== 'undefined' && window.ethereum) {
     providers.push(new ethers.BrowserProvider(window.ethereum))
   }
-  providers.push(new ethers.JsonRpcProvider(BASE_SEPOLIA_RPC))
+  providers.push(rpcProvider)
 
   let lastError = null
 
@@ -931,17 +933,23 @@ function createVoxelPenguin(traits, THREE) {
   return group
 }
 
-function render3DSnapshot(traits) {
+export function render3DSnapshot(traits, options = {}) {
   if (!traits || !traits.background || !traits.body || !traits.beak) {
     console.error('Invalid traits:', traits)
     return null
   }
+  const size = Math.max(64, Number(options.size || 400))
+  const width = Math.max(64, Number(options.width || size))
+  const height = Math.max(64, Number(options.height || size))
+  const format = options.format || 'image/png'
+  const quality = typeof options.quality === 'number' ? options.quality : 0.82
+  const fast = Boolean(options.fast)
   
   const scene = new THREE.Scene()
   scene.background = new THREE.Color(traits.background.color || '#87CEEB')
   scene.fog = new THREE.Fog(traits.background.color, 15, 60)
   
-  const aspect = 1
+  const aspect = width / height
   const frustumSize = 13
   const camera = new THREE.OrthographicCamera(
     -frustumSize * aspect / 2,
@@ -954,11 +962,14 @@ function render3DSnapshot(traits) {
   camera.position.set(8, 6, 12)
   camera.lookAt(0, 0, 0)
   
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true })
-  renderer.setSize(400, 400)
+  const renderer = new THREE.WebGLRenderer({ antialias: !fast, alpha: true, preserveDrawingBuffer: true })
+  renderer.setSize(width, height)
   renderer.setPixelRatio(1)
-  renderer.shadowMap.enabled = true
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap
+  if ('outputColorSpace' in renderer) renderer.outputColorSpace = THREE.SRGBColorSpace
+  if ('toneMapping' in renderer) renderer.toneMapping = THREE.ACESFilmicToneMapping
+  if ('toneMappingExposure' in renderer) renderer.toneMappingExposure = 1.05
+  renderer.shadowMap.enabled = !fast
+  if (!fast) renderer.shadowMap.type = THREE.PCFShadowMap
   
   const ambient = new THREE.AmbientLight(0xffffff, 0.8)
   scene.add(ambient)
@@ -966,26 +977,28 @@ function render3DSnapshot(traits) {
   const hemiLight = new THREE.HemisphereLight(0xffffff, 0x888888, 0.4)
   scene.add(hemiLight)
   
-  const keyLight = new THREE.DirectionalLight(0xffffff, 1.2)
+  const keyLight = new THREE.DirectionalLight(0xffffff, 1.35)
   keyLight.position.set(5, 10, 15)
-  keyLight.castShadow = true
-  keyLight.shadow.mapSize.width = 1024
-  keyLight.shadow.mapSize.height = 1024
-  keyLight.shadow.camera.near = 1
-  keyLight.shadow.camera.far = 60
-  keyLight.shadow.camera.left = -15
-  keyLight.shadow.camera.right = 15
-  keyLight.shadow.camera.top = 15
-  keyLight.shadow.camera.bottom = -15
-  keyLight.shadow.radius = 1
-  keyLight.shadow.bias = -0.001
+  if (!fast) {
+    keyLight.castShadow = true
+    keyLight.shadow.mapSize.width = 1536
+    keyLight.shadow.mapSize.height = 1536
+    keyLight.shadow.camera.near = 1
+    keyLight.shadow.camera.far = 60
+    keyLight.shadow.camera.left = -15
+    keyLight.shadow.camera.right = 15
+    keyLight.shadow.camera.top = 15
+    keyLight.shadow.camera.bottom = -15
+    keyLight.shadow.radius = 1.6
+    keyLight.shadow.bias = -0.001
+  }
   scene.add(keyLight)
   
-  const fillLight = new THREE.DirectionalLight(0xffffff, 0.2)
+  const fillLight = new THREE.DirectionalLight(0xdee8ff, 0.28)
   fillLight.position.set(8, 8, 5)
   scene.add(fillLight)
   
-  const rimLight = new THREE.DirectionalLight(0xffffff, 0.3)
+  const rimLight = new THREE.DirectionalLight(0xfff3da, 0.42)
   rimLight.position.set(0, 5, -15)
   scene.add(rimLight)
   
@@ -995,16 +1008,18 @@ function render3DSnapshot(traits) {
   penguinPivot.add(penguin)
   scene.add(penguinPivot)
   
-  const groundGeo = new THREE.PlaneGeometry(60, 60)
-  const groundMat = new THREE.ShadowMaterial({ opacity: 0.35 })
-  const ground = new THREE.Mesh(groundGeo, groundMat)
-  ground.rotation.x = -Math.PI / 2
-  ground.position.y = -5
-  ground.receiveShadow = true
-  scene.add(ground)
+  if (!fast) {
+    const groundGeo = new THREE.PlaneGeometry(60, 60)
+    const groundMat = new THREE.ShadowMaterial({ opacity: 0.35 })
+    const ground = new THREE.Mesh(groundGeo, groundMat)
+    ground.rotation.x = -Math.PI / 2
+    ground.position.y = -5
+    ground.receiveShadow = true
+    scene.add(ground)
+  }
   
   renderer.render(scene, camera)
-  const dataUrl = renderer.domElement.toDataURL('image/png')
+  const dataUrl = renderer.domElement.toDataURL(format, quality)
   
   renderer.dispose()
   
@@ -1616,33 +1631,13 @@ function drawAgent(traits, canvas) {
   rect(8, 39, 31, 39, 'rgba(0,0,0,0.3)')
 }
 
-function NFTGalleryItem({ tokenId, onEvolve }) {
-  const [metadata, setMetadata] = useState({ name: '', image: '', attributes: [] })
-  const [loadingOnchain, setLoadingOnchain] = useState(false)
-  const [onchainError, setOnchainError] = useState('')
+function NFTGalleryItem({
+  tokenId,
+  metadata = { name: '', image: '', attributes: [], rarityRank: null, rarityScore: null },
+  loadingOnchain = false,
+  onchainError = '',
+}) {
   const [showTraits, setShowTraits] = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-    setLoadingOnchain(true)
-    setOnchainError('')
-    fetchOnchainMetadataFromTokenURI(tokenId)
-      .then((meta) => {
-        if (!cancelled) setMetadata(meta)
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          console.error('On-chain image fetch error:', err)
-          setOnchainError('Failed to load on-chain image')
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingOnchain(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [tokenId])
 
   useEffect(() => {
     setShowTraits(false)
@@ -1681,7 +1676,7 @@ function NFTGalleryItem({ tokenId, onEvolve }) {
             rel="noopener noreferrer"
             className="mint-evolve-btn"
           >
-            View
+            View ↗
           </a>
         </div>
       </div>
@@ -1724,10 +1719,12 @@ function Mint() {
   const [mintedNFT, setMintedNFT] = useState(null)
   const [allNFTs, setAllNFTs] = useState([])
   const [metadataRefreshKey, setMetadataRefreshKey] = useState(0)
+  const [metadataCache, setMetadataCache] = useState({})
   const [activeTab, setActiveTab] = useState('all')
   const [myPage, setMyPage] = useState(1)
   const [allPage, setAllPage] = useState(1)
-  const ITEMS_PER_PAGE = 8
+  const [isLoadingNfts, setIsLoadingNfts] = useState(false)
+  const ITEMS_PER_PAGE = 10
   const previewCanvasRef = useRef(null)
   const mintedCanvasRef = useRef(null)
   const lastKnownSupplyRef = useRef(0)
@@ -1745,27 +1742,43 @@ function Mint() {
     let cancelled = false
     const provider = new ethers.JsonRpcProvider(BASE_SEPOLIA_RPC)
     const contract = new ethers.Contract(CONTRACT_ADDRESS, contractABI, provider)
+    let inFlight = false
 
-    const pollSupply = async () => {
+    const syncSupply = async () => {
+      if (inFlight || cancelled) return
+      inFlight = true
       try {
         const latestSupply = Number(await contract.totalSupply())
         if (!cancelled && latestSupply !== lastKnownSupplyRef.current) {
           lastKnownSupplyRef.current = latestSupply
           setTotalSupply(latestSupply)
-          fetchContractData(account || null)
+          fetchContractData(account || null, { silent: true, skipOwnershipScan: true })
+          if (account) {
+            setTimeout(() => {
+              if (!cancelled) fetchContractData(account, { silent: true })
+            }, 250)
+          }
         }
       } catch (err) {
         if (!cancelled) {
-          console.error('Supply polling error:', err)
+          console.error('Supply sync error:', err)
         }
+      } finally {
+        inFlight = false
       }
     }
 
-    pollSupply()
-    const intervalId = setInterval(pollSupply, 5000)
+    const onBlock = () => {
+      syncSupply()
+    }
+
+    syncSupply()
+    provider.on('block', onBlock)
+    const intervalId = setInterval(syncSupply, 8000)
 
     return () => {
       cancelled = true
+      provider.off('block', onBlock)
       clearInterval(intervalId)
     }
   }, [account])
@@ -1829,7 +1842,10 @@ function Mint() {
     setPreviewTraits(traits)
   }
 
-  const fetchContractData = async (address) => {
+  const fetchContractData = async (address, options = {}) => {
+    const silent = Boolean(options?.silent)
+    const skipOwnershipScan = Boolean(options?.skipOwnershipScan)
+    if (!silent) setIsLoadingNfts(true)
     try {
       const provider = new ethers.JsonRpcProvider(BASE_SEPOLIA_RPC)
       const contract = new ethers.Contract(CONTRACT_ADDRESS, contractABI, provider)
@@ -1843,7 +1859,7 @@ function Mint() {
       setTotalSupply(Number(supply))
       setMaxSupply(Number(maxS))
       setMaxPerWallet(Number(maxW))
-      setStatus(mintActive ? '' : 'Minting not active')
+      if (!silent) setStatus(mintActive ? '' : 'Minting not active')
       
       if (address) {
         const [bal, minted] = await Promise.all([
@@ -1867,8 +1883,15 @@ function Mint() {
 
         const normalizedAddress = address ? address.toLowerCase() : null
         setAllNFTs(dedupedAllNfts)
+        setMetadataCache((prev) => {
+          const keep = {}
+          for (const nft of dedupedAllNfts) {
+            if (prev[nft.tokenId]) keep[nft.tokenId] = prev[nft.tokenId]
+          }
+          return keep
+        })
 
-        if (address) {
+        if (address && !skipOwnershipScan) {
           const ownedNfts = []
           const CHUNK = 8
           for (let i = 0; i < dedupedAllNfts.length; i += CHUNK) {
@@ -1876,11 +1899,24 @@ function Mint() {
             const ownerResults = await Promise.allSettled(
               batch.map((nft) => contract.ownerOf(nft.tokenId))
             )
+            const retryIndices = []
             ownerResults.forEach((result, idx) => {
-              if (result.status === 'fulfilled' && result.value.toLowerCase() === normalizedAddress) {
-                ownedNfts.push(batch[idx])
+              if (result.status === 'fulfilled') {
+                if (result.value.toLowerCase() === normalizedAddress) ownedNfts.push(batch[idx])
+              } else {
+                retryIndices.push(idx)
               }
             })
+            if (retryIndices.length > 0) {
+              const retryResults = await Promise.allSettled(
+                retryIndices.map((idx) => contract.ownerOf(batch[idx].tokenId))
+              )
+              retryResults.forEach((result, rIdx) => {
+                if (result.status === 'fulfilled' && result.value.toLowerCase() === normalizedAddress) {
+                  ownedNfts.push(batch[retryIndices[rIdx]])
+                }
+              })
+            }
           }
           const dedupedOwnedNfts = Array.from(
             new Map(ownedNfts.map((nft) => [nft.tokenId, nft])).values()
@@ -1890,11 +1926,14 @@ function Mint() {
       } else {
         setAllNFTs([])
         if (address) setMyNFTs([])
+        setMetadataCache({})
       }
       setMetadataRefreshKey((k) => k + 1)
     } catch (err) {
       console.error('Contract error:', err)
-      setStatus('Error: ' + (err.message?.slice(0, 30) || 'Check network'))
+      if (!silent) setStatus('Error: ' + (err.message?.slice(0, 30) || 'Check network'))
+    } finally {
+      if (!silent) setIsLoadingNfts(false)
     }
   }
 
@@ -1939,7 +1978,7 @@ function Mint() {
             chainId: '0x14a34',
             chainName: 'Base Sepolia',
             nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
-            rpcUrls: ['https://sepolia.base.org'],
+            rpcUrls: ['https://base-sepolia-rpc.publicnode.com', 'https://sepolia.base.org'],
             blockExplorerUrls: ['https://sepolia.basescan.org'],
           }],
         })
@@ -2006,6 +2045,11 @@ function Mint() {
       setMyPage(1)
       
       fetchContractData(account)
+      try {
+        const payload = { ts: Date.now(), account: String(account || '').toLowerCase(), source: 'mint' }
+        localStorage.setItem('penguin:nft-updated', JSON.stringify(payload))
+        window.dispatchEvent(new CustomEvent('penguin:nft-updated', { detail: payload }))
+      } catch {}
     } catch (err) {
       setStatus('Error: ' + (err.reason || err.message?.slice(0, 50)))
     } finally {
@@ -2018,13 +2062,13 @@ function Mint() {
   return (
     <div className="mint-page">
       {/* Hero Section */}
-      <div className="mint-hero">
-        <h1>8bit PENGUINS</h1>
-        <p>COLLECT • MINT •</p>
+      <header>
+        <h1>8bit Penguins</h1>
+        <p>COLLECT - MINT</p>
         <div className="header-links">
           <a href="https://x.com/8bitpenguins" target="_blank" rel="noopener noreferrer" className="x-btn">Follow us on X</a>
         </div>
-      </div>
+      </header>
 
         {/* Two Column Layout */}
         <div className="mint-layout">
@@ -2143,6 +2187,9 @@ function Mint() {
                   currentPage={allPage}
                   setPage={setAllPage}
                   refreshKey={metadataRefreshKey}
+                  metadataCache={metadataCache}
+                  setMetadataCache={setMetadataCache}
+                  isLoading={isLoadingNfts}
                 />
               )}
               {account && activeTab === 'my' && (
@@ -2151,6 +2198,9 @@ function Mint() {
                   currentPage={myPage}
                   setPage={setMyPage}
                   refreshKey={metadataRefreshKey}
+                  metadataCache={metadataCache}
+                  setMetadataCache={setMetadataCache}
+                  isLoading={isLoadingNfts}
                 />
               )}
             </div>
@@ -2160,9 +2210,11 @@ function Mint() {
   )
 }
 
-function GalleryWithPagination({ nfts, currentPage, setPage, refreshKey }) {
-  const ITEMS_PER_PAGE = 8
+function GalleryWithPagination({ nfts, currentPage, setPage, refreshKey, metadataCache, setMetadataCache, isLoading = false }) {
+  const ITEMS_PER_PAGE = 10
   const totalPages = Math.max(1, Math.ceil(nfts.length / ITEMS_PER_PAGE))
+  const [loadingMap, setLoadingMap] = useState({})
+  const [errorMap, setErrorMap] = useState({})
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -2172,6 +2224,57 @@ function GalleryWithPagination({ nfts, currentPage, setPage, refreshKey }) {
 
   const startIdx = (currentPage - 1) * ITEMS_PER_PAGE
   const paginatedNFTs = nfts.slice(startIdx, startIdx + ITEMS_PER_PAGE)
+  const tokenIds = paginatedNFTs.map((n) => n.tokenId)
+  const tokenIdsKey = tokenIds.join(',')
+
+  useEffect(() => {
+    let cancelled = false
+    if (tokenIds.length === 0) return
+    const idsToFetch = tokenIds.filter((id) => !metadataCache[id])
+    if (idsToFetch.length === 0) return
+
+    setLoadingMap((prev) => {
+      const next = { ...prev }
+      idsToFetch.forEach((id) => {
+        next[id] = true
+      })
+      return next
+    })
+
+    ;(async () => {
+      const CHUNK = 4
+      for (let i = 0; i < idsToFetch.length; i += CHUNK) {
+        const batch = idsToFetch.slice(i, i + CHUNK)
+        const results = await Promise.allSettled(
+          batch.map((id) => fetchOnchainMetadataFromTokenURI(id, SHARED_RPC_PROVIDER))
+        )
+        if (cancelled) return
+        const nextMeta = {}
+        const nextErr = {}
+        const nextLoading = {}
+        results.forEach((result, idx) => {
+          const id = batch[idx]
+          if (result.status === 'fulfilled') {
+            nextMeta[id] = result.value
+            nextErr[id] = ''
+          } else {
+            console.error('On-chain image fetch error:', result.reason)
+            nextErr[id] = 'Failed to load on-chain image'
+          }
+          nextLoading[id] = false
+        })
+        setMetadataCache((prev) => ({ ...prev, ...nextMeta }))
+        setErrorMap((prev) => ({ ...prev, ...nextErr }))
+        setLoadingMap((prev) => ({ ...prev, ...nextLoading }))
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [tokenIdsKey, refreshKey, metadataCache, setMetadataCache])
+
+  if (isLoading && nfts.length === 0) return <div className="mint-empty">Loading NFTs...</div>
 
   if (nfts.length === 0) {
     return <div className="mint-empty">No NFTs found</div>
@@ -2184,6 +2287,9 @@ function GalleryWithPagination({ nfts, currentPage, setPage, refreshKey }) {
           <NFTGalleryItem
             key={`${nft.tokenId}-${refreshKey}`}
             tokenId={nft.tokenId}
+            metadata={metadataCache[nft.tokenId]}
+            loadingOnchain={Boolean(loadingMap[nft.tokenId])}
+            onchainError={errorMap[nft.tokenId] || ''}
           />
         ))}
       </div>
@@ -2211,5 +2317,8 @@ function GalleryWithPagination({ nfts, currentPage, setPage, refreshKey }) {
 }
 
 export default Mint
+
+
+
 
 

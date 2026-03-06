@@ -10,12 +10,11 @@ const EFFECT_VARIANTS = [
   { name: 'Golden', weight: 1 },
 ]
 
-function convertToPenguinStyle(imageSrc, canvas) {
+function convertToPenguinStyle(imageSrc, canvas, strength = 'high') {
   return new Promise((resolve) => {
     const img = new Image()
     img.crossOrigin = 'anonymous'
     img.onload = () => {
-      const ctx = canvas.getContext('2d')
       canvas.width = 400
       canvas.height = 400
       
@@ -104,7 +103,7 @@ function convertToPenguinStyle(imageSrc, canvas) {
       const faceShadow = adj(face, -40)
       const shirtHighlight = adj(shirt, 50)
       const shirtShadow = adj(shirt, -50)
-      
+
       const traits = {
         background: { name: 'Custom', color: bg.hex },
         body: { name: 'Custom', base: shirt.hex, highlight: shirtHighlight.hex, shadow: shirtShadow.hex },
@@ -114,136 +113,10 @@ function convertToPenguinStyle(imageSrc, canvas) {
         head: { name: 'None', type: 'none', color: '#323232' },
         feet: { name: 'Default Orange', base: '#FF9F43', highlight: '#FFBE76', shadow: '#E67E22' },
         cheeks: { name: 'Pink', base: '#FFB6C1', highlight: '#FFD1D7', shadow: '#FF91A4' },
+        effect: { name: 'None' },
+        name: randomItem(TRAITS.name),
       }
-      
-      ctx.fillStyle = bg.hex
-      ctx.fillRect(0, 0, 400, 400)
-      
-      const scale = 9
-      const offsetX = 2
-      const offsetY = 1
-      const set = (x, y, color) => {
-        if (x >= 0 && x < 40 && y >= 0 && y < 40) {
-          ctx.fillStyle = color
-          ctx.fillRect((x + offsetX) * scale, (y + offsetY) * scale, scale, scale)
-        }
-      }
-      
-      const rect = (x1, y1, x2, y2, color) => {
-        for (let y = y1; y <= y2; y++) {
-          for (let x = x1; x <= x2; x++) set(x, y, color)
-        }
-      }
-      
-      const cx = 20
-      
-      rect(8, 25, 31, 38, shirt.hex)
-      rect(7, 26, 32, 37, shirt.hex)
-      rect(6, 27, 33, 36, shirt.hex)
-      rect(6, 28, 33, 35, shirt.hex)
-      rect(7, 29, 32, 34, shirt.hex)
-      rect(8, 30, 31, 33, shirt.hex)
-      rect(9, 31, 30, 32, shirt.hex)
-      rect(10, 32, 29, 32, shirt.hex)
-      rect(10, 26, 29, 27, shirtHighlight.hex)
-      rect(9, 28, 30, 28, shirtHighlight.hex)
-      rect(10, 30, 29, 30, shirtHighlight.hex)
-      rect(11, 32, 28, 32, shirtHighlight.hex)
-      rect(8, 38, 31, 38, shirtShadow.hex)
-      rect(7, 37, 32, 37, shirtShadow.hex)
-      rect(6, 36, 33, 36, shirtShadow.hex)
-      
-      rect(12, 28, 27, 38, face.hex)
-      rect(11, 29, 28, 37, face.hex)
-      rect(11, 30, 28, 36, face.hex)
-      rect(12, 31, 27, 35, face.hex)
-      rect(13, 32, 26, 34, face.hex)
-      rect(14, 33, 25, 34, face.hex)
-      rect(15, 34, 24, 35, face.hex)
-      rect(14, 29, 25, 30, faceHighlight.hex)
-      rect(14, 31, 25, 32, faceHighlight.hex)
-      rect(15, 33, 24, 34, faceHighlight.hex)
-      
-      rect(10, 8, 29, 26, shirt.hex)
-      rect(9, 9, 30, 25, shirt.hex)
-      rect(8, 10, 31, 24, shirt.hex)
-      rect(8, 11, 31, 23, shirt.hex)
-      rect(9, 12, 30, 22, shirt.hex)
-      rect(10, 13, 29, 21, shirt.hex)
-      rect(11, 14, 28, 20, shirt.hex)
-      rect(12, 15, 27, 19, shirt.hex)
-      rect(13, 16, 26, 18, shirt.hex)
-      rect(14, 17, 25, 18, shirt.hex)
-      rect(12, 9, 27, 10, shirtHighlight.hex)
-      rect(11, 11, 28, 12, shirtHighlight.hex)
-      rect(12, 13, 27, 14, shirtHighlight.hex)
-      rect(13, 15, 26, 16, shirtHighlight.hex)
-      rect(14, 17, 25, 17, shirtHighlight.hex)
-      rect(10, 26, 29, 26, shirtShadow.hex)
-      rect(9, 25, 30, 25, shirtShadow.hex)
-      rect(8, 24, 31, 24, shirtShadow.hex)
-      
-      rect(12, 14, 27, 24, face.hex)
-      rect(11, 15, 28, 23, face.hex)
-      rect(12, 16, 27, 22, face.hex)
-      rect(13, 17, 26, 21, face.hex)
-      rect(14, 18, 25, 20, face.hex)
-      rect(15, 19, 24, 20, face.hex)
-      rect(14, 15, 25, 16, faceHighlight.hex)
-      rect(14, 17, 25, 18, faceHighlight.hex)
-      rect(15, 19, 24, 20, faceHighlight.hex)
-      
-      const eyeY = 17
-      
-      rect(cx - 5, eyeY, cx - 3, eyeY + 2, '#0A0A0A')
-      rect(cx - 6, eyeY + 1, cx - 2, eyeY + 2, '#0A0A0A')
-      rect(cx + 3, eyeY, cx + 5, eyeY + 2, '#0A0A0A')
-      rect(cx + 2, eyeY + 1, cx + 6, eyeY + 2, '#0A0A0A')
-      
-      rect(cx - 7, 14, cx - 3, 14, shirtShadow.hex)
-      rect(cx + 3, 14, cx + 7, 14, shirtShadow.hex)
-      rect(cx - 8, 13, cx - 4, 13, shirtShadow.hex)
-      rect(cx + 4, 13, cx + 8, 13, shirtShadow.hex)
-      
-      rect(cx - 2, 21, cx + 1, 23, '#FF9F43')
-      rect(cx - 1, 20, cx, 22, '#FF9F43')
-      rect(cx - 1, 22, cx, 22, '#E67E22')
-      
-      rect(cx - 9, 19, cx - 7, 21, '#FFB6C1')
-      rect(cx + 7, 19, cx + 9, 21, '#FFB6C1')
-      rect(cx - 8, 20, cx - 7, 20, '#FFC5CD')
-      rect(cx + 7, 20, cx + 8, 20, '#FFC5CD')
-      
-      rect(2, 26, 5, 32, shirt.hex)
-      rect(1, 27, 6, 31, shirt.hex)
-      rect(2, 28, 5, 30, shirtHighlight.hex)
-      rect(34, 26, 37, 32, shirt.hex)
-      rect(33, 27, 38, 31, shirt.hex)
-      rect(34, 28, 37, 30, shirtHighlight.hex)
-      
-      rect(10, 37, 14, 38, traits.feet.base)
-      rect(9, 38, 15, 38, traits.feet.base)
-      rect(11, 36, 13, 37, traits.feet.highlight)
-      rect(10, 38, 13, 38, traits.feet.shadow)
-      rect(8, 38, 10, 39, traits.feet.base)
-      rect(9, 38, 10, 39, traits.feet.highlight)
-      rect(12, 38, 14, 39, traits.feet.base)
-      rect(13, 38, 14, 39, traits.feet.highlight)
-      rect(25, 37, 29, 38, traits.feet.base)
-      rect(24, 38, 30, 38, traits.feet.base)
-      rect(26, 36, 28, 37, traits.feet.highlight)
-      rect(25, 38, 28, 38, traits.feet.shadow)
-      rect(25, 38, 27, 39, traits.feet.base)
-      rect(26, 38, 27, 39, traits.feet.highlight)
-      rect(29, 38, 31, 39, traits.feet.base)
-      rect(24, 39, 25, 40, traits.feet.highlight)
-      rect(26, 39, 28, 40, traits.feet.base)
-      rect(27, 39, 28, 40, traits.feet.highlight)
-      rect(29, 39, 31, 39, traits.feet.base)
-      rect(30, 39, 31, 39, traits.feet.highlight)
-      
-      rect(8, 39, 31, 39, 'rgba(0,0,0,0.3)')
-      
+
       resolve(traits)
     }
     img.src = imageSrc
@@ -914,7 +787,8 @@ function drawAgent(traits, canvas) {
 function App() {
   const [traits, setTraits] = useState(null)
   const [status, setStatus] = useState('')
-  const [ogMode, setOgMode] = useState(false)
+  const [mode, setMode] = useState('generate')
+  const ogMode = mode === 'og'
   const [isGenerating, setIsGenerating] = useState(false)
   const [isRevealing, setIsRevealing] = useState(false)
   const [confetti, setConfetti] = useState([])
@@ -942,6 +816,7 @@ function App() {
   const [galleryTab, setGalleryTab] = useState('generated')
   const [cooldown, setCooldown] = useState(0)
   const [uploadCooldown, setUploadCooldown] = useState(0)
+  const [transformStrength, setTransformStrength] = useState('high')
   const [lastRefresh, setLastRefresh] = useState(null)
   const itemsPerPage = 20
   const fileInputRef = useRef(null)
@@ -984,8 +859,6 @@ function App() {
     }
   }, [traits, ogMode, hasGenerated])
 
-  const [mode, setMode] = useState('generate')
-
   const handleImageUpload = async (e) => {
     const file = e.target.files[0]
     if (!file || uploadCooldown > 0) return
@@ -1001,11 +874,12 @@ function App() {
     reader.onload = (event) => {
       const img = new Image()
       img.onload = async () => {
-        setOgMode(true)
+        setMode('og')
         setHasOgGenerated(true)
         
         setTimeout(async () => {
-          const extractedTraits = await convertToPenguinStyle(event.target.result, canvasRef.current)
+          const extractedTraits = await convertToPenguinStyle(event.target.result, canvasRef.current, transformStrength)
+            drawAgent(extractedTraits, canvasRef.current)
             setTraits(extractedTraits)
             setUploadedImage(event.target.result)
             setIsGenerating(false)
@@ -1114,7 +988,7 @@ function App() {
         
         setTimeout(async () => {
           try {
-            setOgMode(false)
+            setMode('generate')
             drawAgent(t, canvasRef.current)
           } finally {
             setIsGenerating(false)
@@ -1224,7 +1098,7 @@ function App() {
             >
               Generate
             </button>
-            <button 
+                <button 
               className={`tab ${mode === 'og' ? 'active' : ''}`}
               onClick={() => { setMode('og'); setTraits(null); setHasGenerated(false); setHasOgGenerated(false); }}
             >
@@ -1279,6 +1153,16 @@ function App() {
               <label htmlFor="og-upload" className={`btn white ${uploadCooldown > 0 ? 'disabled' : ''}`}>
                 {uploadCooldown > 0 ? `Wait ${uploadCooldown}s` : 'Upload Your PFP'}
               </label>
+              <select
+                className="btn white"
+                value={transformStrength}
+                onChange={(e) => setTransformStrength(e.target.value)}
+                disabled={isGenerating}
+              >
+                <option value="low">Similarity: Low</option>
+                <option value="medium">Similarity: Medium</option>
+                <option value="high">Similarity: High</option>
+              </select>
               <button className="btn" onClick={save} disabled={!traits}>Save</button>
             </div>
           )}
@@ -1319,7 +1203,7 @@ function App() {
               ) : (
                 <>
                   <li><span>Style</span><span>Custom OG</span></li>
-                  <li><span>Badge</span><span>              Transform PFP</span></li>
+                  <li><span>Badge</span><span>Transform PFP</span></li>
                 </>
               )}
             </ul>

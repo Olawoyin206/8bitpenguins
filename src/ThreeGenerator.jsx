@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
@@ -125,36 +125,54 @@ function createVoxelPenguin(traits, THREE) {
   const belly = traits.belly.base
   const bellyHighlight = traits.belly.highlight
   const beak = traits.beak.base
+  const beakHighlight = traits.beak.highlight
   const beakShadow = traits.beak.shadow
   
   const cx = 20
   const voxelSize = 0.55
   const voxelScale = 0.15
+  let accessoryMode = false
+  const materialCache = new Map()
+  const geometryCache = new Map()
   
-  const mat = (color) => new THREE.MeshStandardMaterial({
-    color,
-    roughness: 0.9,
-    metalness: 0.0,
-    flatShading: true,
-  })
+  const mat = (color) => {
+    if (!materialCache.has(color)) {
+      materialCache.set(
+        color,
+        new THREE.MeshStandardMaterial({
+          color,
+          roughness: 0.9,
+          metalness: 0.0,
+          flatShading: true,
+        })
+      )
+    }
+    return materialCache.get(color)
+  }
+
+  const geo = (depth) => {
+    if (!geometryCache.has(depth)) {
+      geometryCache.set(depth, new RoundedBoxGeometry(voxelSize, voxelSize, depth * voxelScale, 1, 0.05))
+    }
+    return geometryCache.get(depth)
+  }
   
-  const voxel = (x, y, z, color, depth = 4) => {
-    const geo = new RoundedBoxGeometry(voxelSize, voxelSize, depth * voxelScale, 2, 0.05)
-    const mesh = new THREE.Mesh(geo, mat(color))
+  const voxel = (x, y, z, color, depth = 4, frontOffset = false, zNudge = 0, castsShadow = true) => {
+    const mesh = new THREE.Mesh(geo(depth), mat(color))
     mesh.position.set(
       (x - cx) * voxelSize * 0.5, 
       (20 - y) * voxelSize * 0.5, 
-      (z - 1) * voxelSize * 0.4
+      (z - 1) * voxelSize * 0.4 + (frontOffset ? (depth * voxelScale * 0.5) + 0.22 : 0) + zNudge
     )
-    mesh.castShadow = true
-    mesh.receiveShadow = true
+    mesh.castShadow = castsShadow
+    mesh.receiveShadow = false
     return mesh
   }
 
   const rect = (x1, y1, x2, y2, color, depth = 4, z = 1) => {
     for (let y = y1; y <= y2; y++) {
       for (let x = x1; x <= x2; x++) {
-        group.add(voxel(x, y, z, color, depth))
+        group.add(voxel(x, y, z, color, depth, false, accessoryMode ? 0.2 : 0, !accessoryMode))
       }
     }
   }
@@ -162,16 +180,7 @@ function createVoxelPenguin(traits, THREE) {
   const rectFront = (x1, y1, x2, y2, color, depth = 4, z = 1) => {
     for (let y = y1; y <= y2; y++) {
       for (let x = x1; x <= x2; x++) {
-        const geo = new RoundedBoxGeometry(voxelSize, voxelSize, depth * voxelScale, 2, 0.05)
-        const mesh = new THREE.Mesh(geo, mat(color))
-        mesh.position.set(
-          (x - cx) * voxelSize * 0.5, 
-          (20 - y) * voxelSize * 0.5, 
-          (z - 1) * voxelSize * 0.4 + (depth * voxelScale * 0.5) + 0.08
-        )
-        mesh.castShadow = true
-        mesh.receiveShadow = true
-        group.add(mesh)
+        group.add(voxel(x, y, z, color, depth, true, accessoryMode ? 0.2 : 0, !accessoryMode))
       }
     }
   }
@@ -388,6 +397,7 @@ function createVoxelPenguin(traits, THREE) {
   const headMid = mixHex(headColor, headShadow, 0.45)
   const headDeep = mixHex(headShadow, '#000000', 0.35)
   const clothFold = mixHex(headColor, headShadow, 0.25)
+  accessoryMode = true
   if (traits.head.type === 'crown') {
     const crownStyle = traits.head.style || 'imperial'
     if (crownStyle === 'elegant') {
@@ -536,6 +546,7 @@ function createVoxelPenguin(traits, THREE) {
     rect(cx + 9, 7, cx + 10, 8, headDeep, 20)
     rect(cx - 11, 7, cx - 10, 8, headDeep, 20)
   }
+  accessoryMode = false
   
   // FLIPPERS - reduced depth
   rect(2, 26, 5, 32, body, 4)
@@ -619,6 +630,10 @@ function createVoxelPenguin(traits, THREE) {
 }
  
 function ThreeGenerator() {
+  const location = useLocation()
+  const prefillTraits = location.state?.prefillTraits
+  const fromTokenId = location.state?.fromTokenId
+  const fromName = location.state?.fromName
   const containerRef = useRef(null)
   const [traits, setTraits] = useState({
     body: { name: 'Classic', base: '#2C3E50', highlight: '#34495E', shadow: '#1A252F' },
@@ -629,22 +644,34 @@ function ThreeGenerator() {
     background: { name: 'Sky Blue', color: '#D4E6F1' },
   })
   const [isGenerating, setIsGenerating] = useState(false)
+  const [hasGenerated, setHasGenerated] = useState(false)
+  const [sceneReady, setSceneReady] = useState(false)
+  const [idleMatrix] = useState(() =>
+    Array.from({ length: 12 }).map((_, i) => ({
+      id: i,
+      chars: Array.from({ length: 25 }).map(() => (Math.random() > 0.5 ? '1' : '0')).join(''),
+    }))
+  )
   const sceneRef = useRef(null)
   const rendererRef = useRef(null)
   const frameRef = useRef(null)
   const penguinRef = useRef(null)
   const cameraRef = useRef(null)
+  const controlsRef = useRef(null)
+  const generateTimeoutRef = useRef(null)
   const isDragging = useRef(false)
   const lastMouseX = useRef(0)
   
   useEffect(() => {
+    if (!hasGenerated) return
     const container = containerRef.current
     if (!container) return
+    setSceneReady(false)
     
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
     const canvasSize = isMobile ? 320 : 420
-    const pixelRatio = isMobile ? 1 : Math.min(window.devicePixelRatio, 1.5)
-    const shadowMapSize = isMobile ? 1024 : 2048
+    const pixelRatio = isMobile ? 1 : Math.min(window.devicePixelRatio, 1.75)
+    const shadowMapSize = isMobile ? 1024 : 1536
     
     const scene = new THREE.Scene()
     scene.background = new THREE.Color(traits.background.color)
@@ -669,8 +696,9 @@ function ThreeGenerator() {
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
     renderer.setSize(canvasSize, canvasSize)
     renderer.setPixelRatio(pixelRatio)
+    renderer.outputColorSpace = THREE.SRGBColorSpace
     renderer.shadowMap.enabled = true
-    renderer.shadowMap.type = isMobile ? THREE.BasicShadowMap : THREE.PCFSoftShadowMap
+    renderer.shadowMap.type = isMobile ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap
     container.appendChild(renderer.domElement)
     rendererRef.current = renderer
     
@@ -685,6 +713,7 @@ function ThreeGenerator() {
     controls.autoRotate = false
     controls.target.set(0, 0, 0)
     controls.update()
+    controlsRef.current = controls
     
     // Mouse/touch drag to rotate penguin
     const onPointerDown = (e) => {
@@ -721,7 +750,7 @@ function ThreeGenerator() {
     const hemiLight = new THREE.HemisphereLight(0xffffff, 0x888888, 0.4)
     scene.add(hemiLight)
     
-    // Key light - facing the penguin, shadow at back
+    // Key light - with shadow
     const keyLight = new THREE.DirectionalLight(0xffffff, 1.2)
     keyLight.position.set(5, 10, 15)
     keyLight.castShadow = true
@@ -733,8 +762,9 @@ function ThreeGenerator() {
     keyLight.shadow.camera.right = 15
     keyLight.shadow.camera.top = 15
     keyLight.shadow.camera.bottom = -15
-    keyLight.shadow.radius = 1
-    keyLight.shadow.bias = -0.001
+    keyLight.shadow.radius = 1.5
+    keyLight.shadow.bias = -0.0005
+    keyLight.shadow.normalBias = 0.04
     scene.add(keyLight)
     
     // Fill light - soften shadows
@@ -747,15 +777,13 @@ function ThreeGenerator() {
     rimLight.position.set(0, 5, -15)
     scene.add(rimLight)
     
-    // Add penguin pivot for rotation
+    // Add penguin pivot for rotation; model is added in traits effect
     const penguinPivot = new THREE.Group()
     penguinPivot.position.set(0, 0.5, 0)
-    const penguin = createVoxelPenguin(traits, THREE)
-    penguinPivot.add(penguin)
     scene.add(penguinPivot)
     penguinRef.current = penguinPivot
     
-    // Ground plane with shadow
+    // Ground plane receives dynamic shadow
     const groundGeo = new THREE.PlaneGeometry(60, 60)
     const groundMat = new THREE.ShadowMaterial({ opacity: 0.35 })
     const ground = new THREE.Mesh(groundGeo, groundMat)
@@ -770,8 +798,10 @@ function ThreeGenerator() {
       renderer.render(scene, camera)
     }
     animate()
+    setSceneReady(true)
     
     return () => {
+      setSceneReady(false)
       if (frameRef.current) cancelAnimationFrame(frameRef.current)
       renderer.domElement.removeEventListener('mousedown', onPointerDown)
       renderer.domElement.removeEventListener('mousemove', onPointerMove)
@@ -780,69 +810,79 @@ function ThreeGenerator() {
       renderer.domElement.removeEventListener('touchstart', onPointerDown)
       renderer.domElement.removeEventListener('touchmove', onPointerMove)
       renderer.domElement.removeEventListener('touchend', onPointerUp)
+      if (controlsRef.current) controlsRef.current.dispose()
       if (rendererRef.current && container.contains(rendererRef.current.domElement)) {
         container.removeChild(rendererRef.current.domElement)
       }
     }
-  }, [traits])
+  }, [hasGenerated])
+
+  useEffect(() => {
+    if (!hasGenerated || !sceneRef.current || !penguinRef.current) return
+    while (penguinRef.current.children.length > 0) {
+      penguinRef.current.remove(penguinRef.current.children[0])
+    }
+    const newPenguin = createVoxelPenguin(traits, THREE)
+    penguinRef.current.add(newPenguin)
+    sceneRef.current.background = new THREE.Color(traits.background.color)
+    sceneRef.current.fog = new THREE.Fog(traits.background.color, 15, 60)
+    requestAnimationFrame(() => setIsGenerating(false))
+  }, [traits, hasGenerated])
+
+  useEffect(() => {
+    if (sceneReady && isGenerating) setIsGenerating(false)
+  }, [sceneReady, isGenerating])
   
   const generate = () => {
+    if (generateTimeoutRef.current) {
+      clearTimeout(generateTimeoutRef.current)
+      generateTimeoutRef.current = null
+    }
     setIsGenerating(true)
-    setTimeout(() => {
-      const t = {
-        body: randomItem(TRAITS.body),
-        belly: randomItem(TRAITS.belly),
-        beak: randomItem(TRAITS.beak),
-        eyes: randomItem(TRAITS.eyes),
-        head: randomItem(TRAITS.head),
-        background: randomItem(TRAITS.background),
+    const t = {
+      body: randomItem(TRAITS.body),
+      belly: randomItem(TRAITS.belly),
+      beak: randomItem(TRAITS.beak),
+      eyes: randomItem(TRAITS.eyes),
+      head: randomItem(TRAITS.head),
+      background: randomItem(TRAITS.background),
+    }
+    
+    const hexToRgb = (hex) => {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
+      return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : null
+    }
+    const diff = (c1, c2) => Math.abs(c1.r - c2.r) + Math.abs(c1.g - c2.g) + Math.abs(c1.b - c2.b)
+    
+    let bgColor = t.background.color
+    let bodyBase = t.body.base
+    
+    while (diff(hexToRgb(bgColor), hexToRgb(bodyBase)) < 80) {
+      t.body = randomItem(TRAITS.body)
+      bodyBase = t.body.base
+    }
+    
+    while (diff(hexToRgb(t.belly.base), hexToRgb(bodyBase)) < 80) {
+      t.belly = randomItem(TRAITS.belly)
+    }
+    
+    while (diff(hexToRgb(bgColor), hexToRgb(t.belly.base)) < 80) {
+      t.belly = randomItem(TRAITS.belly)
+    }
+    
+    const hasHeadAccessory = t.head.type !== 'none' && t.head.type !== 'crown' && t.head.type !== 'halo'
+    if (hasHeadAccessory && t.head.color) {
+      while (diff(hexToRgb(t.head.color), hexToRgb(bodyBase)) < 80) {
+        t.head = randomItem(TRAITS.head)
       }
-      
-      const hexToRgb = (hex) => {
-        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
-        return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : null
-      }
-      const diff = (c1, c2) => Math.abs(c1.r - c2.r) + Math.abs(c1.g - c2.g) + Math.abs(c1.b - c2.b)
-      
-      let bgColor = t.background.color
-      let bodyBase = t.body.base
-      
-      while (diff(hexToRgb(bgColor), hexToRgb(bodyBase)) < 80) {
-        t.body = randomItem(TRAITS.body)
-        bodyBase = t.body.base
-      }
-      
-      while (diff(hexToRgb(t.belly.base), hexToRgb(bodyBase)) < 80) {
-        t.belly = randomItem(TRAITS.belly)
-      }
-      
-      while (diff(hexToRgb(bgColor), hexToRgb(t.belly.base)) < 80) {
-        t.belly = randomItem(TRAITS.belly)
-      }
-      
-      const hasHeadAccessory = t.head.type !== 'none' && t.head.type !== 'crown' && t.head.type !== 'halo'
-      if (hasHeadAccessory && t.head.color) {
-        while (diff(hexToRgb(t.head.color), hexToRgb(bodyBase)) < 80) {
-          t.head = randomItem(TRAITS.head)
-        }
-      }
-      
-      setTraits(t)
-      
-      if (sceneRef.current && penguinRef.current) {
-        // Clear existing penguin children
-        while(penguinRef.current.children.length > 0) {
-          penguinRef.current.remove(penguinRef.current.children[0])
-        }
-        // Add new penguin to pivot
-        const newPenguin = createVoxelPenguin(t, THREE)
-        penguinRef.current.add(newPenguin)
-        sceneRef.current.background = new THREE.Color(t.background.color)
-        sceneRef.current.fog = new THREE.Fog(t.background.color, 15, 60)
-      }
-      
+    }
+    
+    setTraits(t)
+    if (!hasGenerated) setHasGenerated(true)
+    generateTimeoutRef.current = setTimeout(() => {
       setIsGenerating(false)
-    }, 300)
+      generateTimeoutRef.current = null
+    }, 1500)
   }
   
   const saveImage = () => {
@@ -863,12 +903,28 @@ function ThreeGenerator() {
     
     saveRenderer.dispose()
   }
+
+  useEffect(() => {
+    return () => {
+      if (generateTimeoutRef.current) clearTimeout(generateTimeoutRef.current)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!prefillTraits) return
+    setTraits(prefillTraits)
+    setHasGenerated(true)
+    setIsGenerating(false)
+  }, [prefillTraits])
+
+  const showTraits = hasGenerated && !isGenerating
+  const traitName = (key) => (showTraits ? traits[key]?.name || '' : '')
   
   return (
     <div className="app three-page">
       <header>
         <h1>8bit Penguins</h1>
-        <p>3D Voxel Penguins</p>
+        <p>{fromTokenId ? `3D Evolution for #${fromTokenId}${fromName ? ` - ${fromName}` : ''}` : '3D Voxel Penguins'}</p>
         <div className="header-links">
           <a href="https://x.com/8bitpenguins" target="_blank" rel="noopener noreferrer" className="x-btn">Follow us on X</a>
         </div>
@@ -876,7 +932,28 @@ function ThreeGenerator() {
 
       <main>
         <div className="three-generator">
-          <div ref={containerRef} className="three-canvas" />
+          <div
+            ref={containerRef}
+            className={`three-canvas ${isGenerating ? 'generating' : ''} ${!hasGenerated ? 'matrix-idle' : ''}`}
+          >
+            {(isGenerating || !hasGenerated) && (
+              <div className="matrix-rain">
+                {idleMatrix.map((col) => (
+                  <div
+                    key={col.id}
+                    className="matrix-column"
+                    data-chars={col.chars}
+                    style={{
+                      animationDuration: isGenerating ? `${0.3 + Math.random() * 0.4}s` : '0s',
+                      animationDelay: isGenerating ? `${Math.random() * 0.3}s` : '0s',
+                    }}
+                  >
+                    {col.chars}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           
           <div className="three-controls">
             <button 
@@ -889,6 +966,7 @@ function ThreeGenerator() {
             <button 
               className="btn white" 
               onClick={saveImage}
+              disabled={!hasGenerated}
             >
               Save Image
             </button>
@@ -897,12 +975,12 @@ function ThreeGenerator() {
         
         <div className="traits">
           <ul>
-            <li><span>Body</span><span>{traits.body.name}</span></li>
-            <li><span>Belly</span><span>{traits.belly.name}</span></li>
-            <li><span>Beak</span><span>{traits.beak.name}</span></li>
-            <li><span>Eyes</span><span>{traits.eyes.name}</span></li>
-            <li><span>Head</span><span>{traits.head.name}</span></li>
-            <li><span>Background</span><span>{traits.background.name}</span></li>
+            <li><span>Body</span><span>{traitName('body')}</span></li>
+            <li><span>Belly</span><span>{traitName('belly')}</span></li>
+            <li><span>Beak</span><span>{traitName('beak')}</span></li>
+            <li><span>Eyes</span><span>{traitName('eyes')}</span></li>
+            <li><span>Head</span><span>{traitName('head')}</span></li>
+            <li><span>Background</span><span>{traitName('background')}</span></li>
           </ul>
         </div>
       </main>

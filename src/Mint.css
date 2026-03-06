@@ -1,7 +1,7 @@
 :root {
-  --mint-bg: #0a0a0b;
-  --mint-card: #131316;
-  --mint-border: #27272a;
+  --mint-bg: #0d1117;
+  --mint-card: #161b22;
+  --mint-border: #30363d;
   --mint-border-light: #3f3f46;
   --mint-text: #ffffff;
   --mint-text-secondary: #a1a1aa;
@@ -13,10 +13,11 @@
 }
 
 .mint-page {
+  width: 100%;
   max-width: 1400px;
   margin: 0 auto;
-  background: #0d1117;
-  border: 1px solid #30363d;
+  background: var(--mint-card);
+  border: 1px solid var(--mint-border);
   border-radius: 6px;
   padding: 40px;
 }
@@ -25,8 +26,8 @@
   display: none;
 }
 
-/* Hero Section */
-.mint-hero {
+/* Header Section */
+.mint-page > header {
   text-align: center;
   padding: 0 0 25px;
   border-bottom: 1px solid #30363d;
@@ -35,26 +36,24 @@
   position: relative;
 }
 
-.mint-hero::before {
-  display: none;
-}
-
-.mint-hero h1 {
+.mint-page > header h1 {
   font-size: 1.8rem;
   letter-spacing: 4px;
   font-weight: 700;
   margin-bottom: 8px;
   color: #ffffff;
-  text-transform: uppercase;
 }
 
-.mint-hero p {
+.mint-page > header p {
   color: #8b949e;
   font-size: 0.75rem;
   letter-spacing: 2px;
 }
 
 .header-links {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
   margin-top: 12px;
 }
 
@@ -88,7 +87,7 @@
   background: #0d1117;
   border: 1px solid #30363d;
   border-radius: 4px;
-  padding: 16px;
+  padding: 20px;
   position: sticky;
   top: 24px;
 }
@@ -105,7 +104,6 @@
 .mint-card-title {
   font-size: 0.65rem;
   color: #8b949e;
-  text-transform: uppercase;
   letter-spacing: 2px;
 }
 
@@ -116,7 +114,6 @@
   font-weight: 700;
   padding: 3px 8px;
   border-radius: 3px;
-  text-transform: uppercase;
   letter-spacing: 1px;
 }
 
@@ -236,7 +233,7 @@
   background: #151a22;
   color: #c9d1d9;
   border-radius: 8px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'JetBrains Mono';
   font-size: 0.74rem;
   letter-spacing: 0.03em;
   cursor: default;
@@ -263,7 +260,6 @@
   color: #b8c2cc;
   border-radius: 8px;
   font-size: 0.7rem;
-  text-transform: uppercase;
   letter-spacing: 0.08em;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -337,7 +333,6 @@
   color: #000000;
   font-size: 0.9rem;
   font-weight: 700;
-  text-transform: uppercase;
   letter-spacing: 2px;
   cursor: pointer;
   transition: all 0.15s;
@@ -408,11 +403,14 @@
 
 /* Right Column - Display */
 .mint-display {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 4px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 0;
   margin-top: 0;
-  padding-top: 0;
 }
 
 /* Tabs */
@@ -422,6 +420,7 @@
   border: 1px solid #30363d;
   border-radius: 4px;
   overflow: hidden;
+  margin-bottom: 0;
 }
 
 .mint-tab {
@@ -430,7 +429,7 @@
   border: none;
   background: #21262d;
   color: #8b949e;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'JetBrains Mono';
   font-size: 0.7rem;
   cursor: pointer;
   transition: all 0.15s;
@@ -451,7 +450,7 @@
 }
 
 .mint-tab-content {
-  margin-top: 16px;
+  margin-top: 5px;
 }
 
 .mint-empty {
@@ -520,16 +519,16 @@
 
 /* Gallery Sections */
 .mint-gallery {
-  margin-top: 16px;
+  margin-top: 20px;
 }
 
 .mint-gallery-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--mint-border);
+  margin-bottom: 16px;
+  padding-bottom: 0;
+  border-bottom: none;
 }
 
 .mint-gallery-title {
@@ -549,6 +548,41 @@
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 8px;
+}
+
+/* Mint page gallery sizing (exclude evolve page) */
+.mint-page:not(.evolve-page) .mint-gallery-grid {
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+}
+
+.mint-page:not(.evolve-page) .mint-gallery-item {
+  border-width: 1px;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.mint-page:not(.evolve-page) .mint-gallery-item:hover {
+  transform: translateY(-1px);
+}
+
+.mint-page:not(.evolve-page) .mint-gallery-info {
+  padding: 6px 7px;
+  gap: 3px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+}
+
+.mint-page:not(.evolve-page) .mint-gallery-id {
+  font-size: 0.56rem;
+  line-height: 1.15;
+  display: block;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .mint-gallery-item {
@@ -595,7 +629,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #0d1117;
+  background: transparent;
   width: 100%;
   flex-shrink: 0;
 }
@@ -604,13 +638,14 @@
   font-size: 0.65rem;
   font-weight: 600;
   color: #ffffff;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'JetBrains Mono';
 }
 
 .mint-gallery-actions {
   display: flex;
   gap: 4px;
   flex-shrink: 0;
+  width: 100%;
 }
 
 .mint-evolve-btn {
@@ -624,6 +659,9 @@
   cursor: pointer;
   transition: all 0.15s;
   text-decoration: none;
+  width: 100%;
+  text-align: center;
+  display: block;
 }
 
 .mint-evolve-btn:hover {
@@ -634,6 +672,150 @@
 .mint-evolve-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* Evolve page refinements */
+.evolve-page {
+  padding-top: 40px;
+  padding-bottom: 40px;
+}
+
+.evolve-page .mint-layout {
+  gap: 18px;
+  margin-top: 0;
+}
+
+.evolve-page .mint-card {
+  background: #0d1117;
+}
+
+.evolve-page .mint-connected {
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.evolve-page .mint-network-btn,
+.evolve-page .mint-connect-btn,
+.evolve-page .mint-submit-btn {
+  margin-top: 8px;
+}
+
+.evolve-page .mint-display {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 4px;
+}
+
+.evolve-page .mint-gallery-grid {
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.evolve-page .mint-gallery-item {
+  border-width: 1px;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.evolve-page .mint-gallery-item:hover {
+  transform: translateY(-1px);
+}
+
+.evolve-page .mint-gallery-image {
+  background: #06070a;
+}
+
+.evolve-page .mint-gallery-info {
+  padding: 6px 7px;
+  gap: 3px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+}
+
+.evolve-page .mint-gallery-id {
+  font-size: 0.56rem;
+  line-height: 1.15;
+  display: block;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.evolve-page .mint-tab-content {
+  padding-top: 0;
+}
+
+.evolve-selected-card {
+  margin-top: 10px;
+  border: 1px solid #3a3a44;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #0f1012 0%, #0b0c0e 100%);
+  padding: 8px;
+  max-width: 220px;
+  margin-left: auto;
+  margin-right: auto;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+}
+
+.evolve-selected-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #c9c9d4;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+}
+
+.evolve-selected-image {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 4px;
+  border: 1px solid #42424d;
+  image-rendering: pixelated;
+  object-fit: contain;
+  display: block;
+  margin-bottom: 6px;
+  background: radial-gradient(circle at 50% 40%, #111318 0%, #090a0c 85%);
+  padding: 2px;
+}
+
+.evolve-selected-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #ededf2;
+  font-size: 0.58rem;
+  gap: 6px;
+  line-height: 1.2;
+}
+
+.evolve-selected-meta strong {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  max-width: 64%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.evolve-selected-meta span {
+  font-size: 0.54rem;
+  color: #a8a8b3;
+  border: 1px solid #373742;
+  border-radius: 999px;
+  padding: 2px 6px;
+  white-space: nowrap;
+}
+
+.evolve-page .mint-status {
+  text-align: center;
+  margin-top: 10px;
 }
 
 .mint-loading {
@@ -689,7 +871,7 @@
   font-size: 0.7rem;
   font-weight: 600;
   color: #c9d1d9;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'JetBrains Mono';
 }
 
 .mint-gallery-traits {
@@ -800,16 +982,15 @@
     position: static;
   }
   
-  .mint-hero h1 {
+  .mint-page > header h1 {
     font-size: 1.5rem;
     letter-spacing: 2px;
-    text-transform: uppercase;
   }
   
   .mint-tabs {
     overflow-x: auto;
     flex-wrap: nowrap;
-    padding-bottom: 8px;
+    padding-bottom: 0;
   }
   
   .mint-tab {
@@ -819,26 +1000,26 @@
 
 @media (max-width: 768px) {
   .mint-page {
-    width: 100vw;
-    max-width: 100vw;
-    margin-left: calc(50% - 50vw);
-    margin-right: calc(50% - 50vw);
+    width: 100%;
+    max-width: 1400px;
+    margin-left: auto;
+    margin-right: auto;
     padding: 16px 12px;
     border-radius: 0;
     border: none;
   }
 
-  .mint-hero {
+  .mint-page > header {
     padding-bottom: 16px;
     margin-bottom: 16px;
   }
 
-  .mint-hero h1 {
+  .mint-page > header h1 {
     font-size: 1.25rem;
     letter-spacing: 1px;
   }
 
-  .mint-hero p {
+  .mint-page > header p {
     font-size: 0.68rem;
     letter-spacing: 1px;
   }
@@ -852,6 +1033,33 @@
     padding: 12px;
     top: 0;
     width: 100%;
+  }
+
+  .evolve-page {
+    padding: 16px 12px;
+  }
+
+  .evolve-page .mint-layout {
+    gap: 12px;
+    margin-top: 2px;
+  }
+
+  .evolve-page .mint-card,
+  .evolve-page .mint-display {
+    padding: 12px;
+  }
+
+  .evolve-page .mint-gallery-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .evolve-page .mint-tab-content {
+    padding-top: 6px;
+  }
+
+  .evolve-selected-card {
+    margin-top: 8px;
   }
 
   .mint-display {
@@ -928,6 +1136,14 @@
     gap: 4px;
   }
 
+  .mint-page:not(.evolve-page) .mint-gallery-info,
+  .evolve-page .mint-gallery-info {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+  }
+
   .mint-gallery-actions {
     width: 100%;
   }
@@ -954,7 +1170,26 @@
     padding: 12px 10px;
   }
 
-  .mint-hero h1 {
+  .evolve-page {
+    padding: 12px 10px;
+  }
+
+  .evolve-page .mint-card,
+  .evolve-page .mint-display {
+    padding: 10px;
+  }
+
+  .evolve-page .mint-gallery-grid {
+    gap: 7px;
+  }
+
+  .evolve-page .mint-network-btn,
+  .evolve-page .mint-connect-btn,
+  .evolve-page .mint-submit-btn {
+    margin-top: 6px;
+  }
+
+  .mint-page > header h1 {
     font-size: 1.05rem;
   }
 
@@ -986,3 +1221,5 @@
     padding-right: 30px;
   }
 }
+
+

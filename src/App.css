@@ -3,13 +3,13 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  font-family: 'JetBrains Mono';
   background: #0d1117;
   color: #c9d1d9;
   min-height: 100vh;
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
   padding: 20px;
   margin: 0;
 }
@@ -20,6 +20,7 @@ html {
 }
 
 .app {
+  width: 100%;
   max-width: 1400px;
   margin: 0 auto;
   text-align: center;
@@ -170,7 +171,7 @@ main {
 .canvas-wrap.matrix-idle .matrix-column {
   writing-mode: vertical-rl;
   text-orientation: upright;
-  font-family: 'Courier New', monospace;
+  font-family: 'JetBrains Mono';
   font-size: 14px;
   line-height: 1;
   color: #39ff14;
@@ -195,7 +196,7 @@ main {
 .canvas-wrap.matrix-idle .matrix-column {
   writing-mode: vertical-rl;
   text-orientation: upright;
-  font-family: 'Courier New', monospace;
+  font-family: 'JetBrains Mono';
   font-size: 18px;
   line-height: 1;
   color: #39ff14;
@@ -310,7 +311,7 @@ main {
   border: none;
   background: #21262d;
   color: #8b949e;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'JetBrains Mono';
   font-size: 0.65rem;
   letter-spacing: 1px;
   cursor: pointer;
@@ -341,7 +342,7 @@ main {
   border: 1px solid #30363d;
   background: #21262d;
   color: #ffffff;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'JetBrains Mono';
   font-size: 0.65rem;
   letter-spacing: 1px;
   cursor: pointer;
@@ -584,7 +585,7 @@ main {
   border: none;
   background: #21262d;
   color: #8b949e;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'JetBrains Mono';
   font-size: 0.7rem;
   cursor: pointer;
   transition: all 0.15s;
@@ -669,7 +670,7 @@ main {
   background: #21262d;
   border: 1px solid #30363d;
   color: #c9d1d9;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'JetBrains Mono';
   font-size: 0.6rem;
   cursor: pointer;
   border-radius: 3px;
@@ -692,10 +693,15 @@ main {
 }
 
 @media (max-width: 600px) {
+  body {
+    padding: 0;
+  }
   .app { 
     padding: 12px; 
     width: 100%;
+    max-width: 100%;
     border-radius: 0;
+    border: none;
   }
   .canvas-wrap { width: 280px; height: 280px; }
   .canvas-wrap canvas { width: 280px; height: 280px; }
@@ -710,7 +716,7 @@ main {
   .gallery-tabs { flex-direction: row; gap: 0; }
   .gallery-tab:first-child { border-right: 1px solid #30363d; border-bottom: none; }
   .gallery-tab { padding: 8px 10px; font-size: 0.6rem; }
-  .gallery-grid { grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .gallery-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
 }
 
 .modal-overlay {
@@ -1040,7 +1046,7 @@ main {
 }
 
 .mint-wallet-addr {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'JetBrains Mono';
   font-size: 0.8rem;
   color: var(--mint-text);
 }
@@ -1451,14 +1457,14 @@ main {
 
 /* Three Generator Page */
 .three-page {
-  max-width: 900px;
+  max-width: 1400px;
 }
 
 .three-page header {
   text-align: center;
-  padding: 0 0 20px;
+  padding: 0 0 25px;
   border-bottom: 1px solid #30363d;
-  margin-bottom: 20px;
+  margin-bottom: 25px;
 }
 
 .three-page header h1 {
@@ -1473,14 +1479,12 @@ main {
   color: #8b949e;
   font-size: 0.75rem;
   letter-spacing: 2px;
-  margin-bottom: 12px;
 }
 
 .three-page .header-links {
   display: flex;
   justify-content: center;
-  gap: 12px;
-  flex-wrap: wrap;
+  gap: 16px;
 }
 
 .three-page .header-link {
@@ -1499,12 +1503,16 @@ main {
 }
 
 .three-page .x-btn {
-  color: #ffffff;
-  background: #000;
+  display: inline-block;
+  margin-top: 12px;
   padding: 6px 12px;
-  border-radius: 4px;
+  background: #000;
+  color: #fff;
   font-size: 0.7rem;
   text-decoration: none;
+  border-radius: 4px;
+  border: 1px solid #333;
+  transition: all 0.2s;
 }
 
 .three-generator {
@@ -1519,6 +1527,13 @@ main {
   border-radius: 8px;
   overflow: hidden;
   cursor: grab;
+  position: relative;
+  width: 420px;
+  height: 420px;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .three-canvas:active {
@@ -1527,6 +1542,67 @@ main {
 
 .three-canvas canvas {
   display: block;
+  z-index: 1;
+}
+
+.three-canvas.generating canvas {
+  opacity: 0;
+}
+
+.three-canvas.generating .matrix-rain,
+.three-canvas.matrix-idle .matrix-rain {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: space-around;
+  z-index: 2;
+}
+
+.three-canvas.generating .matrix-column,
+.three-canvas.matrix-idle .matrix-column {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  font-family: 'JetBrains Mono';
+  line-height: 1;
+  color: #39ff14;
+  text-shadow: 0 0 5px #39ff14;
+  position: relative;
+}
+
+.three-canvas.generating .matrix-column {
+  font-size: 14px;
+  animation: matrix-fall 1.5s linear infinite;
+}
+
+.three-canvas.matrix-idle .matrix-column {
+  font-size: 18px;
+  text-shadow: 0 0 8px #39ff14;
+  opacity: 0.8;
+  filter: blur(2px);
+}
+
+.three-canvas.generating .matrix-column::before,
+.three-canvas.generating .matrix-column::after {
+  content: attr(data-chars);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+}
+
+.three-canvas.generating .matrix-column::before {
+  color: #ff00ff;
+  animation: glitch-1 0.3s infinite;
+}
+
+.three-canvas.generating .matrix-column::after {
+  color: #00ffff;
+  animation: glitch-2 0.3s infinite;
 }
 
 .three-controls {
@@ -1569,7 +1645,7 @@ main {
 /* Responsive */
 @media (max-width: 500px) {
   .three-page {
-    padding: 15px;
+    padding: 12px;
   }
   
   .three-page header h1 {
@@ -1580,7 +1656,7 @@ main {
   .three-canvas {
     width: 100% !important;
     max-width: 320px;
-    height: auto !important;
+    height: 320px !important;
   }
   
   .three-page .traits ul {
@@ -1598,7 +1674,7 @@ main {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 16px;
-  font-family: 'Press Start 2P', monospace;
+  font-family: 'JetBrains Mono';
 }
 
 .gallery-title {
@@ -1644,7 +1720,7 @@ main {
 .nft-token-id {
   margin-top: 8px;
   color: #00ff88;
-  font-family: 'Press Start 2P', monospace;
+  font-family: 'JetBrains Mono';
   font-size: 0.7rem;
 }
 
@@ -1675,7 +1751,7 @@ main {
   margin-top: 8px;
   padding: 6px 12px;
   font-size: 0.6rem;
-  font-family: 'Press Start 2P', monospace;
+  font-family: 'JetBrains Mono';
 }
 
 .evolve-btn:disabled {
@@ -1698,3 +1774,5 @@ main {
   flex-wrap: wrap;
   justify-content: center;
 }
+
+
