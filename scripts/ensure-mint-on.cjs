@@ -1,7 +1,7 @@
 const hre = require('hardhat');
 (async () => {
-  const addr = '0x74583D54B3c42ab08c8031d849B350Ccf425060c';
-  const c = await hre.ethers.getContractAt('PixelPenguins', addr);
+  const addr = '0x9858725b7e2e79A6DB4CEDa510854C48238357ff';
+  const c = await hre.ethers.getContractAt('EightBitPenguinsUpgradeable', addr);
   const before = await c.mintActive();
   const owner = await c.owner();
   const [signer] = await hre.ethers.getSigners();

@@ -3,9 +3,9 @@ import { ethers } from 'ethers'
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import './Mint.css'
+import onboard from './onboard.js'
+import { CONTRACT_ADDRESS, BASE_SEPOLIA_RPC } from './contractConfig.js'
 
-const CONTRACT_ADDRESS = '0x9858725b7e2e79A6DB4CEDa510854C48238357ff'
-const BASE_SEPOLIA_RPC = 'https://base-sepolia-rpc.publicnode.com'
 const SHARED_RPC_PROVIDER = new ethers.JsonRpcProvider(BASE_SEPOLIA_RPC)
 
 const contractABI = [
@@ -1724,6 +1724,7 @@ function Mint() {
   const [myPage, setMyPage] = useState(1)
   const [allPage, setAllPage] = useState(1)
   const [isLoadingNfts, setIsLoadingNfts] = useState(false)
+  const [connectedWalletLabel, setConnectedWalletLabel] = useState('')
   const ITEMS_PER_PAGE = 10
   const previewCanvasRef = useRef(null)
   const mintedCanvasRef = useRef(null)
@@ -1938,21 +1939,30 @@ function Mint() {
   }
 
   const connect = async () => {
-    if (!window.ethereum) {
-      setStatus('Install MetaMask')
-      return
-    }
     try {
-      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' })
-      setAccount(accounts[0])
-      fetchContractData(accounts[0])
+      const wallets = await onboard.connectWallet()
+      const wallet = wallets?.[0]
+      const address = wallet?.accounts?.[0]?.address
+      if (!address) {
+        setStatus('Connection cancelled')
+        return
+      }
+      setConnectedWalletLabel(wallet?.label || '')
+      setAccount(address)
+      fetchContractData(address)
       setStatus('')
     } catch {
       setStatus('Connection failed')
     }
   }
 
-  const disconnectWallet = () => {
+  const disconnectWallet = async () => {
+    try {
+      if (connectedWalletLabel) {
+        await onboard.disconnectWallet({ label: connectedWalletLabel })
+      }
+    } catch {}
+    setConnectedWalletLabel('')
     setAccount(null)
     setBalance(0)
     setMintedCount(0)
@@ -2060,6 +2070,7 @@ function Mint() {
   const progress = (totalSupply / maxSupply) * 100
 
   return (
+    <>
     <div className="mint-page">
       {/* Hero Section */}
       <header>
@@ -2207,6 +2218,7 @@ function Mint() {
           </div>
         </div>
     </div>
+    </>
   )
 }
 

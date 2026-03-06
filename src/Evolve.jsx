@@ -2,9 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { ethers } from 'ethers'
 import { render3DSnapshot } from './Mint.jsx'
 import './Mint.css'
-
-const CONTRACT_ADDRESS = '0x9858725b7e2e79A6DB4CEDa510854C48238357ff'
-const BASE_SEPOLIA_RPC = 'https://base-sepolia-rpc.publicnode.com'
+import onboard from './onboard.js'
+import { CONTRACT_ADDRESS, BASE_SEPOLIA_RPC } from './contractConfig.js'
 
 const contractABI = [
   'function totalSupply() public view returns (uint256)',
@@ -270,6 +269,7 @@ function Evolve() {
   const [traitsModal, setTraitsModal] = useState(null)
   const [isLoadingNfts, setIsLoadingNfts] = useState(false)
   const [isHydratingMeta, setIsHydratingMeta] = useState(false)
+  const [connectedWalletLabel, setConnectedWalletLabel] = useState('')
   const [globalTotalMinted, setGlobalTotalMinted] = useState(0)
   const [globalEvolvedCount, setGlobalEvolvedCount] = useState(0)
   const [isLoadingGlobalProgress, setIsLoadingGlobalProgress] = useState(false)
@@ -409,21 +409,30 @@ function Evolve() {
   }, [account])
 
   const connect = async () => {
-    if (!window.ethereum) {
-      setStatus('Install MetaMask')
-      return
-    }
     try {
-      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' })
-      setAccount(accounts[0])
+      const wallets = await onboard.connectWallet()
+      const wallet = wallets?.[0]
+      const address = wallet?.accounts?.[0]?.address
+      if (!address) {
+        setStatus('Connection cancelled')
+        return
+      }
+      setConnectedWalletLabel(wallet?.label || '')
+      setAccount(address)
       setStatus('')
-      fetchContractData(accounts[0])
+      fetchContractData(address)
     } catch {
       setStatus('Connection failed')
     }
   }
 
-  const disconnectWallet = () => {
+  const disconnectWallet = async () => {
+    try {
+      if (connectedWalletLabel) {
+        await onboard.disconnectWallet({ label: connectedWalletLabel })
+      }
+    } catch {}
+    setConnectedWalletLabel('')
     setAccount(null)
     setBalance(0)
     setMyNFTs([])
@@ -648,6 +657,7 @@ function Evolve() {
   }, [account, myTokenIdsKey, refreshKey, provider])
 
   return (
+    <>
     <div className="mint-page evolve-page">
       <header>
         <h1>8bit Penguins</h1>
@@ -814,6 +824,7 @@ function Evolve() {
         </div>
       )}
     </div>
+    </>
   )
 }
 
