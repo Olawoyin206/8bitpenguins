@@ -3,7 +3,7 @@ import { ethers } from 'ethers'
 import { render3DSnapshot } from './Mint.jsx'
 import './Mint.css'
 
-const CONTRACT_ADDRESS = '0x74583D54B3c42ab08c8031d849B350Ccf425060c'
+const CONTRACT_ADDRESS = '0x9858725b7e2e79A6DB4CEDa510854C48238357ff'
 const BASE_SEPOLIA_RPC = 'https://base-sepolia-rpc.publicnode.com'
 
 const contractABI = [
