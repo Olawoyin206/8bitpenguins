@@ -8,18 +8,17 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "deploy": "hardhat run scripts/deploy.cjs --network baseSepolia"
+    "deploy": "hardhat run scripts/deploy-upgradeable.cjs --network sepolia",
+    "deploy:upgradeable": "hardhat run scripts/deploy-upgradeable.cjs --network sepolia",
+    "upgrade:contract": "hardhat run scripts/upgrade-upgradeable.cjs --network sepolia",
+    "verify:current": "hardhat run scripts/verify-current.cjs --network sepolia",
+    "check:proxy": "hardhat run scripts/check-proxy-current.cjs --network sepolia"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^4.9.6",
     "@openzeppelin/contracts-upgradeable": "^4.9.6",
-    "@react-three/fiber": "^9.5.0",
     "canvas": "^3.2.1",
-    "electron": "^40.6.1",
     "ethers": "^6.16.0",
-    "jsdom": "^28.1.0",
-    "playwright": "^1.58.2",
-    "puppeteer": "^24.37.5",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.13.0",

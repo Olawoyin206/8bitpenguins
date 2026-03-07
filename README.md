@@ -1,16 +1,35 @@
-# React + Vite
+# 8bit Penguins Mint App
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Frontend + Hardhat workspace for minting and evolving `8bit Penguins` on Ethereum Sepolia.
 
-Currently, two official plugins are available:
+## Active Contract
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Solidity source: `contracts/8bitPenguins.sol`
+- Contract type: `EightBitPenguinsUpgradeable`
+- Frontend address source of truth: `VITE_CONTRACT_ADDRESS` in `.env`
+- Legacy `PixelPenguins` contract sources/scripts have been removed.
 
-## React Compiler
+## App Commands
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- `npm run dev` - Start Vite dev server
+- `npm run build` - Production build
+- `npm run preview` - Preview production build
+- `npm run lint` - Lint source
 
-## Expanding the ESLint configuration
+## Contract Commands
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- `npm run deploy` / `npm run deploy:upgradeable` - Deploy new upgradeable proxy
+- `npm run upgrade:contract` - Upgrade existing proxy implementation
+- `npm run verify:current` - Verify currently configured proxy on Etherscan (Sepolia)
+- `npm run check:proxy` - Print proxy/admin/implementation and key state
+
+## Script Layout
+
+- `scripts/` contains active operational scripts only.
+- `scripts/legacy/` contains historical/debug scripts retained for reference.
+
+## Notes
+
+- Unrevealed placeholder is configured on-chain via `set-placeholder.cjs`.
+- Keep `VITE_CONTRACT_ADDRESS` and `CONTRACT_ADDRESS` in `.env` aligned.
+- For Vercel, set project root to `mint-app`.

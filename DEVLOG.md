@@ -10,8 +10,8 @@ NFT minting application for generating 8-bit pixel penguin NFTs with customizabl
 - JSONBin (shared gallery sync)
 
 ## Contract
-- Address: `0xd0510B85EdC7e077b57Ce6AD81D10253608eed92`
-- Max Supply: 10,000
+- Address: `0xab5ffaa03F6A2713b854a3144086e746303b12a3`
+- Max Supply: 50
 
 ## Environment Variables
 ```
