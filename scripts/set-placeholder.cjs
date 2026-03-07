@@ -1,8 +1,9 @@
 const hre = require("hardhat");
 const { createCanvas } = require("canvas");
+const { getContractAddress } = require("./_config.cjs");
 
 async function main() {
-  const contractAddress = "0x9858725b7e2e79A6DB4CEDa510854C48238357ff";
+  const contractAddress = getContractAddress();
   const size = 400;
   const grid = 40;
   const px = size / grid;

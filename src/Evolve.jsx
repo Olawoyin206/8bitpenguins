@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { ethers } from 'ethers'
 import { render3DSnapshot } from './Mint.jsx'
 import './Mint.css'
-import { CONTRACT_ADDRESS, BASE_SEPOLIA_RPC } from './contractConfig.js'
+import { BLOCK_EXPLORER_URL, CHAIN_ID_HEX, CHAIN_NAME, CONTRACT_ADDRESS, ETH_SEPOLIA_RPC } from './contractConfig.js'
 
 const contractABI = [
   'function totalSupply() public view returns (uint256)',
@@ -235,13 +235,13 @@ function EvolveGalleryItem({
         {showTraitsOnClick && <span className="mint-gallery-id">Traits: {meta.attributes?.length || 0}</span>}
         <div className="mint-gallery-actions">
           <a
-            href={`https://sepolia.basescan.org/nft/${CONTRACT_ADDRESS}/${tokenId}`}
+            href={`${BLOCK_EXPLORER_URL}/nft/${CONTRACT_ADDRESS}/${tokenId}`}
             target="_blank"
             rel="noopener noreferrer"
             className="mint-evolve-btn"
             onClick={(e) => e.stopPropagation()}
           >
-            View ↗
+            {'View ->'}
           </a>
         </div>
       </div>
@@ -250,7 +250,7 @@ function EvolveGalleryItem({
 }
 
 function Evolve() {
-  const provider = useMemo(() => new ethers.JsonRpcProvider(BASE_SEPOLIA_RPC), [])
+  const provider = useMemo(() => new ethers.JsonRpcProvider(ETH_SEPOLIA_RPC), [])
   const [account, setAccount] = useState(null)
   const [balance, setBalance] = useState(0)
   const [status, setStatus] = useState('')
@@ -438,11 +438,24 @@ function Evolve() {
     setStatus('Wallet disconnected')
   }
 
-  const switchToBaseSepolia = async () => {
+  const switchToEthereumSepolia = async () => {
     try {
-      await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0x14a34' }] })
+      await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CHAIN_ID_HEX }] })
     } catch {
-      setStatus('Switch to Base Sepolia')
+      try {
+        await window.ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [{
+            chainId: CHAIN_ID_HEX,
+            chainName: CHAIN_NAME,
+            nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+            rpcUrls: [ETH_SEPOLIA_RPC],
+            blockExplorerUrls: [BLOCK_EXPLORER_URL],
+          }],
+        })
+      } catch {
+        setStatus('Add Ethereum Sepolia manually')
+      }
     }
   }
 
@@ -679,7 +692,7 @@ function Evolve() {
             </div>
           </div>
 
-          <button className="mint-network-btn" onClick={switchToBaseSepolia}>Switch to Base Sepolia</button>
+          <button className="mint-network-btn" onClick={switchToEthereumSepolia}>Switch to Ethereum Sepolia</button>
 
           {!account ? (
             <button className="mint-connect-btn" onClick={connect}>Connect Wallet</button>
@@ -723,12 +736,12 @@ function Evolve() {
           {status && <div className={`mint-status ${status.includes('Error') ? 'error' : ''}`}>{status}</div>}
           {lastTxHash && (
             <a
-              href={`https://sepolia.basescan.org/tx/${lastTxHash}`}
+              href={`${BLOCK_EXPLORER_URL}/tx/${lastTxHash}`}
               target="_blank"
               rel="noopener noreferrer"
               className="mint-tx-link"
             >
-              View Evolve Transaction -&gt;
+              {'View Evolve Transaction ->'}
             </a>
           )}
         </div>
@@ -820,6 +833,7 @@ function Evolve() {
 }
 
 export default Evolve
+
 
 
 

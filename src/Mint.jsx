@@ -3,9 +3,9 @@ import { ethers } from 'ethers'
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import './Mint.css'
-import { CONTRACT_ADDRESS, BASE_SEPOLIA_RPC } from './contractConfig.js'
+import { BLOCK_EXPLORER_URL, CHAIN_ID_HEX, CHAIN_NAME, CONTRACT_ADDRESS, ETH_SEPOLIA_RPC } from './contractConfig.js'
 
-const SHARED_RPC_PROVIDER = new ethers.JsonRpcProvider(BASE_SEPOLIA_RPC)
+const SHARED_RPC_PROVIDER = new ethers.JsonRpcProvider(ETH_SEPOLIA_RPC)
 
 const contractABI = [
   "function mint(uint256 quantity, string[] calldata imageBase64s, string[] calldata names, string[] calldata attributesJson, uint256[] calldata rarityScores) public payable",
@@ -1670,12 +1670,12 @@ function NFTGalleryItem({
         )}
         <div className="mint-gallery-actions">
           <a 
-            href={`https://sepolia.basescan.org/nft/${CONTRACT_ADDRESS}/${tokenId}`} 
+            href={`${BLOCK_EXPLORER_URL}/nft/${CONTRACT_ADDRESS}/${tokenId}`} 
             target="_blank" 
             rel="noopener noreferrer"
             className="mint-evolve-btn"
           >
-            View ↗
+            {'View ->'}
           </a>
         </div>
       </div>
@@ -1739,7 +1739,7 @@ function Mint() {
 
   useEffect(() => {
     let cancelled = false
-    const provider = new ethers.JsonRpcProvider(BASE_SEPOLIA_RPC)
+    const provider = new ethers.JsonRpcProvider(ETH_SEPOLIA_RPC)
     const contract = new ethers.Contract(CONTRACT_ADDRESS, contractABI, provider)
     let inFlight = false
 
@@ -1846,7 +1846,7 @@ function Mint() {
     const skipOwnershipScan = Boolean(options?.skipOwnershipScan)
     if (!silent) setIsLoadingNfts(true)
     try {
-      const provider = new ethers.JsonRpcProvider(BASE_SEPOLIA_RPC)
+      const provider = new ethers.JsonRpcProvider(ETH_SEPOLIA_RPC)
       const contract = new ethers.Contract(CONTRACT_ADDRESS, contractABI, provider)
       
       const [supply, maxS, maxW, mintActive] = await Promise.all([
@@ -1965,26 +1965,26 @@ function Mint() {
     setAllPage(1)
   }
 
-  const switchToBaseSepolia = async () => {
+  const switchToEthereumSepolia = async () => {
     try {
       await window.ethereum.request({
         method: 'wallet_switchEthereumChain',
-        params: [{ chainId: '0x14a34' }],
+        params: [{ chainId: CHAIN_ID_HEX }],
       })
     } catch {
       try {
         await window.ethereum.request({
           method: 'wallet_addEthereumChain',
           params: [{
-            chainId: '0x14a34',
-            chainName: 'Base Sepolia',
+            chainId: CHAIN_ID_HEX,
+            chainName: CHAIN_NAME,
             nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
-            rpcUrls: ['https://base-sepolia-rpc.publicnode.com', 'https://sepolia.base.org'],
-            blockExplorerUrls: ['https://sepolia.basescan.org'],
+            rpcUrls: [ETH_SEPOLIA_RPC],
+            blockExplorerUrls: [BLOCK_EXPLORER_URL],
           }],
         })
       } catch {
-        setStatus('Add Base Sepolia manually')
+        setStatus('Add Ethereum Sepolia manually')
       }
     }
   }
@@ -2097,8 +2097,8 @@ function Mint() {
             </div>
 
             {/* Network Button */}
-            <button className="mint-network-btn" onClick={switchToBaseSepolia}>
-              Switch to Base Sepolia
+            <button className="mint-network-btn" onClick={switchToEthereumSepolia}>
+              Switch to Ethereum Sepolia
             </button>
 
             {/* Connect / Mint Form */}
@@ -2149,12 +2149,12 @@ function Mint() {
 
                 {lastTxHash && (
                   <a 
-                    href={`https://sepolia.basescan.org/tx/${lastTxHash}`}
+                    href={`${BLOCK_EXPLORER_URL}/tx/${lastTxHash}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="mint-tx-link"
                   >
-                    View Transaction ↗
+                    {'View Transaction ->'}
                   </a>
                 )}
               </div>
@@ -2320,6 +2320,7 @@ function GalleryWithPagination({ nfts, currentPage, setPage, refreshKey, metadat
 }
 
 export default Mint
+
 
 
 

@@ -1,7 +1,8 @@
 const hre = require("hardhat");
+const { getContractAddress } = require("./_config.cjs");
 
 async function main() {
-  const proxyAddress = "0x9858725b7e2e79A6DB4CEDa510854C48238357ff";
+  const proxyAddress = getContractAddress();
   console.log("Proxy:", proxyAddress);
 
   try {

@@ -1,2 +1,6 @@
-export const CONTRACT_ADDRESS = '0x9858725b7e2e79A6DB4CEDa510854C48238357ff'
-export const BASE_SEPOLIA_RPC = 'https://base-sepolia-rpc.publicnode.com'
+export const CONTRACT_ADDRESS = (import.meta.env.VITE_CONTRACT_ADDRESS || '').trim()
+export const ETH_SEPOLIA_RPC = (import.meta.env.VITE_RPC_URL || 'https://rpc.sepolia.org').trim()
+
+export const CHAIN_ID_HEX = '0xaa36a7'
+export const CHAIN_NAME = 'Ethereum Sepolia'
+export const BLOCK_EXPLORER_URL = 'https://sepolia.etherscan.io'

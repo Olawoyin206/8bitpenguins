@@ -15,18 +15,16 @@ module.exports = {
     }
   },
   networks: {
-    baseSepolia: {
-      url: process.env.BASE_SEPOLIA_RPC_URL || "https://sepolia.base.org",
+    sepolia: {
+      url:
+        process.env.ETH_SEPOLIA_RPC_URL ||
+        process.env.BASE_SEPOLIA_RPC_URL ||
+        "https://rpc.sepolia.org",
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
-      chainId: 84532,
-    },
-    base: {
-      url: process.env.BASE_MAINNET_RPC_URL || "https://mainnet.base.org",
-      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
-      chainId: 8453,
+      chainId: 11155111,
     },
   },
   etherscan: {
-    apiKey: process.env.BASESCAN_API_KEY || "",
+    apiKey: process.env.ETHERSCAN_API_KEY || process.env.BASESCAN_API_KEY || "",
   },
 };

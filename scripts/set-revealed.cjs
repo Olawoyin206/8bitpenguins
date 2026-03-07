@@ -1,7 +1,8 @@
 const hre = require("hardhat");
+const { getContractAddress } = require("./_config.cjs");
 
 async function main() {
-  const contractAddress = "0x9858725b7e2e79A6DB4CEDa510854C48238357ff";
+  const contractAddress = getContractAddress();
   const contract = await hre.ethers.getContractAt("EightBitPenguinsUpgradeable", contractAddress);
   const tx = await contract.setRevealed(true);
   console.log("Tx:", tx.hash);

@@ -1,7 +1,8 @@
 const hre = require("hardhat");
+const { getContractAddress } = require("./_config.cjs");
 
 async function main() {
-  const address = "0x9858725b7e2e79A6DB4CEDa510854C48238357ff";
+  const address = getContractAddress();
   try {
     await hre.run("verify:verify", {
       address,
@@ -9,7 +10,12 @@ async function main() {
     });
     console.log("Verified:", address);
   } catch (error) {
-    console.log("Verify error message:", error?.message || "unknown");
+    const message = String(error?.message || "unknown");
+    if (message.includes("Already Verified")) {
+      console.log("Verification completed: remaining items were already verified.");
+      return;
+    }
+    console.log("Verify error message:", message);
     if (error?.stack) {
       console.log(error.stack);
     }
