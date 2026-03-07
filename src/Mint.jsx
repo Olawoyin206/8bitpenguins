@@ -3,7 +3,7 @@ import { ethers } from 'ethers'
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import './Mint.css'
-import onboard from './onboard.js'
+import { getOnboard } from './onboard.js'
 import { CONTRACT_ADDRESS, BASE_SEPOLIA_RPC } from './contractConfig.js'
 
 const SHARED_RPC_PROVIDER = new ethers.JsonRpcProvider(BASE_SEPOLIA_RPC)
@@ -1940,6 +1940,7 @@ function Mint() {
 
   const connect = async () => {
     try {
+      const onboard = await getOnboard()
       const wallets = await onboard.connectWallet()
       const wallet = wallets?.[0]
       const address = wallet?.accounts?.[0]?.address
@@ -1958,6 +1959,7 @@ function Mint() {
 
   const disconnectWallet = async () => {
     try {
+      const onboard = await getOnboard()
       if (connectedWalletLabel) {
         await onboard.disconnectWallet({ label: connectedWalletLabel })
       }

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { ethers } from 'ethers'
 import { render3DSnapshot } from './Mint.jsx'
 import './Mint.css'
-import onboard from './onboard.js'
+import { getOnboard } from './onboard.js'
 import { CONTRACT_ADDRESS, BASE_SEPOLIA_RPC } from './contractConfig.js'
 
 const contractABI = [
@@ -410,6 +410,7 @@ function Evolve() {
 
   const connect = async () => {
     try {
+      const onboard = await getOnboard()
       const wallets = await onboard.connectWallet()
       const wallet = wallets?.[0]
       const address = wallet?.accounts?.[0]?.address
@@ -428,6 +429,7 @@ function Evolve() {
 
   const disconnectWallet = async () => {
     try {
+      const onboard = await getOnboard()
       if (connectedWalletLabel) {
         await onboard.disconnectWallet({ label: connectedWalletLabel })
       }
