@@ -4,11 +4,9 @@ import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import './Mint.css'
 import { BLOCK_EXPLORER_URL, CHAIN_ID_HEX, CHAIN_NAME, CONTRACT_ADDRESS, ETH_SEPOLIA_RPC } from './contractConfig.js'
-import EightBitPenguinsArtifact from '../artifacts/contracts/8bitPenguins.sol/EightBitPenguinsUpgradeable.json'
+import contractABI from './abi/EightBitPenguinsUpgradeable.abi.json'
 
 const SHARED_RPC_PROVIDER = new ethers.JsonRpcProvider(ETH_SEPOLIA_RPC)
-
-const contractABI = EightBitPenguinsArtifact.abi
 
 function normalizeOnchainImage(image) {
   if (!image || typeof image !== 'string') return ''

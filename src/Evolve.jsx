@@ -3,9 +3,7 @@ import { ethers } from 'ethers'
 import { render3DSnapshot } from './Mint.jsx'
 import './Mint.css'
 import { BLOCK_EXPLORER_URL, CHAIN_ID_HEX, CHAIN_NAME, CONTRACT_ADDRESS, ETH_SEPOLIA_RPC } from './contractConfig.js'
-import EightBitPenguinsArtifact from '../artifacts/contracts/8bitPenguins.sol/EightBitPenguinsUpgradeable.json'
-
-const contractABI = EightBitPenguinsArtifact.abi
+import contractABI from './abi/EightBitPenguinsUpgradeable.abi.json'
 
 const MODEL_TRAITS = {
   background: [
