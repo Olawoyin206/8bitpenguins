@@ -3,14 +3,9 @@ import { ethers } from 'ethers'
 import { render3DSnapshot } from './Mint.jsx'
 import './Mint.css'
 import { BLOCK_EXPLORER_URL, CHAIN_ID_HEX, CHAIN_NAME, CONTRACT_ADDRESS, ETH_SEPOLIA_RPC } from './contractConfig.js'
+import EightBitPenguinsArtifact from '../artifacts/contracts/8bitPenguins.sol/EightBitPenguinsUpgradeable.json'
 
-const contractABI = [
-  'function totalSupply() public view returns (uint256)',
-  'function balanceOf(address owner) public view returns (uint256)',
-  'function ownerOf(uint256 tokenId) public view returns (address)',
-  'function tokenURI(uint256 tokenId) public view returns (string)',
-  'function evolveTo3D(uint256 tokenId, string calldata imageBase64, string calldata attributesJson) external',
-]
+const contractABI = EightBitPenguinsArtifact.abi
 
 const MODEL_TRAITS = {
   background: [
@@ -191,19 +186,20 @@ async function fetchTokenMetadata(provider, tokenId) {
   try {
     const contract = new ethers.Contract(CONTRACT_ADDRESS, contractABI, provider)
     const uri = await contract.tokenURI(tokenId)
-    if (!uri?.startsWith('data:application/json;base64,')) return { name: '', image: '', attributes: [] }
+    if (!uri?.startsWith('data:application/json;base64,')) return { name: '', image: '', attributes: [], revealed: null }
     const encoded = uri.split('base64,')[1]
     const raw = decodeBase64Loose(encoded)
-    if (!raw) return { name: '', image: '', attributes: [] }
+    if (!raw) return { name: '', image: '', attributes: [], revealed: null }
     const parsed = JSON.parse(raw)
     return {
       name: parsed.name || '',
       image: normalizeOnchainImage(parsed.image || ''),
       attributes: Array.isArray(parsed.attributes) ? parsed.attributes : [],
       evolved3D: Boolean(parsed.evolved_3d),
+      revealed: typeof parsed.revealed === 'boolean' ? parsed.revealed : null,
     }
   } catch {
-    return { name: '', image: '', attributes: [], evolved3D: false }
+    return { name: '', image: '', attributes: [], evolved3D: false, revealed: null }
   }
 }
 
@@ -279,7 +275,13 @@ function Evolve() {
       (a) => a?.trait_type === 'Evolution' && String(a.value).toLowerCase().includes('evolved')
     )
   }
-  const selectedIsEvolved = selectedNFT ? isEvolvedMeta(metaByToken[selectedNFT.tokenId] || selectedNFT.meta) : false
+  const isUnrevealedMeta = (meta) => {
+    if (!meta) return false
+    return meta.revealed === false
+  }
+  const selectedMeta = selectedNFT ? (metaByToken[selectedNFT.tokenId] || selectedNFT.meta) : null
+  const selectedIsEvolved = Boolean(selectedMeta && isEvolvedMeta(selectedMeta))
+  const selectedIsUnrevealed = Boolean(selectedMeta && isUnrevealedMeta(selectedMeta))
 
   const fetchGlobalProgress = async (supplyHint = null) => {
     try {
@@ -460,7 +462,19 @@ function Evolve() {
   }
 
   const evolveSelected = () => {
-    if (!selectedNFT?.meta?.attributes?.length || !account) {
+    if (!account) {
+      setStatus('Connect wallet first')
+      return
+    }
+    if (!selectedNFT) {
+      setStatus('Select an NFT to evolve')
+      return
+    }
+    if (selectedIsUnrevealed) {
+      setStatus(`NFT #${selectedNFT.tokenId} is unrevealed and cannot be evolved yet`)
+      return
+    }
+    if (!selectedMeta?.attributes?.length) {
       setStatus('Select an NFT with on-chain traits')
       return
     }
@@ -474,8 +488,8 @@ function Evolve() {
         setLastTxHash('')
         setStatus(`Preparing 3D snapshot for #${selectedNFT.tokenId}...`)
 
-        const modelTraits = traitsFromAttributes(selectedNFT.meta.attributes)
-        const currentAttributes = Array.isArray(selectedNFT.meta.attributes) ? selectedNFT.meta.attributes : []
+        const modelTraits = traitsFromAttributes(selectedMeta.attributes)
+        const currentAttributes = Array.isArray(selectedMeta.attributes) ? selectedMeta.attributes : []
         const hasEvolution = currentAttributes.some(
           (a) => a?.trait_type === 'Evolution' && String(a.value).toLowerCase().includes('evolved')
         )
@@ -706,11 +720,6 @@ function Evolve() {
                 <button className="mint-disconnect-btn" onClick={disconnectWallet}>Disconnect</button>
               </div>
 
-              {activeTab !== 'evolved' && (
-                <button className="mint-submit-btn" onClick={evolveSelected} disabled={!selectedNFT || isEvolving || selectedIsEvolved}>
-                  {isEvolving ? 'Evolving...' : selectedNFT ? (selectedIsEvolved ? `#${selectedNFT.tokenId} Already 3D` : `Evolve #${selectedNFT.tokenId} to 3D`) : 'Select an NFT to Evolve'}
-                </button>
-              )}
             </div>
           )}
 
@@ -732,6 +741,19 @@ function Evolve() {
                 <span>{selectedNFT.meta?.attributes?.length || 0} traits</span>
               </div>
             </div>
+          )}
+          {activeTab !== 'evolved' && selectedNFT && (
+            <button className="mint-submit-btn" onClick={evolveSelected} disabled={!selectedNFT || isEvolving || selectedIsEvolved || selectedIsUnrevealed}>
+              {isEvolving
+                ? 'Evolving...'
+                : (
+                  selectedIsEvolved
+                    ? `#${selectedNFT.tokenId} Already 3D`
+                    : selectedIsUnrevealed
+                      ? `#${selectedNFT.tokenId} Unrevealed`
+                      : `Evolve #${selectedNFT.tokenId} to 3D`
+                )}
+            </button>
           )}
           {status && <div className={`mint-status ${status.includes('Error') ? 'error' : ''}`}>{status}</div>}
           {lastTxHash && (

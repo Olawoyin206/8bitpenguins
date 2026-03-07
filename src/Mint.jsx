@@ -4,25 +4,11 @@ import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import './Mint.css'
 import { BLOCK_EXPLORER_URL, CHAIN_ID_HEX, CHAIN_NAME, CONTRACT_ADDRESS, ETH_SEPOLIA_RPC } from './contractConfig.js'
+import EightBitPenguinsArtifact from '../artifacts/contracts/8bitPenguins.sol/EightBitPenguinsUpgradeable.json'
 
 const SHARED_RPC_PROVIDER = new ethers.JsonRpcProvider(ETH_SEPOLIA_RPC)
 
-const contractABI = [
-  "function mint(uint256 quantity, string[] calldata imageBase64s, string[] calldata names, string[] calldata attributesJson, uint256[] calldata rarityScores) public payable",
-  "function evolveTo3D(uint256 tokenId, string calldata imageBase64, string calldata attributesJson) external",
-  "function balanceOf(address owner) public view returns (uint256)",
-  "function totalSupply() public view returns (uint256)",
-  "function mintActive() public view returns (bool)",
-  "function MAX_SUPPLY() public view returns (uint256)",
-  "function MAX_PER_WALLET() public view returns (uint256)",
-  "function mintedPerWallet(address owner) public view returns (uint256)",
-  "function ownerOf(uint256 tokenId) public view returns (address)",
-  "function tokenSeeds(uint256 tokenId) public view returns (uint256)",
-  "function tokenURI(uint256 tokenId) public view returns (string)",
-  "function tokenRarityScore(uint256 tokenId) public view returns (uint256)",
-  "function rarityRank(uint256 tokenId) public view returns (uint256)",
-  "function tokenMetadataJson(uint256 tokenId) public view returns (string)"
-]
+const contractABI = EightBitPenguinsArtifact.abi
 
 function normalizeOnchainImage(image) {
   if (!image || typeof image !== 'string') return ''
@@ -2028,8 +2014,24 @@ function Mint() {
         rarityScores.push(calculateRarityScore(traits))
       }
 
+      let mintPrice = 0n
+      if (typeof contract.mintPrice === 'function') {
+        try {
+          mintPrice = await contract.mintPrice()
+        } catch {
+          mintPrice = 0n
+        }
+      }
+
       setStatus('Minting...')
-      const tx = await contract.mint(quantity, imageBase64s, names, attributesJson, rarityScores)
+      const tx = await contract.mint(
+        quantity,
+        imageBase64s,
+        names,
+        attributesJson,
+        rarityScores,
+        { value: mintPrice * BigInt(quantity) }
+      )
       setLastTxHash(tx.hash)
       setStatus('Confirming...')
       await tx.wait()
