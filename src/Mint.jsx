@@ -4,7 +4,7 @@ import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import './Mint.css'
 import { BLOCK_EXPLORER_URL, CHAIN_ID_HEX, CHAIN_NAME, CONTRACT_ADDRESS, ETH_SEPOLIA_RPC } from './contractConfig.js'
-import contractABI from './abi/EightBitPenguinsUpgradeable.abi.json'
+import contractABI from './abi/EightBitPenguinsUpgradeable.abi.js'
 
 const SHARED_RPC_PROVIDER = new ethers.JsonRpcProvider(ETH_SEPOLIA_RPC)
 
