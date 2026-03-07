@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { ethers } from 'ethers'
 import { render3DSnapshot } from './Mint.jsx'
 import './Mint.css'
-import { getOnboard } from './onboard.js'
 import { CONTRACT_ADDRESS, BASE_SEPOLIA_RPC } from './contractConfig.js'
 
 const contractABI = [
@@ -269,7 +268,6 @@ function Evolve() {
   const [traitsModal, setTraitsModal] = useState(null)
   const [isLoadingNfts, setIsLoadingNfts] = useState(false)
   const [isHydratingMeta, setIsHydratingMeta] = useState(false)
-  const [connectedWalletLabel, setConnectedWalletLabel] = useState('')
   const [globalTotalMinted, setGlobalTotalMinted] = useState(0)
   const [globalEvolvedCount, setGlobalEvolvedCount] = useState(0)
   const [isLoadingGlobalProgress, setIsLoadingGlobalProgress] = useState(false)
@@ -409,16 +407,14 @@ function Evolve() {
   }, [account])
 
   const connect = async () => {
+    if (!window.ethereum) {
+      setStatus('Install MetaMask')
+      return
+    }
     try {
-      const onboard = await getOnboard()
-      const wallets = await onboard.connectWallet()
-      const wallet = wallets?.[0]
-      const address = wallet?.accounts?.[0]?.address
-      if (!address) {
-        setStatus('Connection cancelled')
-        return
-      }
-      setConnectedWalletLabel(wallet?.label || '')
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' })
+      const address = accounts?.[0]
+      if (!address) throw new Error('No account selected')
       setAccount(address)
       setStatus('')
       fetchContractData(address)
@@ -428,13 +424,6 @@ function Evolve() {
   }
 
   const disconnectWallet = async () => {
-    try {
-      const onboard = await getOnboard()
-      if (connectedWalletLabel) {
-        await onboard.disconnectWallet({ label: connectedWalletLabel })
-      }
-    } catch {}
-    setConnectedWalletLabel('')
     setAccount(null)
     setBalance(0)
     setMyNFTs([])

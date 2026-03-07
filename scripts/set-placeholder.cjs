@@ -2,7 +2,7 @@ const hre = require("hardhat");
 const { createCanvas } = require("canvas");
 
 async function main() {
-  const contractAddress = "0x74583D54B3c42ab08c8031d849B350Ccf425060c";
+  const contractAddress = "0x9858725b7e2e79A6DB4CEDa510854C48238357ff";
   const size = 400;
   const grid = 40;
   const px = size / grid;
@@ -135,7 +135,7 @@ async function main() {
 
   const dataUri = canvas.toDataURL("image/png");
 
-  const contract = await hre.ethers.getContractAt("PixelPenguins", contractAddress);
+  const contract = await hre.ethers.getContractAt("EightBitPenguinsUpgradeable", contractAddress);
   const tx = await contract.setPlaceholderImage(dataUri);
   console.log("Tx:", tx.hash);
   await tx.wait();
