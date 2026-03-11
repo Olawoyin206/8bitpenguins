@@ -2,6 +2,11 @@ require("@nomicfoundation/hardhat-toolbox");
 require("@openzeppelin/hardhat-upgrades");
 require("dotenv").config();
 
+if (process.platform === "win32" && process.env.HARDHAT_USE_NATIVE_SOLC !== "true") {
+  const { CompilerDownloader, CompilerPlatform } = require("hardhat/internal/solidity/compiler/downloader");
+  CompilerDownloader.getCompilerPlatform = () => CompilerPlatform.WASM;
+}
+
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
   solidity: {

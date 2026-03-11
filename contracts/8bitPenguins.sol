@@ -13,6 +13,17 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 contract EightBitPenguinsUpgradeable is Initializable, ERC721Upgradeable, IERC4906Upgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable {
     using Strings for uint256;
 
+    struct MintPhase {
+        string name;
+        uint256 price;
+        uint256 startTime;
+        uint256 endTime;
+        uint256 maxSupply;
+        uint256 maxPerWallet;
+        uint256 minted;
+        bool enabled;
+    }
+
     uint256 public MAX_SUPPLY;
     uint256 public MAX_PER_WALLET;
     uint256 public mintPrice;
@@ -29,11 +40,18 @@ contract EightBitPenguinsUpgradeable is Initializable, ERC721Upgradeable, IERC49
     mapping(uint256 => string) public tokenAttributes;
     mapping(uint256 => uint256) public tokenRarityScore;
     mapping(uint256 => bool) public tokenEvolved3D;
+    MintPhase[] private _mintPhases;
+    mapping(uint256 => mapping(address => uint256)) public phaseMintedPerWallet;
 
     event MintStatusChanged(bool status);
     event RevealStatusChanged(bool status);
     event PlaceholderImageChanged(string image);
     event TokenEvolved3D(uint256 indexed tokenId, address indexed owner);
+    event MintPriceChanged(uint256 price);
+    event MaxSupplyChanged(uint256 maxSupply);
+    event MaxPerWalletChanged(uint256 maxPerWallet);
+    event PhaseUpserted(uint256 indexed phaseId, string name, uint256 price, uint256 startTime, uint256 endTime, uint256 maxSupply, uint256 maxPerWallet, bool enabled);
+    event PhaseRemoved(uint256 indexed phaseId);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -54,6 +72,8 @@ contract EightBitPenguinsUpgradeable is Initializable, ERC721Upgradeable, IERC49
         placeholderImage = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 400'><rect width='400' height='400' fill='%238B0E2A'/><ellipse cx='200' cy='208' rx='98' ry='122' fill='%23C88F1F'/><ellipse cx='186' cy='182' rx='52' ry='70' fill='%23EFBF45'/><ellipse cx='212' cy='228' rx='76' ry='84' fill='%238F5B12' opacity='0.55'/><text x='200' y='352' fill='%23FFFFFF' font-size='28' font-family='JetBrains Mono,monospace' font-weight='700' text-anchor='middle'>8bit Penguin</text></svg>";
     }
 
+    function initializeV2() public reinitializer(2) {}
+
     function mint(
         uint256 quantity,
         string[] calldata imageBase64s,
@@ -61,6 +81,7 @@ contract EightBitPenguinsUpgradeable is Initializable, ERC721Upgradeable, IERC49
         string[] calldata attributesJson,
         uint256[] calldata rarityScores
     ) external payable nonReentrant {
+        (bool phaseConfigured, uint256 phaseId, uint256 phasePrice, uint256 phaseMaxPerWallet) = _activePhaseConfig();
         require(mintActive, "Minting not active");
         require(quantity > 0, "Must mint at least 1");
         require(quantity == imageBase64s.length, "Must provide image for each NFT");
@@ -68,8 +89,20 @@ contract EightBitPenguinsUpgradeable is Initializable, ERC721Upgradeable, IERC49
         require(quantity == attributesJson.length, "Must provide attributes for each NFT");
         require(quantity == rarityScores.length, "Must provide rarity score for each NFT");
         require(_currentTokenId + quantity <= MAX_SUPPLY, "Exceeds max supply");
-        require(mintedPerWallet[msg.sender] + quantity <= MAX_PER_WALLET, "Exceeds max per wallet");
-        require(msg.value >= mintPrice * quantity, "Insufficient payment");
+        require(mintedPerWallet[msg.sender] + quantity <= MAX_PER_WALLET, "Exceeds global max per wallet");
+
+        if (phaseConfigured) {
+            MintPhase storage phase = _mintPhases[phaseId];
+            require(phase.enabled, "Phase disabled");
+            if (phase.maxSupply > 0) {
+                require(phase.minted + quantity <= phase.maxSupply, "Exceeds phase max supply");
+            }
+            if (phaseMaxPerWallet > 0) {
+                require(phaseMintedPerWallet[phaseId][msg.sender] + quantity <= phaseMaxPerWallet, "Exceeds phase max per wallet");
+            }
+        }
+
+        require(msg.value >= phasePrice * quantity, "Insufficient payment");
 
         for (uint256 i = 0; i < quantity; i++) {
             require(_isBase64ImageDataUri(imageBase64s[i]), "Image must be data:image/*;base64,...");
@@ -90,7 +123,12 @@ contract EightBitPenguinsUpgradeable is Initializable, ERC721Upgradeable, IERC49
             emit MetadataUpdate(tokenId);
         }
 
-        uint256 requiredValue = mintPrice * quantity;
+        if (phaseConfigured) {
+            _mintPhases[phaseId].minted += quantity;
+            phaseMintedPerWallet[phaseId][msg.sender] += quantity;
+        }
+
+        uint256 requiredValue = phasePrice * quantity;
         if (msg.value > requiredValue) {
             payable(msg.sender).transfer(msg.value - requiredValue);
         }
@@ -116,6 +154,93 @@ contract EightBitPenguinsUpgradeable is Initializable, ERC721Upgradeable, IERC49
         if (!revealed && _currentTokenId > 0) {
             emit BatchMetadataUpdate(1, _currentTokenId);
         }
+    }
+
+    function setMintPrice(uint256 price) external onlyOwner {
+        mintPrice = price;
+        emit MintPriceChanged(price);
+    }
+
+    function setMaxSupply(uint256 maxSupply_) external onlyOwner {
+        require(maxSupply_ >= _currentTokenId, "Max supply below minted");
+        require(maxSupply_ > 0, "Max supply must be > 0");
+        MAX_SUPPLY = maxSupply_;
+        emit MaxSupplyChanged(maxSupply_);
+    }
+
+    function setMaxPerWallet(uint256 maxPerWallet_) external onlyOwner {
+        require(maxPerWallet_ > 0, "Max per wallet must be > 0");
+        MAX_PER_WALLET = maxPerWallet_;
+        emit MaxPerWalletChanged(maxPerWallet_);
+    }
+
+    function upsertPhase(
+        uint256 phaseId,
+        string calldata name_,
+        uint256 price,
+        uint256 startTime,
+        uint256 endTime,
+        uint256 maxSupply_,
+        uint256 maxPerWallet_,
+        bool enabled
+    ) external onlyOwner {
+        require(bytes(name_).length > 0, "Phase name required");
+        require(endTime == 0 || startTime == 0 || endTime > startTime, "Invalid phase window");
+
+        if (phaseId == _mintPhases.length) {
+            _mintPhases.push();
+        } else {
+            require(phaseId < _mintPhases.length, "Phase does not exist");
+        }
+
+        MintPhase storage phase = _mintPhases[phaseId];
+        phase.name = name_;
+        phase.price = price;
+        phase.startTime = startTime;
+        phase.endTime = endTime;
+        phase.maxSupply = maxSupply_;
+        phase.maxPerWallet = maxPerWallet_;
+        phase.enabled = enabled;
+
+        emit PhaseUpserted(phaseId, name_, price, startTime, endTime, maxSupply_, maxPerWallet_, enabled);
+    }
+
+    function deletePhase(uint256 phaseId) external onlyOwner {
+        require(_mintPhases.length > 0, "No phase to delete");
+        require(phaseId == _mintPhases.length - 1, "Only last phase can be deleted");
+        delete _mintPhases[phaseId];
+        _mintPhases.pop();
+        emit PhaseRemoved(phaseId);
+    }
+
+    function phaseCount() external view returns (uint256) {
+        return _mintPhases.length;
+    }
+
+    function getPhase(uint256 phaseId) external view returns (
+        string memory name_,
+        uint256 price,
+        uint256 startTime,
+        uint256 endTime,
+        uint256 maxSupply_,
+        uint256 maxPerWallet_,
+        uint256 minted,
+        bool enabled
+    ) {
+        require(phaseId < _mintPhases.length, "Phase does not exist");
+        MintPhase storage phase = _mintPhases[phaseId];
+        return (phase.name, phase.price, phase.startTime, phase.endTime, phase.maxSupply, phase.maxPerWallet, phase.minted, phase.enabled);
+    }
+
+    function currentPhaseId() public view returns (bool exists, uint256 phaseId) {
+        for (uint256 i = 0; i < _mintPhases.length; i++) {
+            MintPhase storage phase = _mintPhases[i];
+            if (!phase.enabled) continue;
+            if (phase.startTime != 0 && block.timestamp < phase.startTime) continue;
+            if (phase.endTime != 0 && block.timestamp > phase.endTime) continue;
+            return (true, i);
+        }
+        return (false, 0);
     }
 
     function evolveTo3D(
@@ -299,6 +424,17 @@ contract EightBitPenguinsUpgradeable is Initializable, ERC721Upgradeable, IERC49
 
     function supportsInterface(bytes4 interfaceId) public view override(ERC721Upgradeable, IERC165Upgradeable) returns (bool) {
         return interfaceId == type(IERC4906Upgradeable).interfaceId || super.supportsInterface(interfaceId);
+    }
+
+    function _activePhaseConfig() internal view returns (bool configured, uint256 phaseId, uint256 price, uint256 maxPerWallet_) {
+        (bool exists, uint256 id) = currentPhaseId();
+        if (!exists) {
+            require(_mintPhases.length == 0, "No active mint phase");
+            return (false, 0, mintPrice, 0);
+        }
+
+        MintPhase storage phase = _mintPhases[id];
+        return (true, id, phase.price, phase.maxPerWallet);
     }
 
     function _isBase64ImageDataUri(string calldata data) internal pure returns (bool) {

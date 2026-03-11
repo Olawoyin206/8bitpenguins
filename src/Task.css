@@ -268,6 +268,138 @@
   margin-top: 8px;
 }
 
+.arcade-section {
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 4px;
+  padding: 14px;
+  margin-bottom: 20px;
+}
+
+.arcade-copy {
+  font-size: 0.72rem;
+  color: #8b949e;
+  margin-bottom: 10px;
+}
+
+.arcade-copy strong {
+  color: #ffffff;
+}
+
+.arcade-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.arcade-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border: 1px solid #30363d;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  color: #c9d1d9;
+  background: #161b22;
+}
+
+.arcade-pill.qualified-pill {
+  background: rgba(57, 255, 20, 0.14);
+  border-color: #39ff14;
+  color: #39ff14;
+}
+
+.playwl-link-btn {
+  margin-top: 6px;
+}
+
+.arcade-board {
+  position: relative;
+  width: 100%;
+  height: 320px;
+  border: 1px solid #30363d;
+  border-radius: 4px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(88, 166, 255, 0.16), transparent 30%),
+    radial-gradient(circle at 80% 10%, rgba(57, 255, 20, 0.09), transparent 25%),
+    linear-gradient(180deg, #111823 0%, #0a0f15 100%);
+}
+
+.arcade-player {
+  position: absolute;
+  width: 54px;
+  height: 18px;
+  bottom: 14px;
+  transform: translateX(-50%);
+  border-radius: 3px;
+  background: linear-gradient(180deg, #ffffff, #b4bac1);
+  border: 1px solid #d0d6dd;
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.35);
+}
+
+.arcade-item {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+}
+
+.arcade-item.coin {
+  background: radial-gradient(circle at 30% 30%, #ffeaa0, #d8aa2a);
+  border: 1px solid #f3c247;
+}
+
+.arcade-item.bomb {
+  background: radial-gradient(circle at 35% 35%, #ff8e8e, #d93f3f);
+  border: 1px solid #f85149;
+}
+
+.arcade-controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.arcade-btn {
+  padding: 8px 14px;
+}
+
+.arcade-btn.ghost {
+  background: #21262d;
+  color: #c9d1d9;
+  border-color: #30363d;
+}
+
+.arcade-btn.ghost:hover:not(:disabled) {
+  background: #2a313a;
+  border-color: #3a434d;
+  color: #ffffff;
+}
+
+.arcade-mobile-controls {
+  display: none;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.arcade-message {
+  margin-top: 12px;
+  margin-bottom: 0;
+}
+
+.arcade-message.qualified {
+  background: rgba(88, 166, 255, 0.1);
+  border-color: #58a6ff;
+}
+
+.arcade-message.qualified h3 {
+  color: #58a6ff;
+}
+
 .form-section {
   opacity: 0;
   transform: translateY(10px);
@@ -476,6 +608,18 @@
     flex: 0 0 auto;
     width: auto;
     padding: 6px 12px;
+  }
+
+  .arcade-board {
+    height: 260px;
+  }
+
+  .arcade-controls {
+    flex-wrap: wrap;
+  }
+
+  .arcade-mobile-controls {
+    display: flex;
   }
 }
 

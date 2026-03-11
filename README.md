@@ -12,6 +12,8 @@ Frontend + Hardhat workspace for minting and evolving `8bit Penguins` on Ethereu
 ## App Commands
 
 - `npm run dev` - Start Vite dev server
+- `npm run server` - Start identity verification API
+- `npm run server:dev` - Start identity API in watch mode
 - `npm run build` - Production build
 - `npm run preview` - Preview production build
 - `npm run lint` - Lint source
@@ -33,3 +35,6 @@ Frontend + Hardhat workspace for minting and evolving `8bit Penguins` on Ethereu
 - Unrevealed placeholder is configured on-chain via `set-placeholder.cjs`.
 - Keep `VITE_CONTRACT_ADDRESS` and `CONTRACT_ADDRESS` in `.env` aligned.
 - For Vercel, set project root to `mint-app`.
+- Puzzle identity gate is backed by `POST /api/identity/verify` (Express + Postgres).
+- New game identity entries are forwarded to the Google Apps Script endpoint with `sheetName: "Game details"`.
+- Duplicate X handles are blocked when wallet does not match the existing record.

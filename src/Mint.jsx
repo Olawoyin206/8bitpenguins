@@ -2,11 +2,86 @@ import { useState, useEffect, useRef } from 'react'
 import { ethers } from 'ethers'
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
+import { Link } from 'react-router-dom'
 import './Mint.css'
 import { BLOCK_EXPLORER_URL, CHAIN_ID_HEX, CHAIN_NAME, CONTRACT_ADDRESS, ETH_SEPOLIA_RPC } from './contractConfig.js'
 import contractABI from './abi/EightBitPenguinsUpgradeable.abi.js'
 
 const SHARED_RPC_PROVIDER = new ethers.JsonRpcProvider(ETH_SEPOLIA_RPC)
+
+function formatCountdown(targetMs, nowMs) {
+  const diff = Math.max(0, Number(targetMs) - Number(nowMs))
+  const totalSeconds = Math.floor(diff / 1000)
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  return [hours, minutes, seconds].map((value) => String(value).padStart(2, '0')).join(':')
+}
+
+function getPhaseStatus(activePhase, hasPhases, nowMs) {
+  if (activePhase) {
+    if (activePhase.endTime > 0 && activePhase.endTime * 1000 > nowMs) {
+      return {
+        state: 'live',
+        label: 'Ends in',
+        countdownTarget: activePhase.endTime * 1000,
+      }
+    }
+
+    return {
+      state: 'live',
+      label: 'Live now',
+      countdownTarget: null,
+    }
+  }
+
+  if (hasPhases) {
+    return {
+      state: 'closed',
+      label: 'No active phase',
+      countdownTarget: null,
+    }
+  }
+
+  return {
+    state: 'open',
+    label: 'Open mint',
+    countdownTarget: null,
+  }
+}
+
+function getPhaseCardStatus(phase, activePhaseId, nowMs) {
+  const nowSeconds = Math.floor(nowMs / 1000)
+  if (!phase?.enabled) {
+    return { label: 'Disabled', countdown: '', timerLabel: 'Inactive' }
+  }
+  if (phase.id === activePhaseId) {
+    if (phase.endTime > 0 && phase.endTime > nowSeconds) {
+      return { label: 'Live', countdown: formatCountdown(phase.endTime * 1000, nowMs), timerLabel: 'Ends in' }
+    }
+    return { label: 'Live', countdown: 'Open', timerLabel: 'Ends in' }
+  }
+  if (phase.startTime > 0 && phase.startTime > nowSeconds) {
+    return { label: 'Upcoming', countdown: formatCountdown(phase.startTime * 1000, nowMs), timerLabel: 'Starts in' }
+  }
+  if (phase.endTime > 0 && phase.endTime <= nowSeconds) {
+    return { label: 'Ended', countdown: '00:00:00', timerLabel: 'Ended' }
+  }
+  return { label: 'Scheduled', countdown: 'Open', timerLabel: 'Window' }
+}
+
+function formatPhaseDate(timestamp) {
+  if (!timestamp) return 'Open'
+  return new Date(timestamp * 1000).toLocaleString()
+}
+
+async function safeRead(call, fallback) {
+  try {
+    return await call()
+  } catch {
+    return fallback
+  }
+}
 
 function normalizeOnchainImage(image) {
   if (!image || typeof image !== 'string') return ''
@@ -1700,6 +1775,12 @@ function Mint() {
   const [mintedCount, setMintedCount] = useState(0)
   const [lastTxHash, setLastTxHash] = useState('')
   const [mintedNFT, setMintedNFT] = useState(null)
+  const [phaseNow, setPhaseNow] = useState(Date.now())
+  const [mintPriceEth, setMintPriceEth] = useState('0')
+  const [phaseCount, setPhaseCount] = useState(0)
+  const [currentPhase, setCurrentPhase] = useState(null)
+  const [phases, setPhases] = useState([])
+  const [phaseMintedCount, setPhaseMintedCount] = useState(0)
   const [allNFTs, setAllNFTs] = useState([])
   const [metadataRefreshKey, setMetadataRefreshKey] = useState(0)
   const [metadataCache, setMetadataCache] = useState({})
@@ -1716,6 +1797,39 @@ function Mint() {
     fetchContractData(null)
     generatePreview()
   }, [])
+
+  useEffect(() => {
+    const timer = setInterval(() => setPhaseNow(Date.now()), 1000)
+    return () => {
+      clearInterval(timer)
+    }
+  }, [])
+
+  useEffect(() => {
+    const refreshFromContractUpdate = () => {
+      fetchContractData(account || null, { silent: true })
+    }
+    const handleStorage = (event) => {
+      if (event.key === 'penguin:contract-updated') {
+        refreshFromContractUpdate()
+      }
+    }
+
+    window.addEventListener('penguin:contract-updated', refreshFromContractUpdate)
+    window.addEventListener('storage', handleStorage)
+
+    return () => {
+      window.removeEventListener('penguin:contract-updated', refreshFromContractUpdate)
+      window.removeEventListener('storage', handleStorage)
+    }
+  }, [account])
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      fetchContractData(account || null, { silent: true, skipOwnershipScan: true })
+    }, 15000)
+    return () => clearInterval(intervalId)
+  }, [account])
 
   useEffect(() => {
     lastKnownSupplyRef.current = totalSupply
@@ -1833,24 +1947,75 @@ function Mint() {
       const provider = new ethers.JsonRpcProvider(ETH_SEPOLIA_RPC)
       const contract = new ethers.Contract(CONTRACT_ADDRESS, contractABI, provider)
       
-      const [supply, maxS, maxW, mintActive] = await Promise.all([
+      const [supply, maxS, maxW, mintActive, mintPriceRaw] = await Promise.all([
         contract.totalSupply(),
         contract.MAX_SUPPLY(),
         contract.MAX_PER_WALLET(),
-        contract.mintActive()
+        contract.mintActive(),
+        contract.mintPrice(),
       ])
       setTotalSupply(Number(supply))
       setMaxSupply(Number(maxS))
       setMaxPerWallet(Number(maxW))
+      setMintPriceEth(ethers.formatEther(mintPriceRaw))
+
+      let nextCurrentPhase = null
+      const unsupported = Symbol('unsupported')
+      const [phaseCountRaw, currentPhaseResult] = await Promise.all([
+        safeRead(() => contract.phaseCount(), unsupported),
+        safeRead(() => contract.currentPhaseId(), unsupported),
+      ])
+      const phaseApiSupported = phaseCountRaw !== unsupported && currentPhaseResult !== unsupported
+      const totalPhaseCount = phaseApiSupported ? Number(phaseCountRaw || 0) : 0
+      setPhaseCount(totalPhaseCount)
+
+      if (phaseApiSupported) {
+        const phaseResults = totalPhaseCount > 0
+          ? await Promise.all(
+              Array.from({ length: totalPhaseCount }, async (_, index) => {
+                const phase = await contract.getPhase(index)
+                return {
+                  id: index,
+                  name: phase[0],
+                  priceEth: ethers.formatEther(phase[1]),
+                  startTime: Number(phase[2]),
+                  endTime: Number(phase[3]),
+                  maxSupply: Number(phase[4]),
+                  maxPerWallet: Number(phase[5]),
+                  minted: Number(phase[6]),
+                  enabled: Boolean(phase[7]),
+                }
+              })
+            )
+          : []
+        setPhases(phaseResults)
+
+        const phaseExists = Array.isArray(currentPhaseResult) ? currentPhaseResult[0] : currentPhaseResult?.exists
+        const phaseIdValue = Array.isArray(currentPhaseResult) ? currentPhaseResult[1] : currentPhaseResult?.phaseId
+        if (phaseExists) {
+          nextCurrentPhase = phaseResults.find((phase) => phase.id === Number(phaseIdValue)) || null
+        }
+      } else {
+        setPhases([])
+      }
+      setCurrentPhase(nextCurrentPhase)
+
       if (!silent) setStatus(mintActive ? '' : 'Minting not active')
       
       if (address) {
-        const [bal, minted] = await Promise.all([
+        const addressReads = [
           contract.balanceOf(address),
           contract.mintedPerWallet(address)
-        ])
+        ]
+        if (nextCurrentPhase) {
+          addressReads.push(safeRead(() => contract.phaseMintedPerWallet(nextCurrentPhase.id, address), 0))
+        }
+        const [bal, minted, phaseMinted] = await Promise.all(addressReads)
         setBalance(Number(bal))
         setMintedCount(Number(minted))
+        setPhaseMintedCount(Number(phaseMinted || 0))
+      } else {
+        setPhaseMintedCount(0)
       }
 
       const totalNum = Number(supply)
@@ -2013,7 +2178,17 @@ function Mint() {
       }
 
       let mintPrice = 0n
-      if (typeof contract.mintPrice === 'function') {
+      try {
+        const currentPhaseResult = await contract.currentPhaseId()
+        const phaseExists = Array.isArray(currentPhaseResult) ? currentPhaseResult[0] : currentPhaseResult?.exists
+        const phaseIdValue = Array.isArray(currentPhaseResult) ? currentPhaseResult[1] : currentPhaseResult?.phaseId
+        if (phaseExists) {
+          const phase = await contract.getPhase(phaseIdValue)
+          mintPrice = phase[1]
+        } else if (typeof contract.mintPrice === 'function') {
+          mintPrice = await contract.mintPrice()
+        }
+      } catch {
         try {
           mintPrice = await contract.mintPrice()
         } catch {
@@ -2059,6 +2234,15 @@ function Mint() {
   }
 
   const progress = (totalSupply / maxSupply) * 100
+  const activePhase = currentPhase
+  const phaseStatus = getPhaseStatus(activePhase, phaseCount > 0, phaseNow)
+  const phaseCountdown = phaseStatus.countdownTarget ? formatCountdown(phaseStatus.countdownTarget, phaseNow) : '--:--:--'
+  const effectiveWalletMax = activePhase?.maxPerWallet > 0 ? activePhase.maxPerWallet : maxPerWallet
+  const walletRemaining = Math.max(0, effectiveWalletMax - (activePhase ? phaseMintedCount : mintedCount))
+  const phaseRemaining = activePhase?.maxSupply > 0 ? Math.max(0, activePhase.maxSupply - activePhase.minted) : maxSupply - totalSupply
+  const phaseClosedByUi = phaseCount > 0 && !activePhase
+  const displayPrice = activePhase?.priceEth?.trim() || mintPriceEth || '0'
+  const activePhaseId = activePhase?.id ?? null
 
   return (
     <>
@@ -2068,6 +2252,8 @@ function Mint() {
         <h1>8bit Penguins</h1>
         <p>COLLECT - MINT</p>
         <div className="header-links">
+          <Link to="/admin" className="x-btn">Admin</Link>
+          <Link to="/evolve" className="x-btn">Evolve</Link>
           <a href="https://x.com/8bitpenguins" target="_blank" rel="noopener noreferrer" className="x-btn">Follow us on X</a>
         </div>
       </header>
@@ -2078,7 +2264,7 @@ function Mint() {
           <div className="mint-card">
             <div className="mint-card-header">
               <span className="mint-card-title">Mint</span>
-              <span className="mint-card-badge">Free</span>
+              <span className="mint-card-badge">{Number(displayPrice) > 0 ? `${displayPrice} ETH` : 'Free'}</span>
             </div>
 
             {/* Supply Display */}
@@ -2095,6 +2281,44 @@ function Mint() {
                 <span>{Math.round(progress)}%</span>
               </div>
             </div>
+
+            {(activePhase || phaseCount > 0) && (
+              <div className="admin-phase-banner admin-phase-stack">
+                <div className="admin-phase-banner-head">
+                  <strong>{activePhase?.name || 'No active phase'}</strong>
+                  <span>{activePhase ? `${activePhase.priceEth || '0'} ETH` : 'Closed'}</span>
+                </div>
+                <div className="admin-phase-banner-foot">
+                  <span>{phaseStatus.label}</span>
+                  <span>{phaseStatus.countdownTarget ? phaseCountdown : activePhase ? `Wallet max ${effectiveWalletMax}` : 'Check admin schedule'}</span>
+                </div>
+                {activePhase && (
+                  <div className="admin-phase-banner-foot">
+                    <span>{activePhase.maxSupply > 0 ? `${phaseRemaining} left in phase` : 'Unlimited phase supply'}</span>
+                    <span>{walletRemaining} wallet slots left</span>
+                  </div>
+                )}
+                {phases.length > 0 && (
+                  <div className="mint-phase-list">
+                    {phases.map((phase) => {
+                      const info = getPhaseCardStatus(phase, activePhaseId, phaseNow)
+                      return (
+                        <div key={phase.id} className={`mint-phase-item ${phase.id === activePhaseId ? 'active' : ''}`}>
+                          <strong>{phase.name || `Phase ${phase.id + 1}`}</strong>
+                          <div className="mint-phase-chips">
+                            <span>{info.label}</span>
+                            <span>{phase.priceEth} ETH</span>
+                            <span>{phase.maxSupply > 0 ? `${phase.minted}/${phase.maxSupply}` : `${phase.minted}/inf`}</span>
+                            <span>W {phase.maxPerWallet > 0 ? phase.maxPerWallet : maxPerWallet}</span>
+                            <span>{info.timerLabel}: {info.countdown}</span>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Network Button */}
             <button className="mint-network-btn" onClick={switchToEthereumSepolia}>
@@ -2127,18 +2351,18 @@ function Mint() {
                   <span className="mint-quantity-value">{quantity}</span>
                   <button 
                     className="mint-quantity-btn"
-                    onClick={() => setQuantity(Math.min(maxPerWallet - mintedCount, quantity + 1, maxSupply - totalSupply))}
-                    disabled={quantity >= maxPerWallet - mintedCount || totalSupply >= maxSupply}
+                    onClick={() => setQuantity(Math.min(walletRemaining, quantity + 1, maxSupply - totalSupply, Math.max(1, phaseRemaining)))}
+                    disabled={quantity >= walletRemaining || totalSupply >= maxSupply || phaseRemaining <= 0 || phaseClosedByUi}
                   >+</button>
-                  <span className="mint-quantity-limit">max {maxPerWallet - mintedCount}</span>
+                  <span className="mint-quantity-limit">max {walletRemaining}</span>
                 </div>
 
                 <button 
                   className="mint-submit-btn"
                   onClick={mint}
-                  disabled={isMinting || totalSupply >= maxSupply || mintedCount >= maxPerWallet}
+                  disabled={isMinting || totalSupply >= maxSupply || walletRemaining <= 0 || phaseRemaining <= 0 || phaseClosedByUi}
                 >
-                  {isMinting ? 'Minting...' : totalSupply >= maxSupply ? 'Sold Out' : mintedCount >= maxPerWallet ? 'Max Reached' : 'Mint Free'}
+                  {isMinting ? 'Minting...' : totalSupply >= maxSupply ? 'Sold Out' : walletRemaining <= 0 ? 'Max Reached' : phaseRemaining <= 0 ? 'Phase Sold Out' : phaseClosedByUi ? 'Phase Closed' : Number(displayPrice) > 0 ? `Mint ${displayPrice} ETH` : 'Mint Free'}
                 </button>
 
                 {status && (

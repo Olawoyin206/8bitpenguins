@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import './Task.css'
 
+const TARGET_TWEET_ID = '2031353109654417574'
+
 function Task() {
   const [alreadySubmitted, setAlreadySubmitted] = useState(() => {
     return !!localStorage.getItem('taskSubmission')
@@ -79,7 +81,14 @@ function Task() {
   }
 
   const validateTweetLink = (link) => {
-    return /^https:\/\/(x\.com|twitter\.com|mobile\.twitter\.com)\/[\w.-]+\/status\/\d+(\?.*)?$/.test(link)
+    const match = link.trim().match(
+      /^https:\/\/(x\.com|twitter\.com|mobile\.twitter\.com)\/([\w.-]+)\/status\/(\d+)(\?.*)?$/
+    )
+
+    if (!match) return false
+
+    const tweetId = match[3]
+    return tweetId !== TARGET_TWEET_ID
   }
 
   const handleLinkClick = (taskId) => {
@@ -112,7 +121,7 @@ function Task() {
     }
 
     if (task.requiresLink && !validateTweetLink(tweetLink)) {
-      setTaskError(prev => ({ ...prev, [taskId]: 'Please enter a valid tweet link' }))
+      setTaskError(prev => ({ ...prev, [taskId]: 'Enter a valid quote-tweet link, not the original post link' }))
       return
     }
 

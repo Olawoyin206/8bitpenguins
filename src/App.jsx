@@ -123,7 +123,7 @@ function convertToPenguinStyle(imageSrc, canvas, strength = 'high') {
   })
 }
 
-const TRAITS = {
+export const TRAITS = {
   background: [
     { name: 'Light Blue', color: '#ADD8E6', weight: 12 },
     { name: 'Baby Pink', color: '#F4A6B8', weight: 12 },
@@ -242,7 +242,7 @@ const TRAITS = {
   ],
 }
 
-function randomItem(arr) {
+export function randomItem(arr) {
   const total = arr.reduce((s, i) => s + i.weight, 0)
   let r = Math.random() * total
   for (const item of arr) {
@@ -252,7 +252,7 @@ function randomItem(arr) {
   return arr[0]
 }
 
-function drawAgent(traits, canvas) {
+export function drawAgent(traits, canvas) {
   if (!canvas) return
   
   const ctx = canvas.getContext('2d')
@@ -784,6 +784,54 @@ function drawAgent(traits, canvas) {
   rect(8, 39, 31, 39, 'rgba(0,0,0,0.3)')
 }
 
+export function generateRandomPenguinTraits() {
+  const t = {
+    background: randomItem(TRAITS.background),
+    body: randomItem(TRAITS.body),
+    belly: randomItem(TRAITS.belly),
+    beak: randomItem(TRAITS.beak),
+    eyes: randomItem(TRAITS.eyes),
+    head: randomItem(TRAITS.head),
+    effect: { name: 'None' },
+    feet: { name: 'Default Orange', base: '#FF9F43', highlight: '#FFBE76', shadow: '#E67E22' },
+    name: randomItem(TRAITS.name),
+  }
+
+  const pickEffectVariant = () => randomItem(EFFECT_VARIANTS).name
+  const hexToRgb = (hex) => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex || '')
+    return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : null
+  }
+  const diff = (c1, c2) => {
+    if (!c1 || !c2) return 999
+    return Math.abs(c1.r - c2.r) + Math.abs(c1.g - c2.g) + Math.abs(c1.b - c2.b)
+  }
+  const contrast = (a, b) => diff(hexToRgb(a), hexToRgb(b))
+  const rerollWithLimit = (item, pool, colorGetter, target, minDiff = 80, maxAttempts = 100) => {
+    let next = item
+    for (let i = 0; i < maxAttempts && contrast(colorGetter(next), target) < minDiff; i++) {
+      next = randomItem(pool)
+    }
+    return next
+  }
+
+  const bgColor = t.background.color
+  if (t.background.fx === 'snowflakes') t.effect = { name: 'Snow', variant: pickEffectVariant() }
+  if (t.background.fx === 'softdots') t.effect = { name: 'Stone', variant: pickEffectVariant() }
+  t.body = rerollWithLimit(t.body, TRAITS.body, (x) => x.base, bgColor)
+  const bodyBase = t.body.base
+  t.belly = rerollWithLimit(t.belly, TRAITS.belly, (x) => x.base, bodyBase)
+  t.belly = rerollWithLimit(t.belly, TRAITS.belly, (x) => x.base, bgColor)
+
+  const coloredHeadPool = TRAITS.head.filter((h) => h.color && h.type !== 'none' && h.type !== 'crown' && h.type !== 'halo')
+  const hasHeadAccessory = t.head.type !== 'none' && t.head.type !== 'crown' && t.head.type !== 'halo'
+  if (hasHeadAccessory && t.head.color && coloredHeadPool.length) {
+    t.head = rerollWithLimit(t.head, coloredHeadPool, (x) => x.color, bodyBase)
+  }
+
+  return t
+}
+
 function App() {
   const [traits, setTraits] = useState(null)
   const [status, setStatus] = useState('')
@@ -940,49 +988,7 @@ function App() {
     
     setTimeout(() => {
       try {
-        const t = {
-          background: randomItem(TRAITS.background),
-          body: randomItem(TRAITS.body),
-          belly: randomItem(TRAITS.belly),
-          beak: randomItem(TRAITS.beak),
-          eyes: randomItem(TRAITS.eyes),
-          head: randomItem(TRAITS.head),
-          effect: { name: 'None' },
-          feet: { name: 'Default Orange', base: '#FF9F43', highlight: '#FFBE76', shadow: '#E67E22' },
-          name: randomItem(TRAITS.name),
-        }
-        
-        const pickEffectVariant = () => randomItem(EFFECT_VARIANTS).name
-        const hexToRgb = (hex) => {
-          const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex || '')
-          return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : null
-        }
-        const diff = (c1, c2) => {
-          if (!c1 || !c2) return 999
-          return Math.abs(c1.r - c2.r) + Math.abs(c1.g - c2.g) + Math.abs(c1.b - c2.b)
-        }
-        const contrast = (a, b) => diff(hexToRgb(a), hexToRgb(b))
-        const rerollWithLimit = (item, pool, colorGetter, target, minDiff = 80, maxAttempts = 100) => {
-          let next = item
-          for (let i = 0; i < maxAttempts && contrast(colorGetter(next), target) < minDiff; i++) {
-            next = randomItem(pool)
-          }
-          return next
-        }
-        
-        const bgColor = t.background.color
-        if (t.background.fx === 'snowflakes') t.effect = { name: 'Snow', variant: pickEffectVariant() }
-        if (t.background.fx === 'softdots') t.effect = { name: 'Stone', variant: pickEffectVariant() }
-        t.body = rerollWithLimit(t.body, TRAITS.body, (x) => x.base, bgColor)
-        const bodyBase = t.body.base
-        t.belly = rerollWithLimit(t.belly, TRAITS.belly, (x) => x.base, bodyBase)
-        t.belly = rerollWithLimit(t.belly, TRAITS.belly, (x) => x.base, bgColor)
-        
-        const coloredHeadPool = TRAITS.head.filter((h) => h.color && h.type !== 'none' && h.type !== 'crown' && h.type !== 'halo')
-        const hasHeadAccessory = t.head.type !== 'none' && t.head.type !== 'crown' && t.head.type !== 'halo'
-        if (hasHeadAccessory && t.head.color && coloredHeadPool.length) {
-          t.head = rerollWithLimit(t.head, coloredHeadPool, (x) => x.color, bodyBase)
-        }
+        const t = generateRandomPenguinTraits()
         
         setTraits(t)
         
