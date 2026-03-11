@@ -1781,6 +1781,9 @@ function Mint() {
   const [currentPhase, setCurrentPhase] = useState(null)
   const [phases, setPhases] = useState([])
   const [phaseMintedCount, setPhaseMintedCount] = useState(0)
+  const [phaseWhitelistRequired, setPhaseWhitelistRequired] = useState(false)
+  const [phaseWhitelistEligible, setPhaseWhitelistEligible] = useState(true)
+  const [phaseEligibilityMap, setPhaseEligibilityMap] = useState({})
   const [allNFTs, setAllNFTs] = useState([])
   const [metadataRefreshKey, setMetadataRefreshKey] = useState(0)
   const [metadataCache, setMetadataCache] = useState({})
@@ -1989,6 +1992,25 @@ function Mint() {
             )
           : []
         setPhases(phaseResults)
+        if (address && phaseResults.length > 0) {
+          const eligibilityEntries = await Promise.all(
+            phaseResults.map(async (phase) => {
+              const whitelistCountRead = Number(await safeRead(() => contract.phaseWhitelistCount(phase.id), 0))
+              const whitelistMembers = await safeRead(() => contract.getPhaseWhitelist(phase.id), [])
+              const whitelistCount = Math.max(
+                whitelistCountRead,
+                Array.isArray(whitelistMembers) ? whitelistMembers.length : 0
+              )
+              const isWhitelisted = whitelistCount > 0
+                ? Boolean(await safeRead(() => contract.isPhaseWhitelisted(phase.id, address), false))
+                : true
+              return [phase.id, { requiresWhitelist: whitelistCount > 0, eligible: isWhitelisted }]
+            })
+          )
+          setPhaseEligibilityMap(Object.fromEntries(eligibilityEntries))
+        } else {
+          setPhaseEligibilityMap({})
+        }
 
         const phaseExists = Array.isArray(currentPhaseResult) ? currentPhaseResult[0] : currentPhaseResult?.exists
         const phaseIdValue = Array.isArray(currentPhaseResult) ? currentPhaseResult[1] : currentPhaseResult?.phaseId
@@ -1997,6 +2019,7 @@ function Mint() {
         }
       } else {
         setPhases([])
+        setPhaseEligibilityMap({})
       }
       setCurrentPhase(nextCurrentPhase)
 
@@ -2009,13 +2032,25 @@ function Mint() {
         ]
         if (nextCurrentPhase) {
           addressReads.push(safeRead(() => contract.phaseMintedPerWallet(nextCurrentPhase.id, address), 0))
+          addressReads.push(safeRead(() => contract.phaseWhitelistCount(nextCurrentPhase.id), 0))
+          addressReads.push(safeRead(() => contract.isPhaseWhitelisted(nextCurrentPhase.id, address), false))
         }
-        const [bal, minted, phaseMinted] = await Promise.all(addressReads)
+        const [bal, minted, phaseMinted, whitelistCount, isWhitelisted] = await Promise.all(addressReads)
         setBalance(Number(bal))
         setMintedCount(Number(minted))
         setPhaseMintedCount(Number(phaseMinted || 0))
+        setPhaseWhitelistRequired(Number(whitelistCount || 0) > 0)
+        setPhaseWhitelistEligible(Number(whitelistCount || 0) === 0 ? true : Boolean(isWhitelisted))
       } else {
         setPhaseMintedCount(0)
+        if (nextCurrentPhase) {
+          const whitelistCount = await safeRead(() => contract.phaseWhitelistCount(nextCurrentPhase.id), 0)
+          setPhaseWhitelistRequired(Number(whitelistCount || 0) > 0)
+          setPhaseWhitelistEligible(false)
+        } else {
+          setPhaseWhitelistRequired(false)
+          setPhaseWhitelistEligible(true)
+        }
       }
 
       const totalNum = Number(supply)
@@ -2241,8 +2276,23 @@ function Mint() {
   const walletRemaining = Math.max(0, effectiveWalletMax - (activePhase ? phaseMintedCount : mintedCount))
   const phaseRemaining = activePhase?.maxSupply > 0 ? Math.max(0, activePhase.maxSupply - activePhase.minted) : maxSupply - totalSupply
   const phaseClosedByUi = phaseCount > 0 && !activePhase
+  const phaseWhitelistBlocked = Boolean(activePhase) && phaseWhitelistRequired && !phaseWhitelistEligible
   const displayPrice = activePhase?.priceEth?.trim() || mintPriceEth || '0'
   const activePhaseId = activePhase?.id ?? null
+  const eligibilityText = !account
+    ? 'Connect wallet to check phase eligibility'
+    : !activePhase
+      ? (phaseCount > 0 ? 'No live phase available' : 'Public mint eligibility')
+      : phaseWhitelistBlocked
+        ? `Not eligible for ${activePhase.name || `Phase ${activePhase.id + 1}`}`
+        : walletRemaining > 0
+          ? `Eligible for ${activePhase.name || `Phase ${activePhase.id + 1}`}`
+          : `Mint limit reached for ${activePhase.name || `Phase ${activePhase.id + 1}`}`
+  const eligibilityTone = !account || !activePhase
+    ? ''
+    : phaseWhitelistBlocked || walletRemaining <= 0
+      ? 'admin-warn'
+      : ''
 
   return (
     <>
@@ -2295,7 +2345,7 @@ function Mint() {
                 {activePhase && (
                   <div className="admin-phase-banner-foot">
                     <span>{activePhase.maxSupply > 0 ? `${phaseRemaining} left in phase` : 'Unlimited phase supply'}</span>
-                    <span>{walletRemaining} wallet slots left</span>
+                    <span>{phaseWhitelistRequired ? (phaseWhitelistEligible ? 'Whitelist approved' : 'Whitelist required') : `${walletRemaining} wallet slots left`}</span>
                   </div>
                 )}
                 {phases.length > 0 && (
@@ -2310,6 +2360,13 @@ function Mint() {
                             <span>{phase.priceEth} ETH</span>
                             <span>{phase.maxSupply > 0 ? `${phase.minted}/${phase.maxSupply}` : `${phase.minted}/inf`}</span>
                             <span>W {phase.maxPerWallet > 0 ? phase.maxPerWallet : maxPerWallet}</span>
+                            {account && (
+                              <span>
+                                {phaseEligibilityMap[phase.id]?.requiresWhitelist
+                                  ? (phaseEligibilityMap[phase.id]?.eligible ? 'Whitelisted' : 'Not in Phase Whitelist')
+                                  : 'Open Phase'}
+                              </span>
+                            )}
                             <span>{info.timerLabel}: {info.countdown}</span>
                           </div>
                         </div>
@@ -2341,6 +2398,10 @@ function Mint() {
                     Disconnect
                   </button>
                 </div>
+                <div className={`mint-wallet-phase ${eligibilityTone}`}>
+                  <span className="mint-wallet-phase-label">Eligible Phase</span>
+                  <strong>{eligibilityText}</strong>
+                </div>
 
                 <div className="mint-quantity">
                   <button 
@@ -2352,7 +2413,7 @@ function Mint() {
                   <button 
                     className="mint-quantity-btn"
                     onClick={() => setQuantity(Math.min(walletRemaining, quantity + 1, maxSupply - totalSupply, Math.max(1, phaseRemaining)))}
-                    disabled={quantity >= walletRemaining || totalSupply >= maxSupply || phaseRemaining <= 0 || phaseClosedByUi}
+                    disabled={quantity >= walletRemaining || totalSupply >= maxSupply || phaseRemaining <= 0 || phaseClosedByUi || phaseWhitelistBlocked}
                   >+</button>
                   <span className="mint-quantity-limit">max {walletRemaining}</span>
                 </div>
@@ -2360,9 +2421,9 @@ function Mint() {
                 <button 
                   className="mint-submit-btn"
                   onClick={mint}
-                  disabled={isMinting || totalSupply >= maxSupply || walletRemaining <= 0 || phaseRemaining <= 0 || phaseClosedByUi}
+                  disabled={isMinting || totalSupply >= maxSupply || walletRemaining <= 0 || phaseRemaining <= 0 || phaseClosedByUi || phaseWhitelistBlocked}
                 >
-                  {isMinting ? 'Minting...' : totalSupply >= maxSupply ? 'Sold Out' : walletRemaining <= 0 ? 'Max Reached' : phaseRemaining <= 0 ? 'Phase Sold Out' : phaseClosedByUi ? 'Phase Closed' : Number(displayPrice) > 0 ? `Mint ${displayPrice} ETH` : 'Mint Free'}
+                  {isMinting ? 'Minting...' : totalSupply >= maxSupply ? 'Sold Out' : phaseWhitelistBlocked ? 'Not Whitelisted' : walletRemaining <= 0 ? 'Max Reached' : phaseRemaining <= 0 ? 'Phase Sold Out' : phaseClosedByUi ? 'Phase Closed' : Number(displayPrice) > 0 ? `Mint ${displayPrice} ETH` : 'Mint Free'}
                 </button>
 
                 {status && (

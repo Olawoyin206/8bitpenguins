@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
-import { uploadToIPFS, saveToSharedGallery, fetchFreshGallery } from './ipfs'
+import { uploadCanvasToIPFS, saveToSharedGallery, fetchFreshGallery } from './ipfs'
 import './App.css'
 
 const GRID_SIZE = 80
@@ -12,6 +11,12 @@ const EFFECT_VARIANTS = [
 
 function convertToPenguinStyle(imageSrc, canvas, strength = 'high') {
   return new Promise((resolve) => {
+    const styleProfile = strength === 'low'
+      ? { tune: 28, sep: 30, bgPick: 35 }
+      : strength === 'medium'
+        ? { tune: 38, sep: 36, bgPick: 42 }
+        : { tune: 50, sep: 42, bgPick: 50 }
+
     const img = new Image()
     img.crossOrigin = 'anonymous'
     img.onload = () => {
@@ -85,24 +90,24 @@ function convertToPenguinStyle(imageSrc, canvas, strength = 'high') {
       let face = avgColor(faceColors)
       let shirt = avgColor(shirtColors)
       
-      if (diff(bg, shirt) < 60) {
+      if (diff(bg, shirt) < (60 + styleProfile.sep)) {
         for (let i = 0; i < bgPixels.length; i += 5) {
           const p = bgPixels[i]
-          if (!isTransparent(p) && diff(p, shirt) > 50 && diff(p, face) > 40) {
+          if (!isTransparent(p) && diff(p, shirt) > styleProfile.bgPick && diff(p, face) > (styleProfile.bgPick - 8)) {
             bg = p
             break
           }
         }
       }
       
-      if (diff(face, shirt) < 40) {
-        shirt = adj(face, brightness(face) > brightness(shirt) ? -60 : 60)
+      if (diff(face, shirt) < (30 + styleProfile.sep)) {
+        shirt = adj(face, brightness(face) > brightness(shirt) ? -styleProfile.tune : styleProfile.tune)
       }
       
-      const faceHighlight = adj(face, 40)
-      const faceShadow = adj(face, -40)
-      const shirtHighlight = adj(shirt, 50)
-      const shirtShadow = adj(shirt, -50)
+      const faceHighlight = adj(face, Math.round(styleProfile.tune * 0.75))
+      const faceShadow = adj(face, -Math.round(styleProfile.tune * 0.75))
+      const shirtHighlight = adj(shirt, styleProfile.tune)
+      const shirtShadow = adj(shirt, -styleProfile.tune)
 
       const traits = {
         background: { name: 'Custom', color: bg.hex },
@@ -252,16 +257,19 @@ export function randomItem(arr) {
   return arr[0]
 }
 
-export function drawAgent(traits, canvas) {
+export function drawAgent(traits, canvas, outputSize = 400) {
   if (!canvas) return
-  
-  const ctx = canvas.getContext('2d')
-  const scale = 9
-  canvas.width = 400
-  canvas.height = 400
+
+  const LOGICAL_SIZE = 44
+  const workingCanvas = document.createElement('canvas')
+  workingCanvas.width = LOGICAL_SIZE
+  workingCanvas.height = LOGICAL_SIZE
+
+  const ctx = workingCanvas.getContext('2d')
+  const scale = 1
   
   ctx.fillStyle = traits.background.color
-  ctx.fillRect(0, 0, canvas.width, canvas.height)
+  ctx.fillRect(0, 0, workingCanvas.width, workingCanvas.height)
   
   const offsetX = 2
   const offsetY = 1
@@ -782,6 +790,32 @@ export function drawAgent(traits, canvas) {
   rect(30, 39, 31, 39, feetHighlight)
   
   rect(8, 39, 31, 39, 'rgba(0,0,0,0.3)')
+
+  const size = Math.max(256, Number(outputSize) || 400)
+  const outCtx = canvas.getContext('2d')
+  canvas.width = size
+  canvas.height = size
+  outCtx.imageSmoothingEnabled = false
+  outCtx.clearRect(0, 0, size, size)
+  outCtx.drawImage(workingCanvas, 0, 0, size, size)
+
+  // Large transparent diagonal watermark to brand generated art.
+  outCtx.save()
+  outCtx.translate(canvas.width / 2, canvas.height / 2)
+  outCtx.rotate((-28 * Math.PI) / 180)
+  outCtx.textAlign = 'center'
+  outCtx.textBaseline = 'middle'
+  outCtx.font = `700 ${Math.floor(size * 0.08)}px "Press Start 2P", "JetBrains Mono", monospace`
+  outCtx.lineWidth = Math.max(3, Math.floor(size * 0.004))
+  outCtx.strokeStyle = 'rgba(0,0,0,0.38)'
+  outCtx.fillStyle = 'rgba(255,255,255,0.30)'
+  outCtx.shadowColor = 'rgba(0,0,0,0.22)'
+  outCtx.shadowBlur = Math.max(2, Math.floor(size * 0.004))
+  outCtx.shadowOffsetX = Math.max(1, Math.floor(size * 0.0015))
+  outCtx.shadowOffsetY = Math.max(1, Math.floor(size * 0.0015))
+  outCtx.strokeText('8bitPenguins', 0, 0)
+  outCtx.fillText('8bitPenguins', 0, 0)
+  outCtx.restore()
 }
 
 export function generateRandomPenguinTraits() {
@@ -830,6 +864,12 @@ export function generateRandomPenguinTraits() {
   }
 
   return t
+}
+
+function renderPenguin4k(traits) {
+  const canvas = document.createElement('canvas')
+  drawAgent(traits, canvas, 4096)
+  return canvas
 }
 
 function App() {
@@ -944,11 +984,13 @@ function App() {
             setConfetti(newConfetti)
             
             setTimeout(() => setConfetti([]), 1200)
-            
+
+            const highResCanvas = renderPenguin4k(extractedTraits)
+             
             const newPenguin = {
               id: Date.now(),
               cid: null,
-              image: canvasRef.current.toDataURL(),
+              image: highResCanvas.toDataURL('image/png'),
               traits: extractedTraits,
               isOg: true,
               timestamp: Date.now()
@@ -956,7 +998,7 @@ function App() {
             setSavedPenguins(prev => [newPenguin, ...prev])
             setSharedGallery(prev => [newPenguin, ...prev])
             
-            uploadToIPFS(canvasRef).then(ipfsData => {
+            uploadCanvasToIPFS(highResCanvas).then(ipfsData => {
               if (ipfsData) {
                 const updatedPenguin = { ...newPenguin, cid: ipfsData.cid, image: ipfsData.url }
                 setSavedPenguins(prev => prev.map(p => p.id === newPenguin.id ? updatedPenguin : p))
@@ -1013,11 +1055,13 @@ function App() {
           setConfetti(newConfetti)
           
           setTimeout(() => setConfetti([]), 1200)
+
+          const highResCanvas = renderPenguin4k(t)
           
           const newPenguin = {
             id: Date.now(),
             cid: null,
-            image: canvasRef.current.toDataURL(),
+            image: highResCanvas.toDataURL('image/png'),
             traits: t,
             isOg: false,
             timestamp: Date.now()
@@ -1025,7 +1069,8 @@ function App() {
           setSavedPenguins(prev => [newPenguin, ...prev])
           setSharedGallery(prev => [newPenguin, ...prev])
           
-          uploadToIPFS(canvasRef).then(ipfsData => {
+          const previewCanvas = canvasRef.current || highResCanvas
+          uploadCanvasToIPFS(previewCanvas).then(ipfsData => {
             if (ipfsData) {
               const updatedPenguin = { ...newPenguin, cid: ipfsData.cid, image: ipfsData.url }
               setSavedPenguins(prev => prev.map(p => p.id === newPenguin.id ? updatedPenguin : p))
@@ -1061,14 +1106,7 @@ function App() {
 
   const save = () => {
     if (!canvasRef.current || !traits) return
-    
-    const highResCanvas = document.createElement('canvas')
-    highResCanvas.width = 4096
-    highResCanvas.height = 4096
-    const ctx = highResCanvas.getContext('2d')
-    ctx.imageSmoothingEnabled = false
-    
-    ctx.drawImage(canvasRef.current, 0, 0, 4096, 4096)
+    const highResCanvas = renderPenguin4k(traits)
     
     const link = document.createElement('a')
     link.download = 'penguin-4k.png'

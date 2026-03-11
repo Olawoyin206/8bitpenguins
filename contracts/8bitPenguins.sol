@@ -42,6 +42,10 @@ contract EightBitPenguinsUpgradeable is Initializable, ERC721Upgradeable, IERC49
     mapping(uint256 => bool) public tokenEvolved3D;
     MintPhase[] private _mintPhases;
     mapping(uint256 => mapping(address => uint256)) public phaseMintedPerWallet;
+    mapping(uint256 => mapping(address => bool)) private _phaseWhitelist;
+    mapping(uint256 => address[]) private _phaseWhitelistMembers;
+    mapping(uint256 => mapping(address => uint256)) private _phaseWhitelistMemberIndex;
+    mapping(uint256 => uint256) public phaseWhitelistCount;
 
     event MintStatusChanged(bool status);
     event RevealStatusChanged(bool status);
@@ -52,6 +56,7 @@ contract EightBitPenguinsUpgradeable is Initializable, ERC721Upgradeable, IERC49
     event MaxPerWalletChanged(uint256 maxPerWallet);
     event PhaseUpserted(uint256 indexed phaseId, string name, uint256 price, uint256 startTime, uint256 endTime, uint256 maxSupply, uint256 maxPerWallet, bool enabled);
     event PhaseRemoved(uint256 indexed phaseId);
+    event PhaseWhitelistUpdated(uint256 indexed phaseId, address indexed account, bool allowed);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -94,6 +99,9 @@ contract EightBitPenguinsUpgradeable is Initializable, ERC721Upgradeable, IERC49
         if (phaseConfigured) {
             MintPhase storage phase = _mintPhases[phaseId];
             require(phase.enabled, "Phase disabled");
+            if (phaseWhitelistCount[phaseId] > 0) {
+                require(_phaseWhitelist[phaseId][msg.sender], "Not whitelisted for phase");
+            }
             if (phase.maxSupply > 0) {
                 require(phase.minted + quantity <= phase.maxSupply, "Exceeds phase max supply");
             }
@@ -208,9 +216,58 @@ contract EightBitPenguinsUpgradeable is Initializable, ERC721Upgradeable, IERC49
     function deletePhase(uint256 phaseId) external onlyOwner {
         require(_mintPhases.length > 0, "No phase to delete");
         require(phaseId == _mintPhases.length - 1, "Only last phase can be deleted");
+        delete phaseWhitelistCount[phaseId];
+        delete _phaseWhitelistMembers[phaseId];
         delete _mintPhases[phaseId];
         _mintPhases.pop();
         emit PhaseRemoved(phaseId);
+    }
+
+    function setPhaseWhitelist(
+        uint256 phaseId,
+        address[] calldata accounts,
+        bool allowed
+    ) external onlyOwner {
+        require(phaseId < _mintPhases.length, "Phase does not exist");
+
+        for (uint256 i = 0; i < accounts.length; i++) {
+            address account = accounts[i];
+            require(account != address(0), "Invalid whitelist address");
+
+            bool exists = _phaseWhitelist[phaseId][account];
+            if (allowed && !exists) {
+                _phaseWhitelist[phaseId][account] = true;
+                _phaseWhitelistMembers[phaseId].push(account);
+                _phaseWhitelistMemberIndex[phaseId][account] = _phaseWhitelistMembers[phaseId].length;
+                phaseWhitelistCount[phaseId] += 1;
+                emit PhaseWhitelistUpdated(phaseId, account, true);
+            } else if (!allowed && exists) {
+                _phaseWhitelist[phaseId][account] = false;
+                uint256 memberIndex = _phaseWhitelistMemberIndex[phaseId][account];
+                if (memberIndex > 0) {
+                    uint256 lastIndex = _phaseWhitelistMembers[phaseId].length;
+                    if (memberIndex != lastIndex) {
+                        address moved = _phaseWhitelistMembers[phaseId][lastIndex - 1];
+                        _phaseWhitelistMembers[phaseId][memberIndex - 1] = moved;
+                        _phaseWhitelistMemberIndex[phaseId][moved] = memberIndex;
+                    }
+                    _phaseWhitelistMembers[phaseId].pop();
+                    delete _phaseWhitelistMemberIndex[phaseId][account];
+                }
+                phaseWhitelistCount[phaseId] -= 1;
+                emit PhaseWhitelistUpdated(phaseId, account, false);
+            }
+        }
+    }
+
+    function isPhaseWhitelisted(uint256 phaseId, address account) external view returns (bool) {
+        require(phaseId < _mintPhases.length, "Phase does not exist");
+        return _phaseWhitelist[phaseId][account];
+    }
+
+    function getPhaseWhitelist(uint256 phaseId) external view returns (address[] memory) {
+        require(phaseId < _mintPhases.length, "Phase does not exist");
+        return _phaseWhitelistMembers[phaseId];
     }
 
     function phaseCount() external view returns (uint256) {

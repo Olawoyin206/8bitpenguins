@@ -23,13 +23,16 @@ function setGalleryCache(data) {
 }
 
 export async function uploadToIPFS(canvasRef) {
+  const canvas = canvasRef?.current
+  if (!canvas) return null
+  return uploadCanvasToIPFS(canvas)
+}
+
+export async function uploadCanvasToIPFS(canvas) {
   if (!PINATA_JWT) {
     console.error("Pinata JWT not configured. Set VITE_PINATA_JWT in .env")
     return null
   }
-  
-  const canvas = canvasRef.current
-  if (!canvas) return null
 
   const dataUrl = canvas.toDataURL("image/png")
   
