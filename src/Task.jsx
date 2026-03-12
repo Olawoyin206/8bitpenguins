@@ -66,6 +66,8 @@ function Task() {
   ]
 
   const allTasksComplete = completedTasks.follow && completedTasks.likeRetweet && completedTasks.quote
+  const completedCount = Object.values(completedTasks).filter(Boolean).length
+  const totalTasks = tasks.length
 
   useEffect(() => {
     if (allTasksComplete) {
@@ -205,9 +207,27 @@ function Task() {
           <>
             <main>
               {!allTasksComplete && (
+                <div className="task-progress">
+                  <div className="task-progress-head">
+                    <h2>Whitelist Tasks</h2>
+                    <span>{completedCount}/{totalTasks} Completed</span>
+                  </div>
+                  <div className="task-progress-track">
+                    <div className="task-progress-fill" style={{ width: `${(completedCount / totalTasks) * 100}%` }} />
+                  </div>
+                </div>
+              )}
+
+              {!allTasksComplete && (
                 <div className="tasks-list">
-                  {tasks.map((task) => (
+                  {tasks.map((task, index) => (
                     <div key={task.id} className={`task-card ${task.completed ? 'completed' : ''}`}>
+                      <div className="task-top">
+                        <span className="task-step">Task {index + 1}</span>
+                        <span className={`task-state ${task.completed ? 'done' : task.clicked ? 'opened' : 'pending'}`}>
+                          {task.completed ? 'Done' : task.clicked ? 'Opened' : 'Pending'}
+                        </span>
+                      </div>
                       <div className="task-info">
                         <h3>{task.title}</h3>
                         <p>{task.description}</p>
@@ -295,44 +315,53 @@ function Task() {
                     <p>Enter your details below to continue</p>
                   </div>
 
-                  <form onSubmit={handleSubmit} className="submission-form">
-                    <div className="form-group">
-                      <label htmlFor="twitter">Twitter Username</label>
-                      <input
-                        type="text"
-                        id="twitter"
-                        value={twitterUsername}
-                        onChange={(e) => setTwitterUsername(e.target.value)}
-                        placeholder="@username"
-                      />
-                    </div>
+                  <div className="task-submit-layout">
+                    <aside className="task-submit-panel task-submit-summary">
+                      <h4>Submission Checklist</h4>
+                      <p>Use your correct X handle.</p>
+                      <p>Wallet must be a valid EVM address starting with <strong>0x</strong>.</p>
+                      <p>One submission per user is allowed.</p>
+                    </aside>
 
-                    <div className="form-group">
-                      <label htmlFor="wallet">EVM Wallet Address</label>
-                      <input
-                        type="text"
-                        id="wallet"
-                        value={walletAddress}
-                        onChange={(e) => setWalletAddress(e.target.value)}
-                        placeholder="0x..."
-                      />
-                      <span className="hint">Supports Ethereum, Polygon, BSC, and other EVM chains</span>
-                    </div>
-
-                    <button
-                      type="submit"
-                      className="submit-btn"
-                      disabled={isSubmitting}
-                    >
-                      {isSubmitting ? 'Submitting...' : 'Submit & Continue'}
-                    </button>
-
-                    {submitStatus && (
-                      <div className={`submit-status ${submitStatus.type}`}>
-                        {submitStatus.message}
+                    <form onSubmit={handleSubmit} className="submission-form task-submit-panel">
+                      <div className="form-group">
+                        <label htmlFor="twitter">Twitter Username</label>
+                        <input
+                          type="text"
+                          id="twitter"
+                          value={twitterUsername}
+                          onChange={(e) => setTwitterUsername(e.target.value)}
+                          placeholder="@username"
+                        />
                       </div>
-                    )}
-                  </form>
+
+                      <div className="form-group">
+                        <label htmlFor="wallet">EVM Wallet Address</label>
+                        <input
+                          type="text"
+                          id="wallet"
+                          value={walletAddress}
+                          onChange={(e) => setWalletAddress(e.target.value)}
+                          placeholder="0x..."
+                        />
+                        <span className="hint">Supports Ethereum, Polygon, BSC, and other EVM chains</span>
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="submit-btn"
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting ? 'Submitting...' : 'Submit & Continue'}
+                      </button>
+
+                      {submitStatus && (
+                        <div className={`submit-status ${submitStatus.type}`}>
+                          {submitStatus.message}
+                        </div>
+                      )}
+                    </form>
+                  </div>
                 </div>
               )}
 

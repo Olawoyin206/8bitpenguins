@@ -623,6 +623,7 @@ function Admin() {
 
   const progress = state.maxSupply > 0 ? (state.totalSupply / state.maxSupply) * 100 : 0
   const ownerLocked = Boolean(account) && Boolean(owner) && !isOwner
+  const adminReady = Boolean(account) && isOwner
   const selectedWhitelistPhase = phases.find((phase) => String(phase.id) === String(selectedWhitelistPhaseId)) || null
   const whitelistAnalysis = useMemo(() => analyzeAddressList(whitelistDraft), [whitelistDraft])
   const whitelistExistingSet = useMemo(() => new Set(phaseWhitelistAddresses), [phaseWhitelistAddresses])
@@ -820,6 +821,43 @@ function Admin() {
     }
   }
 
+  if (!adminReady) {
+    return (
+      <div className="mint-page admin-page admin-page-gated">
+        <header>
+          <h1>8bit Penguins</h1>
+          <p>ADMIN - CONTROL PANEL</p>
+          <div className="header-links">
+            <Link to="/mint" className="x-btn">Mint Page</Link>
+            <Link to="/evolve" className="x-btn">Evolve</Link>
+            <a href="https://x.com/8bitpenguins" target="_blank" rel="noopener noreferrer" className="x-btn">Follow us on X</a>
+          </div>
+        </header>
+        <div className="admin-gate-screen">
+          <div className="admin-locked">
+            <div className="admin-locked-badge">ADMIN ONLY</div>
+            <h2>{account ? 'Admin Access Restricted' : 'Owner Wallet Required'}</h2>
+            <p className="admin-locked-copy">
+              {account
+                ? 'Connected wallet is not the contract owner.'
+                : 'Connect the owner wallet to unlock the dashboard.'}
+            </p>
+            {account && <div className="admin-locked-owner">Authorized owner: {owner}</div>}
+            <div className="admin-inline-actions admin-locked-actions">
+              <button className="mint-network-btn" onClick={switchToEthereumSepolia}>Switch to Ethereum Sepolia</button>
+              {!account ? (
+                <button className="mint-connect-btn" onClick={connect}>Connect Wallet</button>
+              ) : (
+                <button className="mint-disconnect-btn" onClick={disconnectWallet}>Disconnect</button>
+              )}
+            </div>
+            {status && <div className={`mint-status ${status.includes('Error') ? 'error' : ''}`}>{status}</div>}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="mint-page admin-page">
       <header>
@@ -833,58 +871,48 @@ function Admin() {
       </header>
 
       <div className="mint-layout">
-        <div className="mint-card">
-          <div className="mint-card-header">
-            <span className="mint-card-title">Admin</span>
-            <span className="mint-card-badge">{isOwner ? 'OWNER' : 'VIEW'}</span>
-          </div>
-
-          <div className="mint-supply">
-            <div className="mint-supply-header">
-              <span className="mint-supply-label">Minted</span>
-              <span className="mint-supply-value">{state.totalSupply}<span> / {state.maxSupply}</span></span>
-            </div>
-            <div className="mint-supply-bar">
-              <div className="mint-supply-fill" style={{ width: `${progress}%` }}></div>
-            </div>
-            <div className="mint-supply-footer">
-              <span>{state.maxSupply - state.totalSupply} remaining</span>
-              <span>{Math.round(progress)}%</span>
-            </div>
-          </div>
-
-          <button className="mint-network-btn" onClick={switchToEthereumSepolia}>Switch to Ethereum Sepolia</button>
-
-          {!account ? (
-            <button className="mint-connect-btn" onClick={connect}>Connect Wallet</button>
-          ) : (
-            <div className="mint-connected">
-              <div className="mint-wallet">
-                <div className="mint-wallet-main">
-                  <button className="mint-wallet-addr-btn" disabled>{shortAddress(account)}</button>
-                  <span className={`mint-wallet-bal ${isOwner ? 'admin-ok' : 'admin-warn'}`}>{isOwner ? 'Owner' : 'Read only'}</span>
-                </div>
-                <button className="mint-disconnect-btn" onClick={disconnectWallet}>Disconnect</button>
+        <>
+            <div className="mint-card">
+              <div className="mint-card-header">
+                <span className="mint-card-title">Admin</span>
+                <span className="mint-card-badge">OWNER</span>
               </div>
-            </div>
-          )}
 
-          {status && <div className={`mint-status ${status.includes('Error') ? 'error' : ''}`}>{status}</div>}
-          {lastTxHash && (
-            <a href={`${BLOCK_EXPLORER_URL}/tx/${lastTxHash}`} target="_blank" rel="noopener noreferrer" className="mint-tx-link">
-              {'View Transaction ->'}
-            </a>
-          )}
-        </div>
+              <div className="mint-supply">
+                <div className="mint-supply-header">
+                  <span className="mint-supply-label">Minted</span>
+                  <span className="mint-supply-value">{state.totalSupply}<span> / {state.maxSupply}</span></span>
+                </div>
+                <div className="mint-supply-bar">
+                  <div className="mint-supply-fill" style={{ width: `${progress}%` }}></div>
+                </div>
+                <div className="mint-supply-footer">
+                  <span>{state.maxSupply - state.totalSupply} remaining</span>
+                  <span>{Math.round(progress)}%</span>
+                </div>
+              </div>
 
-        <div className="mint-display admin-display">
-          {ownerLocked ? (
-            <div className="admin-locked">
-              <h2>Owner access required</h2>
-              <p>Connected wallet does not match the current contract owner.</p>
-              <p>Owner: {owner}</p>
+              <button className="mint-network-btn" onClick={switchToEthereumSepolia}>Switch to Ethereum Sepolia</button>
+
+              <div className="mint-connected">
+                <div className="mint-wallet">
+                  <div className="mint-wallet-main">
+                    <button className="mint-wallet-addr-btn" disabled>{shortAddress(account)}</button>
+                    <span className="mint-wallet-bal admin-ok">Owner</span>
+                  </div>
+                  <button className="mint-disconnect-btn" onClick={disconnectWallet}>Disconnect</button>
+                </div>
+              </div>
+
+              {status && <div className={`mint-status ${status.includes('Error') ? 'error' : ''}`}>{status}</div>}
+              {lastTxHash && (
+                <a href={`${BLOCK_EXPLORER_URL}/tx/${lastTxHash}`} target="_blank" rel="noopener noreferrer" className="mint-tx-link">
+                  {'View Transaction ->'}
+                </a>
+              )}
             </div>
-          ) : (
+
+            <div className="mint-display admin-display">
             <>
               <div className="mint-tabs admin-tabs">
                 <button className={`mint-tab ${activeTab === 'controls' ? 'active' : ''}`} onClick={() => setActiveTab('controls')}>
@@ -1391,8 +1419,8 @@ function Admin() {
                 </div>
               )}
             </>
-          )}
-        </div>
+            </div>
+        </>
       </div>
     </div>
   )

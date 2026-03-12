@@ -4,11 +4,12 @@ import './PlayToWL.css'
 
 const GRID = 3
 const TOTAL_TILES = GRID * GRID
+const GRID_LABEL = `${GRID}x${GRID}`
 const PUZZLE_TARGET_SCORE = 500
 const IMAGE_SRC = '/favicon.png'
 const EMPTY_TILE = TOTAL_TILES - 1
-const SLIDE_MS = 170
-const ATTEMPT_TIMEOUT_MS = 30 * 60 * 1000
+const SLIDE_MS = 190
+const ATTEMPT_TIMEOUT_MS = 10 * 60 * 1000
 const ATTEMPT_TIMEOUT_KEY = 'arcadeTimeoutUntil'
 const ATTEMPT_TIMEOUT_REASON_KEY = 'arcadeTimeoutReason'
 const PUZZLE_SUBMISSION_KEY = 'puzzleGameSubmission'
@@ -16,8 +17,10 @@ const PUZZLE_QUALIFIED_IMAGE_KEY = 'arcadeQualifiedImage'
 const PUZZLE_LEADERBOARD_KEY = 'puzzleLeaderboard'
 const PUZZLE_BROWSER_ID_KEY = 'puzzleBrowserId'
 const REQUIRED_TWEET_CAPTION = 'Just Solved The @8bitpenguin_xyz puzzle'
+const REQUIRED_TWEET_CTA = 'Secure your Whitelist here: https://8bitpenguins.xyz/play-to-wl'
 const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzqgy0yX3nGOlMBxGVDdwFQstC0e2ADgW0ESL9hol2yD1eiY3RF3uxq7cbuHYTaMSNt/exec'
 const LEADERBOARD_SHEET = 'Leaderboard'
+let sessionReferenceImage = ''
 
 function isSolvable(arr) {
   let inversions = 0
@@ -190,7 +193,7 @@ function PlayToWL() {
   const [gameState, setGameState] = useState('playing')
   const [bestScore, setBestScore] = useState(() => Number(localStorage.getItem('arcadeBestScore') || 0))
   const [qualified, setQualified] = useState(() => localStorage.getItem('arcadeQualified') === 'true')
-  const [referenceImage, setReferenceImage] = useState(IMAGE_SRC)
+  const [referenceImage, setReferenceImage] = useState(() => sessionReferenceImage || IMAGE_SRC)
   const [qualifiedImage, setQualifiedImage] = useState(() => localStorage.getItem(PUZZLE_QUALIFIED_IMAGE_KEY) || '')
   const [timeoutUntil, setTimeoutUntil] = useState(() => Number(localStorage.getItem(ATTEMPT_TIMEOUT_KEY) || 0))
   const [timeoutReason, setTimeoutReason] = useState(() => localStorage.getItem(ATTEMPT_TIMEOUT_REASON_KEY) || '')
@@ -211,7 +214,13 @@ function PlayToWL() {
   const score = useMemo(() => computeScore(moves, timeSec), [moves, timeSec])
   const isTimedOut = timeoutUntil > nowTs
   const timeoutLeft = Math.max(0, timeoutUntil - nowTs)
-  const lowScoreAlert = hasStarted && gameState === 'playing' && !isTimedOut && score < PUZZLE_TARGET_SCORE
+  const scoreAlertLevel = useMemo(() => {
+    const activeAttempt = hasStarted && gameState === 'playing' && !isTimedOut
+    if (!activeAttempt) return 'none'
+    if (score < PUZZLE_TARGET_SCORE) return 'red'
+    if (score <= PUZZLE_TARGET_SCORE + 100) return 'amber'
+    return 'none'
+  }, [hasStarted, gameState, isTimedOut, score])
 
   const openModal = (title, message, tone = 'info') => {
     setModal({ open: true, title, message, tone })
@@ -299,7 +308,7 @@ function PlayToWL() {
       setTimeoutUntil(until)
       setTimeoutReason('Score below target')
       setNowTs(Date.now())
-      openModal('Score Below Target', `Final score ${finalScore}. Retry in 30 minutes.`, 'error')
+      openModal('Score Below Target', `Final score ${finalScore}. Retry in 10 minutes.`, 'error')
     }
     setGameState('won')
   }, [solved, gameState, moves, timeSec, bestScore, referenceImage, browserId])
@@ -308,6 +317,12 @@ function PlayToWL() {
     // Keep the same qualified image after reload until proof is submitted.
     if (qualified && !alreadySubmittedProof && qualifiedImage) {
       setReferenceImage(qualifiedImage)
+      sessionReferenceImage = qualifiedImage
+      return undefined
+    }
+
+    if (sessionReferenceImage) {
+      setReferenceImage(sessionReferenceImage)
       return undefined
     }
 
@@ -322,7 +337,9 @@ function PlayToWL() {
       const canvas = document.createElement('canvas')
       const traits = generateRandomPenguinTraits()
       drawAgent(traits, canvas, 4096)
-      setReferenceImage(canvas.toDataURL('image/png'))
+      const dataUrl = canvas.toDataURL('image/png')
+      setReferenceImage(dataUrl)
+      sessionReferenceImage = dataUrl
     }
     buildReference()
     return () => {
@@ -371,7 +388,7 @@ function PlayToWL() {
     setHasStarted(false)
     setMoves(0)
     setTimeSec(0)
-    openModal('Attempt Locked', `${reason}. Retry in 30 minutes.`, 'error')
+    openModal('Attempt Locked', `${reason}. Retry in 10 minutes.`, 'error')
   }
 
   const handleShuffle = () => {
@@ -383,9 +400,26 @@ function PlayToWL() {
     resetGame()
   }
 
-  const handleComposeTweet = () => {
-    const composed = `https://x.com/intent/tweet?text=${encodeURIComponent(REQUIRED_TWEET_CAPTION)}`
+  const handleComposeTweet = async () => {
+    const tweetBody = `${REQUIRED_TWEET_CAPTION}\n\n${REQUIRED_TWEET_CTA}`
+    const imageSrc = qualifiedImage || referenceImage
+    const composed = `https://x.com/intent/tweet?text=${encodeURIComponent(tweetBody)}`
+    if (imageSrc && navigator.clipboard?.write && typeof ClipboardItem !== 'undefined') {
+      try {
+        const res = await fetch(imageSrc)
+        const blob = await res.blob()
+        const pngBlob = blob.type === 'image/png' ? blob : new Blob([await blob.arrayBuffer()], { type: 'image/png' })
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })])
+        window.open(composed, '_blank')
+        openModal('Image Copied', 'Puzzle image copied. Paste it into the tweet composer (Ctrl+V).', 'info')
+        return
+      } catch {
+        // Continue with text-only compose fallback.
+      }
+    }
+
     window.open(composed, '_blank')
+    openModal('Tweet Opened', 'Tweet text opened. If image is not pasted, upload your saved puzzle image manually.', 'info')
   }
 
   const handleSaveQualifiedImage = () => {
@@ -515,7 +549,7 @@ function PlayToWL() {
         <header className="puzzle-header">
           <div>
             <h1>8bit Penguins</h1>
-            <p>Play-to-WL Puzzle Challenge. Reach {PUZZLE_TARGET_SCORE}+ to qualify.</p>
+            <p>Play-to-WL {GRID_LABEL} Puzzle Challenge. Reach {PUZZLE_TARGET_SCORE}+ to qualify.</p>
             <div className="header-links">
               <a href="https://x.com/8bitpenguin_xyz" target="_blank" rel="noopener noreferrer" className="x-btn">
                 Follow us on X
@@ -553,7 +587,7 @@ function PlayToWL() {
         <main className="puzzle-main">
           {activeTab === 'game' ? (
           <>
-          <section className={`puzzle-board-card ${lowScoreAlert ? 'alert-red' : ''}`}>
+          <section className={`puzzle-board-card ${scoreAlertLevel === 'red' ? 'alert-red' : scoreAlertLevel === 'amber' ? 'alert-amber' : ''}`}>
             <div className="section-head">
               <h2>Puzzle Board</h2>
               <span className={`status-chip ${qualified ? 'ok' : ''}`}>{qualified ? 'Qualified' : 'In Progress'}</span>
@@ -563,6 +597,15 @@ function PlayToWL() {
               <div className="stat-pill"><span>Time</span><strong>{timeSec}s</strong></div>
               <div className="stat-pill"><span>Score</span><strong>{score}</strong></div>
               <div className="stat-pill"><span>Target</span><strong>{PUZZLE_TARGET_SCORE}</strong></div>
+            </div>
+            <div className="board-qualification">
+              <p>Best Score: <strong>{bestScore}</strong></p>
+              {qualified && !alreadySubmittedProof && qualifiedScore > 0 && (
+                <p>Qualified Score: <strong>{qualifiedScore}</strong></p>
+              )}
+              <p className={qualified ? 'ok' : 'pending'}>
+                {qualified ? 'Qualified for submission' : 'Not qualified yet'}
+              </p>
             </div>
 
             <div className="score-track">
@@ -585,7 +628,7 @@ function PlayToWL() {
             ) : (
               <div
                 className={`puzzle-grid ${slideMove ? 'animating' : ''}`}
-                style={{ gridTemplateColumns: `repeat(${GRID}, 1fr)` }}
+                style={{ gridTemplateColumns: `repeat(${GRID}, 1fr)`, gridTemplateRows: `repeat(${GRID}, 1fr)` }}
               >
                 {tiles.map((tileId, idx) => {
                   const row = Math.floor(tileId / GRID)
@@ -601,16 +644,14 @@ function PlayToWL() {
                         '--move-col': slideMove.colDelta
                       } : undefined}
                     >
-                      {tileId !== EMPTY_TILE && (
-                        <span
-                          className="tile-image"
-                          style={{
-                            backgroundImage: `url(${referenceImage})`,
-                            backgroundSize: `${GRID * 100}% ${GRID * 100}%`,
-                            backgroundPosition: `${(col / (GRID - 1)) * 100}% ${(row / (GRID - 1)) * 100}%`
-                          }}
-                        />
-                      )}
+                      <span
+                        className="tile-image"
+                        style={{
+                          backgroundImage: `url(${referenceImage})`,
+                          backgroundSize: `${GRID * 100}% ${GRID * 100}%`,
+                          backgroundPosition: `${(col / (GRID - 1)) * 100}% ${(row / (GRID - 1)) * 100}%`
+                        }}
+                      />
                     </button>
                   )
                 })}
@@ -633,17 +674,6 @@ function PlayToWL() {
 
           <aside className="puzzle-side">
             <div className="side-card">
-              <h3>Qualification</h3>
-              <p>Best Score: <strong>{bestScore}</strong></p>
-              {qualified && !alreadySubmittedProof && qualifiedScore > 0 && (
-                <p>Qualified Score: <strong>{qualifiedScore}</strong></p>
-              )}
-              <p className={qualified ? 'ok' : 'pending'}>
-                {qualified ? 'Qualified for submission' : 'Not qualified yet'}
-              </p>
-            </div>
-
-            <div className="side-card">
               <h3>Reference</h3>
               <div className="reference-image medium" style={{ backgroundImage: `url(${referenceImage})` }} />
             </div>
@@ -653,7 +683,7 @@ function PlayToWL() {
               <p>Base 1000 points.</p>
               <p>Moves penalty ramps by tiers (5, 8, then 10 each).</p>
               <p>Time penalty ramps by tiers (1, 2, then 3 each second).</p>
-              <p>Bonuses: +80 efficient solve (≤30 moves), +60 fast solve (≤90s).</p>
+              <p>Bonuses: +80 efficient solve (&lt;=30 moves), +60 fast solve (&lt;=90s).</p>
             </div>
 
           </aside>
@@ -703,45 +733,60 @@ function PlayToWL() {
                   {alreadySubmittedProof ? 'Submitted' : 'Ready'}
                 </span>
               </div>
-              <p>Qualified Score: <strong>{qualifiedScore || bestScore}</strong></p>
-              <p>Save the solved image, tweet it, then submit your details.</p>
-              <div className="reference-image medium" style={{ backgroundImage: `url(${qualifiedImage || referenceImage})` }} />
-              <div className="puzzle-board-actions">
-                <button className="puzzle-btn" type="button" onClick={handleSaveQualifiedImage}>
-                  Save Image
-                </button>
-                <button className="puzzle-btn proof-tweet-btn" type="button" onClick={handleComposeTweet}>
-                  Compose Tweet
-                </button>
+              <p className="submission-lead">Qualified Score: <strong>{qualifiedScore || bestScore}</strong></p>
+              <p className="submission-help">Save your solved image, post on X, then submit your proof details below.</p>
+              <div className="submission-layout">
+                <div className="submission-preview">
+                  <div className="reference-image medium" style={{ backgroundImage: `url(${qualifiedImage || referenceImage})` }} />
+                  <div className="puzzle-board-actions submission-actions">
+                    <button className="puzzle-btn white" type="button" onClick={handleSaveQualifiedImage}>
+                      Save Image
+                    </button>
+                  </div>
+                  <div className="caption-card">
+                    <span className="caption-label">Suggested Tweet</span>
+                    <p className="caption-line">"{REQUIRED_TWEET_CAPTION}"</p>
+                    <button className="puzzle-btn white caption-compose-btn" type="button" onClick={handleComposeTweet}>
+                      Compose Tweet
+                    </button>
+                  </div>
+                </div>
+                <div className="submission-form-panel">
+                  {alreadySubmittedProof ? (
+                    <p className="proof-success">Game proof already submitted. You can still play the puzzle.</p>
+                  ) : (
+                    <form className="proof-form" onSubmit={handleSubmitProof}>
+                      <label className="proof-label" htmlFor="submission-x-username">X Username</label>
+                      <input
+                        id="submission-x-username"
+                        type="text"
+                        placeholder="@yourusername"
+                        value={xUsername}
+                        onChange={(e) => setXUsername(e.target.value)}
+                      />
+                      <label className="proof-label" htmlFor="submission-wallet">EVM Wallet Address</label>
+                      <input
+                        id="submission-wallet"
+                        type="text"
+                        placeholder="0x..."
+                        value={walletAddress}
+                        onChange={(e) => setWalletAddress(e.target.value)}
+                      />
+                      <label className="proof-label" htmlFor="submission-tweet-link">Tweet Link</label>
+                      <input
+                        id="submission-tweet-link"
+                        type="text"
+                        placeholder="Paste tweet link containing image + caption"
+                        value={tweetLink}
+                        onChange={(e) => setTweetLink(e.target.value)}
+                      />
+                      <button className="puzzle-btn white" type="submit" disabled={isSubmittingProof}>
+                        {isSubmittingProof ? 'Submitting...' : 'Submit Details'}
+                      </button>
+                    </form>
+                  )}
+                </div>
               </div>
-              <p className="caption-line">"{REQUIRED_TWEET_CAPTION}"</p>
-              {alreadySubmittedProof ? (
-                <p className="proof-success">Game proof already submitted. You can still play the puzzle.</p>
-              ) : (
-                <form className="proof-form" onSubmit={handleSubmitProof}>
-                  <input
-                    type="text"
-                    placeholder="@yourusername"
-                    value={xUsername}
-                    onChange={(e) => setXUsername(e.target.value)}
-                  />
-                  <input
-                    type="text"
-                    placeholder="0x..."
-                    value={walletAddress}
-                    onChange={(e) => setWalletAddress(e.target.value)}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Paste tweet link containing image + caption"
-                    value={tweetLink}
-                    onChange={(e) => setTweetLink(e.target.value)}
-                  />
-                  <button className="puzzle-btn" type="submit" disabled={isSubmittingProof}>
-                    {isSubmittingProof ? 'Submitting...' : 'Submit Details'}
-                  </button>
-                </form>
-              )}
             </section>
           )}
         </main>
@@ -749,9 +794,14 @@ function PlayToWL() {
       {modal.open && (
         <div className="puzzle-modal-overlay" onClick={closeModal}>
           <div className={`puzzle-modal ${modal.tone}`} onClick={(e) => e.stopPropagation()}>
-            <h3>{modal.title}</h3>
-            <p>{modal.message}</p>
-            <button className="puzzle-btn" type="button" onClick={closeModal}>Close</button>
+            <div className="puzzle-modal-head">
+              <span className={`modal-dot ${modal.tone}`} aria-hidden="true" />
+              <h3>{modal.title}</h3>
+            </div>
+            <p className="puzzle-modal-message">{modal.message}</p>
+            <div className="puzzle-modal-actions">
+              <button className="puzzle-btn white" type="button" onClick={closeModal}>Close</button>
+            </div>
           </div>
         </div>
       )}
