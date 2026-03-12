@@ -2288,8 +2288,6 @@ function Mint() {
         <h1>8bit Penguins</h1>
         <p>COLLECT - MINT</p>
         <div className="header-links">
-          <Link to="/admin" className="x-btn">Admin</Link>
-          <Link to="/evolve" className="x-btn">Evolve</Link>
           <a href="https://x.com/8bitpenguins" target="_blank" rel="noopener noreferrer" className="x-btn">Follow us on X</a>
         </div>
       </header>

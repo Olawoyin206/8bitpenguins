@@ -680,8 +680,6 @@ function Evolve() {
         <h1>8bit Penguins</h1>
         <p>SELECT - EVOLVE - 3D</p>
         <div className="header-links">
-          <Link to="/mint" className="x-btn">Mint</Link>
-          <Link to="/admin" className="x-btn">Admin</Link>
           <a href="https://x.com/8bitpenguins" target="_blank" rel="noopener noreferrer" className="x-btn">Follow us on X</a>
         </div>
       </header>
