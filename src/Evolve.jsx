@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ethers } from 'ethers'
-import { Link } from 'react-router-dom'
 import { render3DSnapshot } from './Mint.jsx'
 import './Mint.css'
 import { BLOCK_EXPLORER_URL, CHAIN_ID_HEX, CHAIN_NAME, CONTRACT_ADDRESS, ETH_SEPOLIA_RPC } from './contractConfig.js'
@@ -244,6 +243,13 @@ function EvolveGalleryItem({
   )
 }
 
+function selectedStateLabel({ selectedNFT, selectedIsEvolved, selectedIsUnrevealed }) {
+  if (!selectedNFT) return { label: 'No selection', tone: 'muted' }
+  if (selectedIsUnrevealed) return { label: 'Unrevealed', tone: 'warn' }
+  if (selectedIsEvolved) return { label: 'Already 3D', tone: 'success' }
+  return { label: 'Ready', tone: 'live' }
+}
+
 function Evolve() {
   const provider = useMemo(() => new ethers.JsonRpcProvider(ETH_SEPOLIA_RPC), [])
   const [account, setAccount] = useState(null)
@@ -331,12 +337,18 @@ function Evolve() {
         return
       }
       const [bal] = await Promise.all([contract.balanceOf(address)])
-      setBalance(Number(bal))
+      const balanceNum = Number(bal)
+      setBalance(balanceNum)
+      if (balanceNum <= 0) {
+        setMyNFTs([])
+        return
+      }
 
       const owned = []
       const lower = address.toLowerCase()
       const CHUNK = 8
       for (let i = 0; i < all.length; i += CHUNK) {
+        if (owned.length >= balanceNum) break
         const batch = all.slice(i, i + CHUNK)
         const results = await Promise.allSettled(batch.map((nft) => contract.ownerOf(nft.tokenId)))
         const retryIndices = []
@@ -357,8 +369,9 @@ function Evolve() {
             }
           })
         }
+        if (owned.length >= balanceNum) break
       }
-      setMyNFTs(owned)
+      setMyNFTs(owned.slice(0, balanceNum))
     } catch (err) {
       if (!silent) setStatus(`Error: ${err.message?.slice(0, 50) || 'Unable to fetch contract'}`)
     } finally {
@@ -614,8 +627,11 @@ function Evolve() {
   const evolveProgress = globalTotalMinted > 0 ? (globalEvolvedCount / globalTotalMinted) * 100 : 0
   const totalPages = Math.max(1, Math.ceil(shownNFTs.length / ITEMS_PER_PAGE))
   const paginated = useMemo(() => shownNFTs.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE), [shownNFTs, page])
-  const pageTokenIds = paginated.map((n) => n.tokenId)
   const myTokenIdsKey = myNFTs.map((n) => n.tokenId).join(',')
+  const selectedState = selectedStateLabel({ selectedNFT, selectedIsEvolved, selectedIsUnrevealed })
+  const selectedTraitsCount = selectedMeta?.attributes?.length || 0
+  const displayTabTitle = activeTab === 'evolved' ? 'My 3D NFTs' : 'My 2D NFTs'
+  const displayTabHint = activeTab === 'evolved' ? 'Open traits and review evolved penguins.' : 'Select a 2D penguin and evolve it to 3D.'
 
   useEffect(() => {
     if (page > totalPages) setPage(totalPages)
@@ -687,7 +703,7 @@ function Evolve() {
       <div className="mint-layout">
         <div className="mint-card">
           <div className="mint-card-header">
-            <span className="mint-card-title">Evolve</span>
+            <span className="mint-card-title">Evolution Studio</span>
             <span className="mint-card-badge">3D</span>
           </div>
 
@@ -702,6 +718,21 @@ function Evolve() {
             <div className="mint-supply-footer">
               <span>{isLoadingGlobalProgress ? 'Updating...' : `${remainingToEvolve} remaining`}</span>
               <span>{Math.round(evolveProgress)}%</span>
+            </div>
+          </div>
+
+          <div className="evolve-stat-row">
+            <div className="evolve-stat-box">
+              <span>Wallet</span>
+              <strong>{balance}</strong>
+            </div>
+            <div className="evolve-stat-box">
+              <span>2D Ready</span>
+              <strong>{twoDNFTs.length}</strong>
+            </div>
+            <div className="evolve-stat-box">
+              <span>3D Done</span>
+              <strong>{evolvedNFTs.length}</strong>
             </div>
           </div>
 
@@ -722,35 +753,52 @@ function Evolve() {
             </div>
           )}
 
-          {activeTab !== 'evolved' && selectedNFT && (
-            <div className="evolve-selected-card">
+          {activeTab !== 'evolved' && (
+            <div className={`evolve-selected-card ${selectedNFT ? '' : 'empty'}`}>
               <div className="evolve-selected-head">
                 <span>Selected NFT</span>
-                <span>#{selectedNFT.tokenId}</span>
+                {selectedNFT ? <span>#{selectedNFT.tokenId}</span> : <span>Waiting</span>}
               </div>
-              {selectedNFT.meta?.image && (
-                <img
-                  className="evolve-selected-image"
-                  src={selectedNFT.meta.image}
-                  alt={selectedNFT.meta?.name || `NFT #${selectedNFT.tokenId}`}
-                />
+
+              {selectedNFT ? (
+                <div className="evolve-selected-body">
+                  {selectedMeta?.image && (
+                    <img
+                      className="evolve-selected-image"
+                      src={selectedMeta.image}
+                      alt={selectedMeta?.name || `NFT #${selectedNFT.tokenId}`}
+                    />
+                  )}
+                  <div className="evolve-selected-content">
+                    <div className="evolve-selected-name">
+                      <strong>{selectedMeta?.name || '8bit Penguin'}</strong>
+                      <span className={`evolve-selected-state ${selectedState.tone}`}>{selectedState.label}</span>
+                    </div>
+                    <div className="evolve-selected-grid">
+                      <span><b>Traits</b>{selectedTraitsCount}</span>
+                      <span><b>Token ID</b>#{selectedNFT.tokenId}</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="evolve-selected-empty">
+                  Pick a 2D NFT from the gallery to prepare its 3D evolution.
+                </div>
               )}
-              <div className="evolve-selected-meta">
-                <strong>{selectedNFT.meta?.name || '8bit Penguin'}</strong>
-                <span>{selectedNFT.meta?.attributes?.length || 0} traits</span>
-              </div>
             </div>
           )}
-          {activeTab !== 'evolved' && selectedNFT && (
+          {activeTab !== 'evolved' && (
             <button className="mint-submit-btn" onClick={evolveSelected} disabled={!selectedNFT || isEvolving || selectedIsEvolved || selectedIsUnrevealed}>
               {isEvolving
                 ? 'Evolving...'
                 : (
                   selectedIsEvolved
-                    ? `#${selectedNFT.tokenId} Already 3D`
+                    ? `#${selectedNFT?.tokenId || ''} Already 3D`
                     : selectedIsUnrevealed
-                      ? `#${selectedNFT.tokenId} Unrevealed`
-                      : `Evolve #${selectedNFT.tokenId} to 3D`
+                      ? `#${selectedNFT?.tokenId || ''} Unrevealed`
+                      : selectedNFT
+                        ? `Evolve #${selectedNFT.tokenId} to 3D`
+                        : 'Select a 2D NFT to evolve'
                 )}
             </button>
           )}
@@ -768,6 +816,13 @@ function Evolve() {
         </div>
 
         <div className="mint-display">
+          <div className="evolve-display-head">
+            <div>
+              <span className="evolve-display-kicker">Wallet Gallery</span>
+              <strong>{displayTabTitle}</strong>
+            </div>
+            <span className="evolve-display-hint">{displayTabHint}</span>
+          </div>
           <div className="mint-tabs">
             <button
               className={`mint-tab ${activeTab === 'my' ? 'active' : ''}`}
