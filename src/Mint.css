@@ -14,65 +14,13 @@
 
 .mint-page {
   width: 100%;
-  max-width: 1400px;
+  max-width: none;
+  min-height: 100vh;
   margin: 0 auto;
-  background: var(--mint-card);
-  border: 1px solid var(--mint-border);
-  border-radius: 6px;
-  padding: 40px;
-}
-
-.mint-page .app > header {
-  display: none;
-}
-
-/* Header Section */
-.mint-page > header {
-  text-align: center;
-  padding: 0 0 25px;
-  border-bottom: 1px solid #30363d;
-  margin-bottom: 25px;
-  background: transparent;
-  position: relative;
-}
-
-.mint-page > header h1 {
-  font-size: 1.8rem;
-  letter-spacing: 4px;
-  font-weight: 700;
-  margin-bottom: 8px;
-  color: #ffffff;
-}
-
-.mint-page > header p {
-  color: #8b949e;
-  font-size: 0.75rem;
-  letter-spacing: 2px;
-}
-
-.header-links {
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-  margin-top: 12px;
-}
-
-.x-btn {
-  display: inline-block;
-  margin-top: 12px;
-  padding: 6px 12px;
-  background: #000;
-  color: #fff;
-  font-size: 0.7rem;
-  text-decoration: none;
-  border-radius: 4px;
-  border: 1px solid #333;
-  transition: all 0.2s;
-}
-
-.x-btn:hover {
-  background: #333;
-  border-color: #fff;
+  background: #0d1117;
+  border: none;
+  border-radius: 0;
+  padding: 0;
 }
 
 /* Main Two Column Layout */
@@ -709,13 +657,17 @@
 
 .admin-page-gated {
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .admin-gate-screen {
-  min-height: calc(100vh - 180px);
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
+  padding: 24px 0;
 }
 
 .admin-grid {
@@ -872,6 +824,12 @@
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.admin-phase-actions {
+  margin-top: 12px;
+  flex-direction: row;
+  align-items: center;
 }
 
 .admin-check {
@@ -1399,8 +1357,7 @@
     white-space: normal;
   }
 
-  .admin-phase-banner-head,
-  .mint-phase-top {
+  .admin-phase-banner-head {
     flex-direction: column;
   }
 
@@ -1409,8 +1366,29 @@
     text-align: left;
   }
 
+  .mint-phase-status {
+    width: fit-content;
+    max-width: 100%;
+  }
+
   .mint-phase-meta {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .mint-phase-meta span {
+    display: grid;
+    gap: 3px;
+    align-content: start;
+  }
+
+  .mint-phase-meta span b {
+    display: block;
+    width: 100%;
+  }
+
+  .mint-phase-timer {
+    grid-column: 1 / -1;
   }
 }
 
@@ -1547,11 +1525,6 @@
 }
 
 /* Evolve page refinements */
-.evolve-page {
-  padding-top: 40px;
-  padding-bottom: 40px;
-}
-
 .evolve-page .mint-layout {
   gap: 18px;
   margin-top: 0;
@@ -1636,6 +1609,13 @@
   font-size: 0.7rem;
   line-height: 1.45;
   text-align: right;
+}
+
+.evolve-inline-note {
+  margin: 0 0 10px;
+  color: #8b949e;
+  font-size: 0.68rem;
+  line-height: 1.4;
 }
 
 .evolve-page .mint-gallery-grid {
@@ -1978,17 +1958,25 @@
 
 /* Responsive */
 @media (max-width: 900px) {
+  .mint-phase-meta span {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .mint-phase-meta span b {
+    display: inline;
+    width: auto;
+    flex-shrink: 0;
+  }
+
   .mint-layout {
     grid-template-columns: 1fr;
   }
   
   .mint-card {
     position: static;
-  }
-  
-  .mint-page > header h1 {
-    font-size: 1.5rem;
-    letter-spacing: 2px;
   }
   
   .mint-tabs {
@@ -2026,27 +2014,11 @@
 @media (max-width: 768px) {
   .mint-page {
     width: 100%;
-    max-width: 1400px;
     margin-left: auto;
     margin-right: auto;
     padding: 16px 12px;
     border-radius: 0;
     border: none;
-  }
-
-  .mint-page > header {
-    padding-bottom: 16px;
-    margin-bottom: 16px;
-  }
-
-  .mint-page > header h1 {
-    font-size: 1.25rem;
-    letter-spacing: 1px;
-  }
-
-  .mint-page > header p {
-    font-size: 0.68rem;
-    letter-spacing: 1px;
   }
 
   .mint-layout {
@@ -2058,6 +2030,67 @@
     padding: 12px;
     top: 0;
     width: 100%;
+  }
+
+  .admin-phase-banner {
+    padding: 10px;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #121821 0%, #0d1117 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  }
+
+  .admin-phase-banner-head {
+    gap: 12px;
+  }
+
+  .mint-phase-summary-title {
+    gap: 6px;
+  }
+
+  .mint-phase-summary-label {
+    font-size: 0.5rem;
+    letter-spacing: 0.14em;
+  }
+
+  .admin-phase-banner-head strong {
+    font-size: 0.84rem;
+    line-height: 1.25;
+  }
+
+  .mint-phase-summary-meta {
+    gap: 5px;
+  }
+
+  .mint-phase-summary-status {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    min-height: 24px;
+    padding: 0 8px;
+    border: 1px solid #37404a;
+    border-radius: 999px;
+    background: #11161d;
+    font-size: 0.58rem;
+  }
+
+  .mint-phase-summary-price-row {
+    display: grid;
+    gap: 3px;
+    padding: 8px 10px;
+    border: 1px solid #2d3742;
+    border-radius: 8px;
+    background: #0d131a;
+  }
+
+  .mint-phase-summary-price-label {
+    font-size: 0.5rem;
+    letter-spacing: 0.1em;
+  }
+
+  .mint-phase-summary-price {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #f0f6fc;
   }
 
   .evolve-page {
@@ -2161,6 +2194,68 @@
     white-space: nowrap;
   }
 
+  .mint-phase-list {
+    gap: 8px;
+    margin-top: 6px;
+  }
+
+  .mint-phase-item {
+    padding: 9px;
+    border-radius: 9px;
+    gap: 8px;
+    background: linear-gradient(180deg, #10161d 0%, #0b0f14 100%);
+  }
+
+  .mint-phase-item.active {
+    box-shadow: inset 0 0 0 1px rgba(88, 166, 255, 0.18), 0 0 0 1px rgba(88, 166, 255, 0.06);
+  }
+
+  .mint-phase-item.eligible {
+    box-shadow: inset 0 0 0 1px rgba(46, 160, 67, 0.16), 0 0 0 1px rgba(46, 160, 67, 0.05);
+  }
+
+  .mint-phase-top {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+
+  .mint-phase-item strong {
+    font-size: 0.68rem;
+    line-height: 1.2;
+  }
+
+  .mint-phase-status {
+    padding: 3px 8px;
+    font-size: 0.54rem;
+  }
+
+  .mint-phase-meta {
+    gap: 6px;
+  }
+
+  .mint-phase-meta span {
+    min-height: 0;
+    padding: 6px 8px;
+    border: 1px solid #29333d;
+    border-radius: 8px;
+    background: #0f151c;
+    font-size: 0.56rem;
+  }
+
+  .mint-phase-meta span b {
+    font-size: 0.5rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #8b949e;
+  }
+
+  .mint-phase-timer {
+    padding-top: 0;
+  }
+
   .mint-gallery-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 10px;
@@ -2228,6 +2323,11 @@
     align-items: stretch;
   }
 
+  .admin-phase-actions {
+    flex-direction: row;
+    align-items: center;
+  }
+
   .admin-token-actions {
     width: 100%;
   }
@@ -2276,6 +2376,10 @@
     padding: 12px 10px;
   }
 
+  .admin-phase-banner {
+    padding: 9px;
+  }
+
   .evolve-page {
     padding: 12px 10px;
   }
@@ -2297,10 +2401,6 @@
   .evolve-page .mint-connect-btn,
   .evolve-page .mint-submit-btn {
     margin-top: 6px;
-  }
-
-  .mint-page > header h1 {
-    font-size: 1.05rem;
   }
 
   .mint-wallet {
@@ -2329,6 +2429,16 @@
 
   .mint-supply-value {
     font-size: 0.9rem;
+  }
+
+  .mint-phase-meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .mint-phase-meta span {
+    min-height: 0;
+    padding: 6px 7px;
   }
 
   .mint-traits-modal h3 {

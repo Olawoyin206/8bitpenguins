@@ -6,86 +6,25 @@
   min-height: 100vh;
   background: #0d1117;
   color: #c9d1d9;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
   font-family: 'JetBrains Mono';
 }
 
 .task-container {
-  max-width: 1400px;
+  max-width: none;
   width: 100%;
+  min-height: 100vh;
   margin: 0 auto;
   text-align: center;
-  background: #161b22;
-  border: 1px solid #30363d;
-  border-radius: 6px;
-  padding: 40px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
   box-sizing: border-box;
 }
 
-.task-page header {
-  text-align: center;
-  padding: 0 0 25px;
-  border-bottom: 1px solid #30363d;
-  margin-bottom: 25px;
-}
-
-.task-page header h1 {
-  font-size: 1.8rem;
-  letter-spacing: 4px;
-  font-weight: 700;
-  margin-bottom: 8px;
-  color: #ffffff;
-}
-
-.task-page header p {
-  color: #8b949e;
-  font-size: 0.75rem;
-  letter-spacing: 2px;
-}
-
-.task-page .header-links {
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-  margin-top: 12px;
-}
-
-.task-page .header-link {
-  color: #5DADE2;
-  text-decoration: none;
-  font-size: 0.8rem;
-  padding: 6px 12px;
-  border: 1px solid #5DADE2;
-  border-radius: 4px;
-  transition: all 0.2s;
-}
-
-.task-page .header-link:hover {
-  background: #5DADE2;
-  color: #fff;
-}
-
-.task-page .x-btn {
-  display: inline-block;
-  margin-top: 12px;
-  padding: 6px 12px;
-  background: #000;
-  color: #fff;
-  font-size: 0.7rem;
-  text-decoration: none;
-  border-radius: 4px;
-  border: 1px solid #333;
-  transition: all 0.2s;
-}
-
-.task-page .x-btn:hover {
-  background: #333;
-  border-color: #fff;
-}
-
 .task-page main {
+  width: min(920px, calc(100% - 24px));
+  margin: 0 auto;
   text-align: left;
 }
 
@@ -707,18 +646,8 @@
     border: none;
   }
 
-  .task-page header {
-    padding: 0 0 16px;
-    margin-bottom: 16px;
-  }
-
-  .task-page header h1 {
-    font-size: 1.4rem;
-    letter-spacing: 2px;
-  }
-
-  .task-page header p {
-    font-size: 0.65rem;
+  .task-page main {
+    width: 100%;
   }
 
   .task-card {

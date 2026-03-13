@@ -3,6 +3,7 @@ import { ethers } from 'ethers'
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import { Link } from 'react-router-dom'
+import SiteNav from './SiteNav.jsx'
 import './Mint.css'
 import { BLOCK_EXPLORER_URL, CHAIN_ID_HEX, CHAIN_NAME, CONTRACT_ADDRESS, ETH_SEPOLIA_RPC } from './contractConfig.js'
 import contractABI from './abi/EightBitPenguinsUpgradeable.abi.js'
@@ -2283,14 +2284,7 @@ function Mint() {
   return (
     <>
     <div className="mint-page">
-      {/* Hero Section */}
-      <header>
-        <h1>8bit Penguins</h1>
-        <p>COLLECT - MINT</p>
-        <div className="header-links">
-          <a href="https://x.com/8bitpenguins" target="_blank" rel="noopener noreferrer" className="x-btn">Follow us on X</a>
-        </div>
-      </header>
+      <SiteNav label="Collect · Mint" />
 
         {/* Two Column Layout */}
         <div className="mint-layout">
