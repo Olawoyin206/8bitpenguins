@@ -3,6 +3,7 @@ const JSONBIN_KEY = import.meta.env.VITE_JSONBIN_KEY
 const JSONBIN_BIN_ID = import.meta.env.VITE_JSONBIN_BIN_ID
 
 const IPFS_GATEWAY = "https://gateway.pinata.cloud/ipfs/"
+const GALLERY_API_PATH = '/api/gallery'
 const GALLERY_CACHE_KEY = 'sharedGalleryCache'
 const MAX_SAVE_RETRIES = 2
 
@@ -42,6 +43,37 @@ function mergeGalleryEntries(...collections) {
   })
 
   return Array.from(byKey.values()).sort((a, b) => Number(b.timestamp || 0) - Number(a.timestamp || 0))
+}
+
+async function fetchGalleryViaApi() {
+  const res = await fetch(GALLERY_API_PATH, { cache: 'no-store' })
+  if (!res.ok) {
+    throw new Error(`Gallery API GET failed: ${res.status}`)
+  }
+
+  const data = await res.json()
+  return Array.isArray(data.penguins) ? data.penguins : []
+}
+
+async function saveGalleryViaApi(penguin) {
+  const res = await fetch(GALLERY_API_PATH, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(penguin),
+  })
+
+  if (!res.ok) {
+    throw new Error(`Gallery API POST failed: ${res.status}`)
+  }
+
+  const data = await res.json()
+  return Array.isArray(data.penguins) ? data.penguins : []
+}
+
+function canUseDirectJsonBinFallback() {
+  return import.meta.env.DEV && Boolean(JSONBIN_KEY && JSONBIN_BIN_ID)
 }
 
 async function fetchGalleryRecord() {
@@ -118,6 +150,17 @@ export function getIPFSUrl(cid) {
 }
 
 export async function saveToSharedGallery(penguin) {
+  try {
+    const apiGallery = await saveGalleryViaApi(penguin)
+    setGalleryCache(apiGallery)
+    return true
+  } catch (apiError) {
+    if (!canUseDirectJsonBinFallback()) {
+      console.error("Error saving to shared gallery:", apiError)
+      return null
+    }
+  }
+
   if (!JSONBIN_KEY || !JSONBIN_BIN_ID) {
     return null
   }
@@ -166,9 +209,14 @@ export async function fetchSharedGallery() {
 }
 
 export async function fetchFreshGallery() {
-  // Always fetch fresh from API
-  if (!JSONBIN_KEY || !JSONBIN_BIN_ID) {
-    return []
+  try {
+    const gallery = await fetchGalleryViaApi()
+    setGalleryCache(gallery)
+    return gallery
+  } catch (apiError) {
+    if (!canUseDirectJsonBinFallback()) {
+      return []
+    }
   }
 
   try {
