@@ -2,93 +2,31 @@
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
-body {
+.app-page {
   font-family: 'JetBrains Mono';
   background: #0d1117;
   color: #c9d1d9;
   min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 20px;
+  display: block;
+  padding: 0;
   margin: 0;
 }
 
-html {
+.app-page {
   margin: 0;
   padding: 0;
 }
 
 .app {
   width: 100%;
-  max-width: 1400px;
-  margin: 0 auto;
+  max-width: none;
+  min-height: 100vh;
+  margin: 0;
   text-align: center;
-  background: #161b22;
-  border: 1px solid #30363d;
-  border-radius: 6px;
-  padding: 40px;
-}
-
-header {
-  text-align: center;
-  padding: 0 0 25px;
-  border-bottom: 1px solid #30363d;
-  margin-bottom: 25px;
-}
-
-header h1 {
-  font-size: 1.8rem;
-  letter-spacing: 4px;
-  font-weight: 700;
-  margin-bottom: 8px;
-  color: #ffffff;
-}
-
-header p {
-  color: #8b949e;
-  font-size: 0.75rem;
-  letter-spacing: 2px;
-}
-
-.x-btn {
-  display: inline-block;
-  margin-top: 12px;
-  padding: 6px 12px;
-  background: #000;
-  color: #fff;
-  font-size: 0.7rem;
-  text-decoration: none;
-  border-radius: 4px;
-  border: 1px solid #333;
-  transition: all 0.2s;
-}
-
-.x-btn:hover {
-  background: #333;
-  border-color: #fff;
-}
-
-.header-links {
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-  margin-top: 12px;
-}
-
-.header-link {
-  color: #5DADE2;
-  text-decoration: none;
-  font-size: 0.8rem;
-  padding: 6px 12px;
-  border: 1px solid #5DADE2;
-  border-radius: 4px;
-  transition: all 0.2s;
-}
-
-.header-link:hover {
-  background: #5DADE2;
-  color: #fff;
+  background: #0d1117;
+  border: none;
+  border-radius: 0;
+  padding: 0;
 }
 
 .btn.disabled {
@@ -108,7 +46,7 @@ header p {
   background: #21262d;
 }
 
-main {
+.app main {
   display: flex;
   gap: 20px;
   justify-content: center;
@@ -482,7 +420,7 @@ main {
 }
 
 .traits {
-  min-width: 220px;
+  min-width: 0;
 }
 
 .traits h2 {
@@ -548,7 +486,7 @@ main {
   padding: 20px;
   border-radius: 4px;
   flex: 1;
-  min-width: 300px;
+  min-width: 0;
   max-width: 400px;
 }
 
@@ -693,7 +631,7 @@ main {
 }
 
 @media (max-width: 600px) {
-  body {
+  .app-page {
     padding: 0;
   }
   .app { 
@@ -707,10 +645,8 @@ main {
   .canvas-wrap canvas { width: 280px; height: 280px; }
   .btns { gap: 8px; flex-wrap: wrap; justify-content: center; }
   .btn { padding: 10px 14px; font-size: 0.6rem; }
-  header h1 { font-size: 1.5rem; letter-spacing: 2px; }
-  header p { font-size: 0.65rem; }
   .preview, .traits { padding: 15px; width: 100%; }
-  main { gap: 12px; }
+  .app main { gap: 12px; }
   .tab { padding: 10px 16px; font-size: 0.6rem; }
   .gallery { min-width: auto; max-width: 100%; }
   .gallery-tabs { flex-direction: row; gap: 0; }
@@ -858,7 +794,7 @@ main {
 }
 
 .mint-container {
-  max-width: 1200px;
+  width: 100%;
   margin: 0 auto;
 }
 
@@ -1457,62 +1393,7 @@ main {
 
 /* Three Generator Page */
 .three-page {
-  max-width: 1400px;
-}
-
-.three-page header {
-  text-align: center;
-  padding: 0 0 25px;
-  border-bottom: 1px solid #30363d;
-  margin-bottom: 25px;
-}
-
-.three-page header h1 {
-  font-size: 1.8rem;
-  letter-spacing: 4px;
-  font-weight: 700;
-  margin-bottom: 8px;
-  color: #ffffff;
-}
-
-.three-page header p {
-  color: #8b949e;
-  font-size: 0.75rem;
-  letter-spacing: 2px;
-}
-
-.three-page .header-links {
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-}
-
-.three-page .header-link {
-  color: #58a6ff;
-  text-decoration: none;
-  font-size: 0.75rem;
-  padding: 6px 12px;
-  border: 1px solid #30363d;
-  border-radius: 4px;
-  transition: all 0.2s;
-}
-
-.three-page .header-link:hover {
-  background: #21262d;
-  border-color: #58a6ff;
-}
-
-.three-page .x-btn {
-  display: inline-block;
-  margin-top: 12px;
-  padding: 6px 12px;
-  background: #000;
-  color: #fff;
-  font-size: 0.7rem;
-  text-decoration: none;
-  border-radius: 4px;
-  border: 1px solid #333;
-  transition: all 0.2s;
+  width: 100%;
 }
 
 .three-generator {
@@ -1608,6 +1489,8 @@ main {
 .three-controls {
   display: flex;
   gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .three-page .traits {
@@ -1646,11 +1529,6 @@ main {
 @media (max-width: 500px) {
   .three-page {
     padding: 12px;
-  }
-  
-  .three-page header h1 {
-    font-size: 1.4rem;
-    letter-spacing: 2px;
   }
   
   .three-canvas {

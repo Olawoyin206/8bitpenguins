@@ -2,9 +2,17 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ethers } from 'ethers'
 import * as XLSX from 'xlsx'
+import SiteNav from './SiteNav.jsx'
 import './Mint.css'
 import { BLOCK_EXPLORER_URL, CHAIN_ID_HEX, CHAIN_NAME, CONTRACT_ADDRESS, ETH_SEPOLIA_RPC } from './contractConfig.js'
 import contractABI from './abi/EightBitPenguinsUpgradeable.abi.js'
+import {
+  DEFAULT_TASK_PINNED_POST_LINK,
+  getTaskPinnedPostLink,
+  isValidPinnedPostLink,
+  resetTaskPinnedPostLink,
+  saveTaskPinnedPostLink,
+} from './taskConfig.js'
 
 function shortAddress(value) {
   if (!value) return 'Not set'
@@ -169,6 +177,7 @@ function Admin() {
   const [globalPriceDraft, setGlobalPriceDraft] = useState('0')
   const [globalSupplyDraft, setGlobalSupplyDraft] = useState('0')
   const [globalWalletDraft, setGlobalWalletDraft] = useState('0')
+  const [taskPinnedPostDraft, setTaskPinnedPostDraft] = useState(() => getTaskPinnedPostLink())
   const [tokenIdInput, setTokenIdInput] = useState('')
   const [tokenInspect, setTokenInspect] = useState(null)
   const [walletInspectInput, setWalletInspectInput] = useState('')
@@ -507,6 +516,23 @@ function Admin() {
     URL.revokeObjectURL(url)
   }
 
+  const saveTaskPageSettings = () => {
+    if (!isValidPinnedPostLink(taskPinnedPostDraft)) {
+      setStatus('Enter a valid X/Twitter post URL')
+      return
+    }
+
+    const payload = saveTaskPinnedPostLink(taskPinnedPostDraft)
+    setTaskPinnedPostDraft(payload.link)
+    setStatus('Task page pinned post link updated')
+  }
+
+  const resetTaskPageSettings = () => {
+    const payload = resetTaskPinnedPostLink()
+    setTaskPinnedPostDraft(payload.link)
+    setStatus('Task page pinned post link reset to default')
+  }
+
   const loadPhaseIntoForm = (phase) => {
     setPhaseDraft({
       phaseId: String(phase.id),
@@ -824,13 +850,7 @@ function Admin() {
   if (!adminReady) {
     return (
       <div className="mint-page admin-page admin-page-gated">
-        <header>
-          <h1>8bit Penguins</h1>
-          <p>ADMIN - CONTROL PANEL</p>
-          <div className="header-links">
-            <a href="https://x.com/8bitpenguins" target="_blank" rel="noopener noreferrer" className="x-btn">Follow us on X</a>
-          </div>
-        </header>
+        <SiteNav label="Admin Control" />
         <div className="admin-gate-screen">
           <div className="admin-locked">
             <div className="admin-locked-badge">ADMIN ONLY</div>
@@ -858,13 +878,7 @@ function Admin() {
 
   return (
     <div className="mint-page admin-page">
-      <header>
-        <h1>8bit Penguins</h1>
-        <p>ADMIN - CONTROL PANEL</p>
-        <div className="header-links">
-          <a href="https://x.com/8bitpenguins" target="_blank" rel="noopener noreferrer" className="x-btn">Follow us on X</a>
-        </div>
-      </header>
+      <SiteNav label="Admin Control" />
 
       <div className="mint-layout">
         <>
@@ -996,6 +1010,51 @@ function Admin() {
                 </div>
               </section>
 
+              <section className="admin-panel admin-panel-global">
+                <div className="admin-panel-head">
+                  <h2>Task Page Settings</h2>
+                </div>
+                <div className="admin-global-settings">
+                  <div className="admin-setting-row">
+                    <FieldLabel label="Pinned Post Link">
+                      <input
+                        className="admin-input"
+                        value={taskPinnedPostDraft}
+                        onChange={(e) => setTaskPinnedPostDraft(e.target.value)}
+                        placeholder={DEFAULT_TASK_PINNED_POST_LINK}
+                      />
+                    </FieldLabel>
+                    <button
+                      className="mint-submit-btn admin-action-btn admin-setting-btn"
+                      disabled={isBusy || !isValidPinnedPostLink(taskPinnedPostDraft)}
+                      onClick={saveTaskPageSettings}
+                    >
+                      Save Link
+                    </button>
+                  </div>
+                  <div className="admin-inline-actions">
+                    <a
+                      className="mint-submit-btn admin-action-btn admin-action-muted admin-setting-btn"
+                      href={isValidPinnedPostLink(taskPinnedPostDraft) ? taskPinnedPostDraft : DEFAULT_TASK_PINNED_POST_LINK}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Open Link
+                    </a>
+                    <button
+                      className="mint-submit-btn admin-action-btn admin-action-muted admin-setting-btn"
+                      disabled={isBusy || taskPinnedPostDraft === DEFAULT_TASK_PINNED_POST_LINK}
+                      onClick={resetTaskPageSettings}
+                    >
+                      Reset Default
+                    </button>
+                  </div>
+                  <p className="admin-setting-help">
+                    This updates the pinned post used by the task page for both the like/retweet step and the quote-tweet step.
+                  </p>
+                </div>
+              </section>
+
               <section className="admin-panel admin-panel-placeholder">
                 <div className="admin-panel-head">
                   <h2>Placeholder Image</h2>
@@ -1064,7 +1123,7 @@ function Admin() {
                     <span>Phase enabled</span>
                   </label>
                 </div>
-                <div className="admin-inline-actions" style={{ marginTop: '12px' }}>
+                <div className="admin-inline-actions admin-phase-actions">
                   <button className="mint-submit-btn admin-action-btn admin-action-muted" disabled={isBusy || !supportsPhaseControls} onClick={applyNextPhaseGap}>
                     Start After Previous
                   </button>

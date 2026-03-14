@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+import SiteNav from './SiteNav.jsx'
 import './Task.css'
-
-const TARGET_TWEET_ID = '2031353109654417574'
+import { getTaskPinnedPostId, getTaskPinnedPostLink, TASK_CONFIG_UPDATED_EVENT } from './taskConfig.js'
 
 function Task() {
   const [alreadySubmitted, setAlreadySubmitted] = useState(() => {
@@ -24,6 +24,22 @@ function Task() {
   const [showForm, setShowForm] = useState(false)
   const [showLinkWarning, setShowLinkWarning] = useState({})
   const [taskError, setTaskError] = useState({})
+  const [pinnedPostLink, setPinnedPostLink] = useState(() => getTaskPinnedPostLink())
+  const targetTweetId = useMemo(() => getTaskPinnedPostId(pinnedPostLink), [pinnedPostLink])
+
+  useEffect(() => {
+    const syncPinnedPost = (event) => {
+      const nextLink = event?.detail?.link || getTaskPinnedPostLink()
+      setPinnedPostLink(nextLink)
+    }
+
+    window.addEventListener('storage', syncPinnedPost)
+    window.addEventListener(TASK_CONFIG_UPDATED_EVENT, syncPinnedPost)
+    return () => {
+      window.removeEventListener('storage', syncPinnedPost)
+      window.removeEventListener(TASK_CONFIG_UPDATED_EVENT, syncPinnedPost)
+    }
+  }, [])
 
   useEffect(() => {
     if (alreadySubmitted) {
@@ -47,7 +63,7 @@ function Task() {
       title: 'Like and Retweet',
       description: 'Like and retweet our pinned post to help spread the word',
       action: 'View Pinned Post',
-      link: 'https://x.com/8bitpenguin_xyz/status/2031353109654417574?s=20',
+      link: pinnedPostLink,
       clicked: clickedLikeRetweet,
       setClicked: setClickedLikeRetweet,
       completed: completedTasks.likeRetweet
@@ -57,7 +73,7 @@ function Task() {
       title: 'Quote the Pinned Post',
       description: 'Click to open X, quote with the message below, then paste your tweet link',
       action: 'Quote Tweet',
-      link: 'https://x.com/8bitpenguin_xyz/status/2031353109654417574?s=20',
+      link: pinnedPostLink,
       clicked: clickedQuote,
       setClicked: setClickedQuote,
       completed: completedTasks.quote,
@@ -90,7 +106,7 @@ function Task() {
     if (!match) return false
 
     const tweetId = match[3]
-    return tweetId !== TARGET_TWEET_ID
+    return tweetId !== targetTweetId
   }
 
   const handleLinkClick = (taskId) => {
@@ -101,7 +117,7 @@ function Task() {
 
       if (taskId === 'quote') {
         const quoteText = '8bit Penguins Coming To Ethereum'
-        const tweetUrl = 'https://x.com/8bitpenguin_xyz/status/2031353109654417574?s=20'
+        const tweetUrl = pinnedPostLink
         const composeUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(quoteText)}&url=${encodeURIComponent(tweetUrl)}`
         window.open(composeUrl, '_blank')
       }
@@ -157,7 +173,7 @@ function Task() {
     localStorage.setItem('taskSubmission', JSON.stringify(submission))
 
     try {
-      await fetch('https://script.google.com/macros/s/AKfycbzqgy0yX3nGOlMBxGVDdwFQstC0e2ADgW0ESL9hol2yD1eiY3RF3uxq7cbuHYTaMSNt/exec', {
+      await fetch('https://script.google.com/macros/s/AKfycbzjI_MtGVQX6pyisMDL8aD_ah7YCG_73NNaEY2Ye5BgWw-Q04J9sfHL95jn7FriLCcl/exec', {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify(submission)
@@ -179,17 +195,7 @@ function Task() {
   return (
     <div className="task-page">
       <div className="task-container">
-        <header>
-          <h1>8bit Penguins</h1>
-          {alreadySubmitted ? (
-            <p>You have already submitted</p>
-          ) : (
-            <p>Complete the social tasks to secure whitelist access</p>
-          )}
-          <div className="header-links">
-            <a href="https://x.com/8bitpenguin_xyz" target="_blank" rel="noopener noreferrer" className="x-btn">Follow us on X</a>
-          </div>
-        </header>
+        <SiteNav label={alreadySubmitted ? 'Already Submitted' : 'Whitelist Tasks'} />
 
         {alreadySubmitted ? (
           <div className="form-section show">
@@ -321,6 +327,7 @@ function Task() {
                       <p>Use your correct X handle.</p>
                       <p>Wallet must be a valid EVM address starting with <strong>0x</strong>.</p>
                       <p>One submission per user is allowed.</p>
+                      <p>All submitted details will be verified before whitelist approval.</p>
                     </aside>
 
                     <form onSubmit={handleSubmit} className="submission-form task-submit-panel">

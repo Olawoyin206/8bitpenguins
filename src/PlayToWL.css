@@ -285,7 +285,8 @@
 .player-cell {
   color: #8b949e;
   font-size: 0.62rem;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .board-qualification strong {
@@ -989,7 +990,7 @@
   }
 
   .leader-row {
-    grid-template-columns: 28px minmax(76px, 1.12fr) minmax(66px, 0.95fr) 56px 48px;
+    grid-template-columns: 28px minmax(0, 1.05fr) minmax(0, 0.9fr) 52px 44px;
     gap: 5px;
     padding: 6px;
   }
