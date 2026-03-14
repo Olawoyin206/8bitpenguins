@@ -941,10 +941,10 @@
 /* Network Button */
 .mint-network-btn {
   width: 100%;
-  padding: 14px;
+  padding: 10px 12px;
   background: transparent;
   border: 1px solid var(--mint-border);
-  border-radius: 10px;
+  border-radius: var(--ui-button-radius);
   color: var(--mint-text-secondary);
   font-size: 0.8rem;
   font-weight: 500;
@@ -1046,10 +1046,10 @@
 /* Mint Button */
 .mint-submit-btn {
   width: 100%;
-  padding: 18px;
-  background: var(--mint-accent);
+  padding: 8px 10px;
+  background: #ffffff;
   border: none;
-  border-radius: 10px;
+  border-radius: var(--ui-button-radius);
   color: #000;
   font-size: 0.9rem;
   font-weight: 700;
@@ -1077,15 +1077,16 @@
 }
 
 .mint-submit-btn:hover:not(:disabled) {
-  background: #00e5ff;
-  box-shadow: 0 0 30px var(--mint-accent-glow);
-  transform: translateY(-2px);
+  background: #eceff3;
+  box-shadow: 0 6px 16px rgba(255, 255, 255, 0.08);
+  transform: translateY(-1px);
 }
 
 .mint-submit-btn:disabled {
-  background: var(--mint-border);
-  color: var(--mint-text-muted);
+  background: #ffffff;
+  color: #000000;
   cursor: not-allowed;
+  opacity: 0.45;
 }
 
 /* Status Messages */
@@ -1233,10 +1234,10 @@
 }
 
 .mint-connect-btn {
-  padding: 14px 40px;
-  background: var(--mint-accent);
+  padding: 8px 10px;
+  background: #ffffff;
   border: none;
-  border-radius: 10px;
+  border-radius: var(--ui-button-radius);
   color: #000;
   font-size: 0.85rem;
   font-weight: 600;
@@ -1245,8 +1246,8 @@
 }
 
 .mint-connect-btn:hover {
-  background: #00e5ff;
-  box-shadow: 0 0 30px var(--mint-accent-glow);
+  background: #eceff3;
+  box-shadow: 0 6px 16px rgba(255, 255, 255, 0.08);
 }
 
 /* Gallery Sections */
@@ -1353,10 +1354,10 @@
 
 .mint-evolve-btn {
   flex: 1;
-  padding: 8px 12px;
+  padding: 6px 10px;
   background: transparent;
   border: 1px solid var(--mint-border);
-  border-radius: 6px;
+  border-radius: var(--ui-button-radius);
   color: var(--mint-text-secondary);
   font-size: 0.65rem;
   font-weight: 600;

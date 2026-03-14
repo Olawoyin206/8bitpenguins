@@ -1,0 +1,148 @@
+:root {
+  --ui-button-radius: 5px;
+}
+
+:is(
+  .ui-button,
+  .mint-submit-btn,
+  .mint-connect-btn,
+  .mint-network-btn,
+  .mint-page-btn,
+  .mint-evolve-btn,
+  .admin-action-btn,
+  .admin-phase-btn
+) {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  border-radius: var(--ui-button-radius);
+  font-family: inherit;
+  font-weight: 600;
+  line-height: 1;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  background: #ffffff;
+  color: #000000;
+  box-shadow: 0 6px 16px rgba(255, 255, 255, 0.08);
+  transition: transform 0.15s ease, background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+:is(
+  .ui-button,
+  .mint-submit-btn,
+  .mint-connect-btn,
+  .mint-network-btn,
+  .mint-page-btn,
+  .mint-evolve-btn,
+  .admin-action-btn,
+  .admin-phase-btn
+):hover:not(:disabled) {
+  transform: translateY(-1px);
+  background: #eceff3;
+}
+
+:is(
+  .ui-button,
+  .mint-submit-btn,
+  .mint-connect-btn,
+  .mint-network-btn,
+  .mint-page-btn,
+  .mint-evolve-btn,
+  .admin-action-btn,
+  .admin-phase-btn
+):disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  transform: none;
+  background: #ffffff;
+  color: #000000;
+  box-shadow: none;
+}
+
+.ui-button--block {
+  width: 100%;
+}
+
+.ui-button--primary {
+  background: #ffffff;
+  color: #0d1117;
+  box-shadow: 0 6px 16px rgba(255, 255, 255, 0.08);
+}
+
+.ui-button--primary:hover:not(:disabled) {
+  background: #eceff3;
+}
+
+.ui-button--secondary {
+  background: #ffffff;
+  color: #0d1117;
+  box-shadow: 0 6px 16px rgba(255, 255, 255, 0.08);
+}
+
+.ui-button--secondary:hover:not(:disabled) {
+  background: #eceff3;
+}
+
+.ui-button--ghost {
+  background: #ffffff;
+  color: #0d1117;
+  box-shadow: 0 6px 16px rgba(255, 255, 255, 0.08);
+}
+
+.ui-button--ghost:hover:not(:disabled) {
+  background: #eceff3;
+}
+
+.ui-button--danger {
+  background: #ffffff;
+  color: #0d1117;
+  box-shadow: 0 6px 16px rgba(255, 255, 255, 0.08);
+}
+
+.ui-button--danger:hover:not(:disabled) {
+  background: #eceff3;
+}
+
+.ui-button--success {
+  background: #ffffff;
+  color: #0d1117;
+  box-shadow: 0 6px 16px rgba(255, 255, 255, 0.08);
+}
+
+.ui-button--success:hover:not(:disabled) {
+  background: #eceff3;
+}
+
+.ui-button--sm {
+  min-height: 30px;
+  padding: 5px 9px;
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+}
+
+.ui-button--md {
+  min-height: 34px;
+  padding: 7px 10px;
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+}
+
+.ui-button--lg {
+  min-height: 38px;
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  letter-spacing: 0.1em;
+}
+
+.ui-button--icon {
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  padding: 0;
+  font-size: 0.95rem;
+  letter-spacing: 0;
+}

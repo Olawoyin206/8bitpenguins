@@ -3,6 +3,7 @@ import { ethers } from 'ethers'
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import { Link } from 'react-router-dom'
+import Button from './Button.jsx'
 import SiteNav from './SiteNav.jsx'
 import './Mint.css'
 import { BLOCK_EXPLORER_URL, CHAIN_ID_HEX, CHAIN_NAME, CONTRACT_ADDRESS, ETH_SEPOLIA_RPC } from './contractConfig.js'
@@ -2270,8 +2271,19 @@ function Mint() {
 
   const progress = (totalSupply / maxSupply) * 100
   const activePhase = currentPhase
+  const nextUpcomingPhase = phases
+    .filter((phase) => phase?.enabled && phase.startTime > Math.floor(phaseNow / 1000))
+    .sort((a, b) => a.startTime - b.startTime)[0] || null
   const phaseStatus = getPhaseStatus(activePhase, phaseCount > 0, phaseNow)
-  const phaseCountdown = phaseStatus.countdownTarget ? formatCountdown(phaseStatus.countdownTarget, phaseNow) : '--:--:--'
+  const summaryPhase = activePhase || nextUpcomingPhase || null
+  const summaryHeading = activePhase ? 'Current Phase' : nextUpcomingPhase ? 'Upcoming Phase' : 'Phase Status'
+  const summaryStatusLabel = activePhase ? phaseStatus.label : nextUpcomingPhase ? 'Upcoming' : phaseStatus.label
+  const summaryTimerLabel = activePhase ? (phaseStatus.countdownTarget ? 'Ends In' : 'Status') : nextUpcomingPhase ? 'Starts In' : 'Availability'
+  const summaryTimerValue = activePhase
+    ? (phaseStatus.countdownTarget ? formatCountdown(phaseStatus.countdownTarget, phaseNow) : 'LIVE')
+    : nextUpcomingPhase
+      ? formatCountdown(nextUpcomingPhase.startTime * 1000, phaseNow)
+      : 'Closed'
   const effectiveWalletMax = activePhase?.maxPerWallet > 0 ? activePhase.maxPerWallet : maxPerWallet
   const walletRemaining = Math.max(0, effectiveWalletMax - (activePhase ? phaseMintedCount : mintedCount))
   const phaseRemaining = activePhase?.maxSupply > 0 ? Math.max(0, activePhase.maxSupply - activePhase.minted) : maxSupply - totalSupply
@@ -2310,23 +2322,105 @@ function Mint() {
               </div>
             </div>
 
-            {(activePhase || phaseCount > 0) && (
-              <div className="admin-phase-banner admin-phase-stack">
-                <div className="admin-phase-banner-head">
-                  <div className="mint-phase-summary-title">
-                    <span className="mint-phase-summary-label">Current Phase</span>
-                    <strong>{activePhase?.name || 'No active phase'}</strong>
-                    <div className="mint-phase-summary-meta">
-                      <span className="mint-phase-summary-status">{phaseStatus.label}</span>
+            <div className="mint-action-stack">
+              <div className="mint-action-head">
+                <span className="mint-action-label">Mint Actions</span>
+                <Button className="mint-network-btn" variant="ghost" size="sm" onClick={switchToEthereumSepolia}>
+                  Ethereum Sepolia
+                </Button>
+              </div>
+
+              {!account ? (
+                <Button className="mint-connect-btn mint-connect-hero" variant="primary" size="lg" block onClick={connect}>Connect Wallet To Mint</Button>
+              ) : (
+                <div className="mint-connected">
+                  <div className="mint-wallet">
+                    <div className="mint-wallet-main">
+                      <span className="mint-wallet-kicker">Connected Wallet</span>
+                      <div className="mint-wallet-tags">
+                        <button className="mint-wallet-addr-btn" disabled>
+                          {account.slice(0, 4)}...{account.slice(-3)}
+                        </button>
+                        <span className="mint-wallet-bal">{balance} Penguins</span>
+                      </div>
                     </div>
-                    <div className="mint-phase-summary-price-row">
-                      <span className="mint-phase-summary-price-label">Mint Price</span>
-                      <span className="mint-phase-summary-price">{activePhase ? `${activePhase.priceEth || '0'} ETH` : 'Closed'}</span>
-                    </div>
+                    <Button className="mint-disconnect-btn" variant="secondary" size="sm" onClick={disconnectWallet}>
+                      Disconnect
+                    </Button>
                   </div>
-                  <div className="mint-phase-summary-timer">
-                    {phaseStatus.countdownTarget && <span className="mint-phase-summary-timer-kicker">Ends In</span>}
-                    <strong>{phaseStatus.countdownTarget ? phaseCountdown : activePhase ? 'LIVE' : 'SCHEDULED'}</strong>
+
+                  <div className="mint-action-row">
+                    <div className="mint-quantity-panel">
+                      <span className="mint-quantity-label">Quantity</span>
+                      <div className="mint-quantity">
+                        <Button 
+                          className="mint-quantity-btn"
+                          variant="secondary"
+                          size="icon"
+                          onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                          disabled={quantity <= 1}
+                        >−</Button>
+                        <span className="mint-quantity-value">{quantity}</span>
+                        <Button 
+                          className="mint-quantity-btn"
+                          variant="secondary"
+                          size="icon"
+                          onClick={() => setQuantity(Math.min(mintCap, quantity + 1))}
+                          disabled={quantity >= mintCap || mintCap <= 0 || phaseWhitelistBlocked}
+                        >+</Button>
+                      </div>
+                    </div>
+
+                    <Button 
+                      className="mint-submit-btn"
+                      variant="primary"
+                      size="md"
+                      onClick={mint}
+                      disabled={isMinting || totalSupply >= maxSupply || walletRemaining <= 0 || phaseRemaining <= 0 || phaseClosedByUi || phaseWhitelistBlocked}
+                    >
+                      {isMinting ? 'Minting...' : totalSupply >= maxSupply ? 'Sold Out' : phaseWhitelistBlocked ? 'Not Whitelisted' : walletRemaining <= 0 ? 'Max Reached' : phaseRemaining <= 0 ? 'Phase Sold Out' : phaseClosedByUi ? 'Phase Closed' : Number(displayPrice) > 0 ? `Mint ${displayPrice} ETH` : 'Mint Free'}
+                    </Button>
+                  </div>
+
+                  {status && (
+                    <div className={`mint-status ${status.includes('Error') ? 'error' : ''}`}>
+                      {status}
+                    </div>
+                  )}
+
+                  {lastTxHash && (
+                    <a 
+                      href={`${BLOCK_EXPLORER_URL}/tx/${lastTxHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mint-tx-link"
+                    >
+                      {'View Transaction ->'}
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {(activePhase || phaseCount > 0) && (
+              <div className="mint-phase-summary">
+                <div className="mint-phase-summary-head">
+                  <div className="mint-phase-summary-title">
+                    <div className="mint-phase-summary-top">
+                      <span className="mint-phase-summary-label">{summaryHeading}</span>
+                      <span className="mint-phase-summary-status">{summaryStatusLabel}</span>
+                    </div>
+                    <strong className="mint-phase-summary-name">{summaryPhase?.name || 'No active phase'}</strong>
+                  </div>
+                  <div className="mint-phase-summary-stats">
+                    <div className="mint-phase-summary-stat">
+                      <span className="mint-phase-summary-stat-label">Mint Price</span>
+                      <strong className="mint-phase-summary-stat-value">{summaryPhase ? `${summaryPhase.priceEth || '0'} ETH` : 'Closed'}</strong>
+                    </div>
+                    <div className="mint-phase-summary-stat mint-phase-summary-stat-highlight">
+                      <span className="mint-phase-summary-stat-label">{summaryTimerLabel}</span>
+                      <strong className="mint-phase-summary-stat-value">{summaryTimerValue}</strong>
+                    </div>
                   </div>
                 </div>
                 {phases.length > 0 && (
@@ -2360,76 +2454,6 @@ function Mint() {
                       )
                     })}
                   </div>
-                )}
-              </div>
-            )}
-
-            {/* Network Button */}
-            <button className="mint-network-btn" onClick={switchToEthereumSepolia}>
-              Switch to Ethereum Sepolia
-            </button>
-
-            {/* Connect / Mint Form */}
-            {!account ? (
-              <button className="mint-connect-btn" onClick={connect}>Connect Wallet</button>
-            ) : (
-              <div className="mint-connected">
-                <div className="mint-wallet">
-                  <div className="mint-wallet-main">
-                    <button className="mint-wallet-addr-btn" disabled>
-                      {account.slice(0, 4)}...{account.slice(-3)}
-                    </button>
-                    <span className="mint-wallet-bal">{balance} Penguins</span>
-                  </div>
-                  <button className="mint-disconnect-btn" onClick={disconnectWallet}>
-                    Disconnect
-                  </button>
-                </div>
-                <div className="mint-quantity">
-                  <button 
-                    className="mint-quantity-btn"
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    disabled={quantity <= 1}
-                  >−</button>
-                  <span className="mint-quantity-value">{quantity}</span>
-                  <button 
-                    className="mint-quantity-btn"
-                    onClick={() => setQuantity(Math.min(mintCap, quantity + 1))}
-                    disabled={quantity >= mintCap || mintCap <= 0 || phaseWhitelistBlocked}
-                  >+</button>
-                  <button
-                    className="mint-quantity-limit"
-                    onClick={() => setQuantity(Math.max(1, mintCap))}
-                    disabled={mintCap <= 0 || phaseWhitelistBlocked}
-                    type="button"
-                  >
-                    Max {quantity}/{mintCap}
-                  </button>
-                </div>
-
-                <button 
-                  className="mint-submit-btn"
-                  onClick={mint}
-                  disabled={isMinting || totalSupply >= maxSupply || walletRemaining <= 0 || phaseRemaining <= 0 || phaseClosedByUi || phaseWhitelistBlocked}
-                >
-                  {isMinting ? 'Minting...' : totalSupply >= maxSupply ? 'Sold Out' : phaseWhitelistBlocked ? 'Not Whitelisted' : walletRemaining <= 0 ? 'Max Reached' : phaseRemaining <= 0 ? 'Phase Sold Out' : phaseClosedByUi ? 'Phase Closed' : Number(displayPrice) > 0 ? `Mint ${displayPrice} ETH` : 'Mint Free'}
-                </button>
-
-                {status && (
-                  <div className={`mint-status ${status.includes('Error') ? 'error' : ''}`}>
-                    {status}
-                  </div>
-                )}
-
-                {lastTxHash && (
-                  <a 
-                    href={`${BLOCK_EXPLORER_URL}/tx/${lastTxHash}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mint-tx-link"
-                  >
-                    {'View Transaction ->'}
-                  </a>
                 )}
               </div>
             )}
