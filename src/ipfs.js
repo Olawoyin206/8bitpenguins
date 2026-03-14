@@ -4,6 +4,7 @@ const JSONBIN_BIN_ID = import.meta.env.VITE_JSONBIN_BIN_ID
 
 const IPFS_GATEWAY = "https://gateway.pinata.cloud/ipfs/"
 const GALLERY_CACHE_KEY = 'sharedGalleryCache'
+const MAX_SAVE_RETRIES = 2
 
 function getGalleryCache() {
   try {
@@ -20,6 +21,40 @@ function setGalleryCache(data) {
   } catch {
     // Storage unavailable
   }
+}
+
+function getPenguinKey(penguin) {
+  if (!penguin) return ''
+  if (penguin.cid) return `cid:${penguin.cid}`
+  if (penguin.id != null) return `id:${penguin.id}`
+  if (penguin.image) return `image:${penguin.image}`
+  return `ts:${penguin.timestamp || 0}`
+}
+
+function mergeGalleryEntries(...collections) {
+  const byKey = new Map()
+
+  collections.flat().forEach((penguin) => {
+    const key = getPenguinKey(penguin)
+    if (!key) return
+    const existing = byKey.get(key)
+    byKey.set(key, existing ? { ...existing, ...penguin } : penguin)
+  })
+
+  return Array.from(byKey.values()).sort((a, b) => Number(b.timestamp || 0) - Number(a.timestamp || 0))
+}
+
+async function fetchGalleryRecord() {
+  const res = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
+    headers: { "X-Access-Key": JSONBIN_KEY }
+  })
+
+  if (!res.ok) {
+    return []
+  }
+
+  const data = await res.json()
+  return Array.isArray(data.record?.penguins) ? data.record.penguins : []
 }
 
 export async function uploadToIPFS(canvasRef) {
@@ -88,31 +123,32 @@ export async function saveToSharedGallery(penguin) {
   }
 
   try {
-    const res = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
-      headers: { "X-Access-Key": JSONBIN_KEY }
-    })
-    
-    let gallery = []
-    if (res.ok) {
-      const data = await res.json()
-      gallery = data.record?.penguins || []
+    const targetKey = getPenguinKey(penguin)
+
+    for (let attempt = 0; attempt <= MAX_SAVE_RETRIES; attempt += 1) {
+      const gallery = mergeGalleryEntries([penguin], await fetchGalleryRecord())
+
+      await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
+        method: "PUT",
+        headers: {
+          "X-Access-Key": JSONBIN_KEY,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ penguins: gallery })
+      })
+
+      const confirmedGallery = await fetchGalleryRecord()
+      const mergedGallery = mergeGalleryEntries(confirmedGallery, [penguin])
+      const isSaved = confirmedGallery.some((entry) => getPenguinKey(entry) === targetKey)
+
+      setGalleryCache(mergedGallery)
+
+      if (isSaved) {
+        return true
+      }
     }
-    
-    gallery.unshift(penguin)
-    
-    await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
-      method: "PUT",
-      headers: {
-        "X-Access-Key": JSONBIN_KEY,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ penguins: gallery })
-    })
-    
-    // Update cache
-    setGalleryCache(gallery)
-    
-    return true
+
+    return null
   } catch (err) {
     console.error("Error saving to shared gallery:", err)
     return null
@@ -136,14 +172,7 @@ export async function fetchFreshGallery() {
   }
 
   try {
-    const res = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
-      headers: { "X-Access-Key": JSONBIN_KEY }
-    })
-    
-    if (!res.ok) return []
-    
-    const data = await res.json()
-    const gallery = data.record?.penguins || []
+    const gallery = await fetchGalleryRecord()
     
     // Cache the result
     setGalleryCache(gallery)

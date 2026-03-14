@@ -907,6 +907,13 @@ function App() {
   const itemsPerPage = 20
   const fileInputRef = useRef(null)
   const canvasRef = useRef(null)
+
+  const refreshSharedGallery = async () => {
+    const gallery = await fetchFreshGallery()
+    setSharedGallery(gallery)
+    setLastRefresh(new Date())
+    return gallery
+  }
   
   useEffect(() => {
     localStorage.setItem('savedPenguins', JSON.stringify(savedPenguins))
@@ -919,10 +926,32 @@ function App() {
   }, [sharedGallery])
 
   useEffect(() => {
-    fetchFreshGallery().then(gallery => {
-      setSharedGallery(gallery)
-      setLastRefresh(new Date())
-    })
+    refreshSharedGallery()
+
+    const handleVisibilitySync = () => {
+      if (document.visibilityState === 'visible') {
+        refreshSharedGallery()
+      }
+    }
+
+    const handleFocusSync = () => {
+      refreshSharedGallery()
+    }
+
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        refreshSharedGallery()
+      }
+    }, 30000)
+
+    document.addEventListener('visibilitychange', handleVisibilitySync)
+    window.addEventListener('focus', handleFocusSync)
+
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', handleVisibilitySync)
+      window.removeEventListener('focus', handleFocusSync)
+    }
   }, [])
 
   useEffect(() => {
@@ -954,7 +983,7 @@ function App() {
     setConfetti([])
     setUploadCooldown(10)
     
-    fetchFreshGallery().then(gallery => setSharedGallery(gallery))
+    refreshSharedGallery()
     
     const reader = new FileReader()
     reader.onload = (event) => {
@@ -996,20 +1025,17 @@ function App() {
             setSavedPenguins(prev => [newPenguin, ...prev])
             setSharedGallery(prev => [newPenguin, ...prev])
             
-            uploadCanvasToIPFS(highResCanvas).then(ipfsData => {
+            uploadCanvasToIPFS(highResCanvas).then(async (ipfsData) => {
               if (ipfsData) {
                 const updatedPenguin = { ...newPenguin, cid: ipfsData.cid, image: ipfsData.url }
                 setSavedPenguins(prev => prev.map(p => p.id === newPenguin.id ? updatedPenguin : p))
                 setSharedGallery(prev => prev.map(p => p.id === newPenguin.id ? updatedPenguin : p))
-                saveToSharedGallery(updatedPenguin)
+                await saveToSharedGallery(updatedPenguin)
               } else {
-                saveToSharedGallery(newPenguin)
+                await saveToSharedGallery(newPenguin)
               }
               
-              fetchFreshGallery().then(gallery => {
-                setSharedGallery(gallery)
-                setLastRefresh(new Date())
-              })
+              await refreshSharedGallery()
             })
         }, 200)
       }
@@ -1068,20 +1094,17 @@ function App() {
           setSharedGallery(prev => [newPenguin, ...prev])
           
           const previewCanvas = canvasRef.current || highResCanvas
-          uploadCanvasToIPFS(previewCanvas).then(ipfsData => {
+          uploadCanvasToIPFS(previewCanvas).then(async (ipfsData) => {
             if (ipfsData) {
               const updatedPenguin = { ...newPenguin, cid: ipfsData.cid, image: ipfsData.url }
               setSavedPenguins(prev => prev.map(p => p.id === newPenguin.id ? updatedPenguin : p))
               setSharedGallery(prev => prev.map(p => p.id === newPenguin.id ? updatedPenguin : p))
-              saveToSharedGallery(updatedPenguin)
+              await saveToSharedGallery(updatedPenguin)
             } else {
-              saveToSharedGallery(newPenguin)
+              await saveToSharedGallery(newPenguin)
             }
             
-            fetchFreshGallery().then(gallery => {
-              setSharedGallery(gallery)
-              setLastRefresh(new Date())
-            })
+            await refreshSharedGallery()
           })
         }, 200)
       } catch (err) {
