@@ -173,7 +173,7 @@ function Task() {
     localStorage.setItem('taskSubmission', JSON.stringify(submission))
 
     try {
-      await fetch('https://script.google.com/macros/s/AKfycbzjI_MtGVQX6pyisMDL8aD_ah7YCG_73NNaEY2Ye5BgWw-Q04J9sfHL95jn7FriLCcl/exec', {
+      await fetch('https://script.google.com/macros/s/AKfycbwBo9wDhr2DYdQSsmhvek2JnY4oo_MYa9FV-WrgzDJ4BctN3IAv3PQvUvZ0QlmZPd0/exec', {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify(submission)

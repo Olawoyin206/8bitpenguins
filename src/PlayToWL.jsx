@@ -11,32 +11,27 @@ const IMAGE_SRC = '/favicon.png'
 const EMPTY_TILE = TOTAL_TILES - 1
 const SLIDE_MS = 190
 const PUZZLE_SUBMISSION_KEY = 'puzzleGameSubmission'
-const PUZZLE_QUALIFIED_IMAGE_KEY = 'arcadeQualifiedImage'
-const PUZZLE_IMAGE_RENDER_VERSION_KEY = 'arcadeImageRenderVersion'
 const PUZZLE_QUALIFIED_MOVES_KEY = 'arcadeQualifiedMoves'
 const PUZZLE_QUALIFIED_TIME_KEY = 'arcadeQualifiedTime'
 const PUZZLE_LEADERBOARD_KEY = 'puzzleLeaderboard'
 const PUZZLE_BROWSER_ID_KEY = 'puzzleBrowserId'
 const PUZZLE_PLAYER_PROFILE_KEY = 'puzzlePlayerProfile'
-const PUZZLE_IMAGE_RENDER_VERSION = 'wm-soft-fill-v1'
 const REQUIRED_TWEET_CAPTION = 'Just Solved The @8bitpenguin_xyz puzzle'
-const REQUIRED_TWEET_CTA = 'Secure your Whitelist here: https://8bitpenguins.xyz/play-to-wl'
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzjI_MtGVQX6pyisMDL8aD_ah7YCG_73NNaEY2Ye5BgWw-Q04J9sfHL95jn7FriLCcl/exec'
+const REQUIRED_TWEET_CTA = 'Solve The Puzzle And Secure Whitelist: https://8bitpenguins.xyz/play-to-wl'
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwBo9wDhr2DYdQSsmhvek2JnY4oo_MYa9FV-WrgzDJ4BctN3IAv3PQvUvZ0QlmZPd0/exec'
 const LEADERBOARD_SHEET = 'Leaderboard'
-let sessionReferenceImage = ''
 
-function loadQualifiedImage() {
+async function buildPuzzleReferenceImage() {
   try {
-    const cachedVersion = localStorage.getItem(PUZZLE_IMAGE_RENDER_VERSION_KEY)
-    if (cachedVersion !== PUZZLE_IMAGE_RENDER_VERSION) {
-      localStorage.setItem(PUZZLE_IMAGE_RENDER_VERSION_KEY, PUZZLE_IMAGE_RENDER_VERSION)
-      localStorage.removeItem(PUZZLE_QUALIFIED_IMAGE_KEY)
-      return ''
-    }
-    return localStorage.getItem(PUZZLE_QUALIFIED_IMAGE_KEY) || ''
+    await document.fonts?.load?.('700 32px "Press Start 2P"')
   } catch {
-    return ''
+    // Continue with fallback font if font API is unavailable.
   }
+
+  const canvas = document.createElement('canvas')
+  const traits = generateRandomPenguinTraits()
+  drawAgent(traits, canvas, 4096)
+  return canvas.toDataURL('image/png')
 }
 
 function isSolvable(arr) {
@@ -86,7 +81,7 @@ function computeScore(moves, timeSec, options = {}) {
   const speedBonus = includeBonuses && timeSec <= 90 ? 100 : 0
   const stabilityBonus = includeBonuses && moves <= 60 ? 60 : 0
 
-  return Math.min(1000, Math.max(200, Math.round(1000 - movePenalty - timePenalty + efficiencyBonus + speedBonus + stabilityBonus)))
+  return Math.max(200, Math.round(1000 - movePenalty - timePenalty + efficiencyBonus + speedBonus + stabilityBonus))
 }
 
 function formatElapsed(seconds) {
@@ -218,6 +213,10 @@ async function fetchGoogleLeaderboard() {
       walletAddress: row.walletAddress || row.wallet_address || '',
       score: Number(row.score || 0),
       moves: Number.isFinite(Number(row.moves)) && Number(row.moves) > 0 ? Number(row.moves) : null,
+      timeSec:
+        Number.isFinite(Number(row.timeSec || row.time_sec || row.time)) && Number(row.timeSec || row.time_sec || row.time) > 0
+          ? Number(row.timeSec || row.time_sec || row.time)
+          : null,
       updatedAt: Number(row.updatedAt || row.updated_at || row.timestamp || Date.now()),
     }))
     .filter((row) => row.score > 0)
@@ -235,6 +234,8 @@ async function syncLeaderboardEntry(entry) {
     walletAddress: entry.walletAddress,
     score: Number(entry.score || 0),
     moves: Number(entry.moves || 0),
+    timeSec: Number(entry.timeSec || 0),
+    time: Number(entry.timeSec || 0),
     timestamp: Date.now(),
   }
 
@@ -276,8 +277,8 @@ function PlayToWL() {
   const [gameState, setGameState] = useState('playing')
   const [bestScore, setBestScore] = useState(() => Number(localStorage.getItem('arcadeBestScore') || 0))
   const [qualified, setQualified] = useState(() => localStorage.getItem('arcadeQualified') === 'true')
-  const [referenceImage, setReferenceImage] = useState(() => sessionReferenceImage || IMAGE_SRC)
-  const [qualifiedImage, setQualifiedImage] = useState(() => loadQualifiedImage())
+  const [referenceImage, setReferenceImage] = useState('')
+  const [qualifiedImage, setQualifiedImage] = useState('')
   const [xUsername, setXUsername] = useState(() => initialProfile.xUsername)
   const [walletAddress, setWalletAddress] = useState(() => initialProfile.walletAddress)
   const [hasProfile, setHasProfile] = useState(() => initialProfile.ready)
@@ -348,13 +349,14 @@ function PlayToWL() {
     }
   }
 
-  const syncRunToLeaderboard = async (finalScore, finalMoves) => {
+  const syncRunToLeaderboard = async (finalScore, finalMoves, finalTimeSec) => {
     const entry = {
       browserId,
       xUsername: xUsername || `Anon-${browserId.slice(-4)}`,
       walletAddress: walletAddress || '',
       score: Number(finalScore || 0),
       moves: Number(finalMoves || 0),
+      timeSec: Number(finalTimeSec || 0),
     }
 
     setLeaderboard(() => upsertLeaderboardEntry(entry))
@@ -401,16 +403,14 @@ function PlayToWL() {
       const beatBest = finalScore > previousHigh
       localStorage.setItem('arcadeQualified', 'true')
       localStorage.setItem('arcadeQualifiedScore', String(finalScore))
-      localStorage.setItem(PUZZLE_IMAGE_RENDER_VERSION_KEY, PUZZLE_IMAGE_RENDER_VERSION)
       localStorage.setItem(PUZZLE_QUALIFIED_MOVES_KEY, String(moves))
       localStorage.setItem(PUZZLE_QUALIFIED_TIME_KEY, String(timeSec))
-      localStorage.setItem(PUZZLE_QUALIFIED_IMAGE_KEY, referenceImage)
       setQualified(true)
       setQualifiedScore(finalScore)
       setQualifiedMoves(moves)
       setQualifiedTime(timeSec)
       setQualifiedImage(referenceImage)
-      syncRunToLeaderboard(finalScore, moves)
+      syncRunToLeaderboard(finalScore, moves, timeSec)
       submitQualifiedProof(finalScore, moves, timeSec)
       openModal(
         'Qualified',
@@ -452,46 +452,17 @@ function PlayToWL() {
   }, [bestScore, qualified, qualifiedScore])
 
   useEffect(() => {
-    try {
-      localStorage.setItem(PUZZLE_IMAGE_RENDER_VERSION_KEY, PUZZLE_IMAGE_RENDER_VERSION)
-    } catch {
-      // Ignore storage failures; a fresh render will still use the shared drawAgent watermark.
-    }
-  }, [])
-
-  useEffect(() => {
-    // Keep the same qualified image after reload until proof is submitted.
-    if (qualified && !alreadySubmittedProof && qualifiedImage) {
-      setReferenceImage(qualifiedImage)
-      sessionReferenceImage = qualifiedImage
-      return undefined
-    }
-
-    if (sessionReferenceImage) {
-      setReferenceImage(sessionReferenceImage)
-      return undefined
-    }
-
     let cancelled = false
     const buildReference = async () => {
-      try {
-        await document.fonts?.load?.('700 32px "Press Start 2P"')
-      } catch {
-        // Continue with fallback font if font API is unavailable.
-      }
+      const dataUrl = await buildPuzzleReferenceImage()
       if (cancelled) return
-      const canvas = document.createElement('canvas')
-      const traits = generateRandomPenguinTraits()
-      drawAgent(traits, canvas, 4096)
-      const dataUrl = canvas.toDataURL('image/png')
       setReferenceImage(dataUrl)
-      sessionReferenceImage = dataUrl
     }
     buildReference()
     return () => {
       cancelled = true
     }
-  }, [qualified, alreadySubmittedProof, qualifiedImage])
+  }, [])
 
   useEffect(() => {
     setTiles((prev) => {
@@ -551,6 +522,13 @@ function PlayToWL() {
     setGameState('playing')
   }
 
+  const handlePlayAgain = async () => {
+    if (slideMove) return
+    const nextReferenceImage = await buildPuzzleReferenceImage()
+    setReferenceImage(nextReferenceImage)
+    resetGame()
+  }
+
   const failRun = (reason) => {
     setSlideMove(null)
     setGameState('playing')
@@ -577,8 +555,7 @@ function PlayToWL() {
       `${REQUIRED_TWEET_CAPTION}\n` +
       `Score: ${scoreToShare}\n` +
       `Time: ${formatElapsed(timeToShare)}\n` +
-      `Moves: ${movesToShare}\n` +
-      `Mode: ${GRID_LABEL}\n\n` +
+      `Moves: ${movesToShare}\n\n` +
       `${REQUIRED_TWEET_CTA}`
     const imageSrc = qualifiedImage || referenceImage
     if (imageSrc) {
@@ -883,9 +860,6 @@ function PlayToWL() {
                 <span className="player-cell">Wallet: <strong>{shortWallet(walletAddress)}</strong></span>
                 <span className="player-cell">Your Rank: <strong>{userRank ? `#${userRank}` : '-'}</strong></span>
               </div>
-              <p className={qualified ? 'ok' : 'pending'}>
-                {qualified ? 'Qualified for Whitelist' : 'Not qualified yet'}
-              </p>
             </div>
 
             <div className="score-track">
@@ -922,7 +896,7 @@ function PlayToWL() {
                       </button>
                     </>
                   ) : null}
-                  <button className="puzzle-btn" type="button" onClick={resetGame}>
+                  <button className="puzzle-btn" type="button" onClick={handlePlayAgain}>
                     Play Again
                   </button>
                 </div>
@@ -980,11 +954,11 @@ function PlayToWL() {
 
             <div className="side-card">
               <h3>Scoring</h3>
-              <p>Base 1000 points.</p>
-              <p>Moves penalty ramps by tiers (3, 5, then 7 each).</p>
-              <p>Time penalty ramps by tiers (0.5, 1, then 1.5 each second).</p>
-              <p>Bonuses: +120 (&lt;=30 moves), +100 (&lt;=90s), +60 (&lt;=60 moves).</p>
-              <p>Minimum final score is 200.</p>
+              <p>Your run starts at 1000 points. The live score drops as you use more moves and more time.</p>
+              <p>Moves cost 3 each for the first 30 moves, 5 each for moves 31-60, then 7 each after that.</p>
+              <p>Time costs 0.5 per second for the first 2 minutes, 1 per second for minutes 3-5, then 1.5 per second after 5 minutes.</p>
+              <p>When you finish, bonus points are added: +120 for 30 moves or less, +100 for 90 seconds or less, and +60 for 60 moves or less.</p>
+              <p>You qualify only if your solved final score is 500 or higher after those bonuses are added. Final score never goes below 200.</p>
             </div>
 
           </aside>
@@ -1014,6 +988,7 @@ function PlayToWL() {
                     <span className="leader-name">Username</span>
                     <span className="leader-wallet">Wallet</span>
                     <span className="leader-score">Score</span>
+                    <span className="leader-time">Moves</span>
                     <span className="leader-time">Time</span>
                   </div>
                   {leaderboard.slice(0, 100).map((row, index) => (
@@ -1022,7 +997,8 @@ function PlayToWL() {
                       <span className="leader-name">{row.xUsername || `Anon-${String(row.browserId || '').slice(-4)}`}</span>
                       <span className="leader-wallet">{shortWallet(row.walletAddress)}</span>
                       <strong className="leader-score">{row.score}</strong>
-                      <span className="leader-time">{formatLeaderboardTime(row.updatedAt)}</span>
+                      <span className="leader-time">{Number.isFinite(Number(row.moves)) && Number(row.moves) > 0 ? row.moves : '-'}</span>
+                      <span className="leader-time">{Number.isFinite(Number(row.timeSec)) && Number(row.timeSec) > 0 ? formatElapsed(row.timeSec) : '-'}</span>
                     </div>
                   ))}
                 </div>

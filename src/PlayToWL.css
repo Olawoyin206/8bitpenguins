@@ -23,9 +23,9 @@
 
 .puzzle-btn {
   border: 1px solid #30363d;
-  background: #21262d;
-  color: #ffffff;
-  border-radius: 3px;
+  background: #ffffff;
+  color: #0d1117;
+  border-radius: var(--ui-button-radius);
   padding: 10px 16px;
   text-decoration: none;
   font-size: 0.65rem;
@@ -33,14 +33,19 @@
   text-transform: uppercase;
   font-weight: 600;
   font-family: inherit;
-  cursor: pointer;
   transition: all 0.15s;
 }
 
 .puzzle-btn:hover {
-  background: #30363d;
+  background: #e0e0e0;
+  border-color: #e0e0e0;
+  color: #0d1117;
+}
+
+.puzzle-btn:active:not(:disabled) {
+  background: #ffffff;
   border-color: #ffffff;
-  color: #ffffff;
+  color: #0d1117;
 }
 
 .puzzle-btn.white {
@@ -52,6 +57,12 @@
 .puzzle-btn.white:hover {
   background: #e0e0e0;
   border-color: #e0e0e0;
+  color: #0d1117;
+}
+
+.puzzle-btn.white:active:not(:disabled) {
+  background: #ffffff;
+  border-color: #ffffff;
   color: #0d1117;
 }
 
@@ -67,15 +78,21 @@
   color: #0d1117;
 }
 
+.puzzle-btn.primary:active:not(:disabled) {
+  background: #2fc310;
+  border-color: #2fc310;
+  color: #0d1117;
+}
+
 .puzzle-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
 
 .puzzle-btn:disabled:hover {
-  background: #21262d;
+  background: #ffffff;
   border-color: #30363d;
-  color: #ffffff;
+  color: #0d1117;
 }
 
 .puzzle-main {
@@ -105,7 +122,7 @@
   margin: 0 12px 10px;
   padding: 0;
   border: 1px solid #30363d;
-  border-radius: 4px;
+  border-radius: var(--ui-button-radius);
   overflow: hidden;
   background: #161b22;
 }
@@ -116,7 +133,7 @@
   border-right: 1px solid #30363d;
   background: #21262d;
   color: #8b949e;
-  border-radius: 0;
+  border-radius: var(--ui-button-radius);
   padding: 10px 16px;
   font-size: 0.65rem;
   letter-spacing: 1px;
@@ -508,9 +525,9 @@
 
 .leader-row {
   display: grid;
-  grid-template-columns: 36px minmax(110px, 1.1fr) minmax(92px, 1fr) 78px 68px;
+  grid-template-columns: 34px minmax(96px, 1.15fr) minmax(84px, 0.95fr) 64px 52px 60px;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   border: 1px solid #30363d;
   border-radius: 6px;
   background: #161b22;
@@ -556,6 +573,9 @@
   color: #8b949e;
   font-size: 0.58rem;
   text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .leader-score {
@@ -571,6 +591,7 @@
   font-size: 0.56rem;
   text-align: right;
   justify-self: end;
+  min-width: 0;
 }
 
 .leader-row.rank-1 {
@@ -990,8 +1011,8 @@
   }
 
   .leader-row {
-    grid-template-columns: 28px minmax(0, 1.05fr) minmax(0, 0.9fr) 52px 44px;
-    gap: 5px;
+    grid-template-columns: 26px minmax(0, 1fr) minmax(0, 0.82fr) 50px 38px 50px;
+    gap: 4px;
     padding: 6px;
   }
 
@@ -1015,6 +1036,10 @@
 
   .leader-score {
     font-size: 0.62rem;
+  }
+
+  .leader-time {
+    font-size: 0.52rem;
   }
 
   .proof-form input {

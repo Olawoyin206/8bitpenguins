@@ -258,27 +258,59 @@ export function randomItem(arr) {
   return arr[0]
 }
 
-export function drawAgent(traits, canvas, outputSize = 400) {
+export function drawAgent(traits, canvas, outputSize = 400, options = {}) {
   if (!canvas) return
+  const outlined = Boolean(options?.outline)
 
   const LOGICAL_SIZE = 44
+  const backgroundCanvas = document.createElement('canvas')
+  backgroundCanvas.width = LOGICAL_SIZE
+  backgroundCanvas.height = LOGICAL_SIZE
   const workingCanvas = document.createElement('canvas')
   workingCanvas.width = LOGICAL_SIZE
   workingCanvas.height = LOGICAL_SIZE
-
+  const shapeCanvas = document.createElement('canvas')
+  shapeCanvas.width = LOGICAL_SIZE
+  shapeCanvas.height = LOGICAL_SIZE
+  const featureCanvas = document.createElement('canvas')
+  featureCanvas.width = LOGICAL_SIZE
+  featureCanvas.height = LOGICAL_SIZE
+  const bgCtx = backgroundCanvas.getContext('2d')
   const ctx = workingCanvas.getContext('2d')
+  const shapeCtx = shapeCanvas.getContext('2d')
+  const featureCtx = featureCanvas.getContext('2d')
   const scale = 1
+  let trackShape = false
+  let trackFeature = false
   
-  ctx.fillStyle = traits.background.color
-  ctx.fillRect(0, 0, workingCanvas.width, workingCanvas.height)
+  bgCtx.fillStyle = traits.background.color
+  bgCtx.fillRect(0, 0, backgroundCanvas.width, backgroundCanvas.height)
   
   const offsetX = 2
   const offsetY = 1
   
   const set = (x, y, color) => {
     if (x >= 0 && x < 40 && y >= 0 && y < 40) {
+      const px = (x + offsetX) * scale
+      const py = (y + offsetY) * scale
       ctx.fillStyle = color
-      ctx.fillRect((x + offsetX) * scale, (y + offsetY) * scale, scale, scale)
+      ctx.fillRect(px, py, scale, scale)
+      if (trackShape) {
+        shapeCtx.fillStyle = '#ffffff'
+        shapeCtx.fillRect(px, py, scale, scale)
+      }
+      if (trackFeature) {
+        featureCtx.fillStyle = '#ffffff'
+        featureCtx.fillRect(px, py, scale, scale)
+      }
+    }
+  }
+  const bgSet = (x, y, color) => {
+    if (x >= 0 && x < 40 && y >= 0 && y < 40) {
+      const px = (x + offsetX) * scale
+      const py = (y + offsetY) * scale
+      bgCtx.fillStyle = color
+      bgCtx.fillRect(px, py, scale, scale)
     }
   }
   
@@ -297,6 +329,89 @@ export function drawAgent(traits, canvas, outputSize = 400) {
     set(x + 1, y - 1, outer)
     set(x - 1, y + 1, outer)
     set(x + 1, y + 1, outer)
+  }
+  const bgSoftDot = (x, y, core, mid, outer) => {
+    bgSet(x, y, core)
+    bgSet(x - 1, y, mid)
+    bgSet(x + 1, y, mid)
+    bgSet(x, y - 1, mid)
+    bgSet(x, y + 1, mid)
+    bgSet(x - 1, y - 1, outer)
+    bgSet(x + 1, y - 1, outer)
+    bgSet(x - 1, y + 1, outer)
+    bgSet(x + 1, y + 1, outer)
+  }
+  const drawOutputOutline = (
+    targetCtx,
+    maskCanvas,
+    targetSize,
+    color = '#050505',
+    width = 2,
+    placement = 'outer'
+  ) => {
+    const scaledMaskCanvas = document.createElement('canvas')
+    scaledMaskCanvas.width = targetSize
+    scaledMaskCanvas.height = targetSize
+    const scaledMaskCtx = scaledMaskCanvas.getContext('2d')
+    scaledMaskCtx.imageSmoothingEnabled = false
+    scaledMaskCtx.drawImage(maskCanvas, 0, 0, targetSize, targetSize)
+
+    const mask = scaledMaskCtx.getImageData(0, 0, targetSize, targetSize).data
+    const hasMask = (x, y) => {
+      if (x < 0 || x >= targetSize || y < 0 || y >= targetSize) return false
+      return mask[(y * targetSize + x) * 4 + 3] > 0
+    }
+
+    targetCtx.fillStyle = color
+    for (let y = 0; y < targetSize; y += 1) {
+      for (let x = 0; x < targetSize; x += 1) {
+        const isMaskPixel = hasMask(x, y)
+        if (placement === 'outer' && isMaskPixel) continue
+        if (placement === 'inner' && !isMaskPixel) continue
+        let touchesEdge = false
+        for (let offset = 1; offset <= width; offset += 1) {
+          const hit =
+            placement === 'outer'
+              ? hasMask(x - offset, y) ||
+                hasMask(x + offset, y) ||
+                hasMask(x, y - offset) ||
+                hasMask(x, y + offset)
+              : !hasMask(x - offset, y) ||
+                !hasMask(x + offset, y) ||
+                !hasMask(x, y - offset) ||
+                !hasMask(x, y + offset)
+          if (hit) {
+            touchesEdge = true
+            break
+          }
+        }
+        if (touchesEdge) {
+          targetCtx.fillRect(x, y, 1, 1)
+        }
+      }
+    }
+  }
+  const drawSpriteInnerOutline = (maskCanvas, color = '#050505') => {
+    const mask = maskCanvas.getContext('2d').getImageData(0, 0, LOGICAL_SIZE, LOGICAL_SIZE).data
+    const hasMask = (x, y) => {
+      if (x < 0 || x >= LOGICAL_SIZE || y < 0 || y >= LOGICAL_SIZE) return false
+      return mask[(y * LOGICAL_SIZE + x) * 4 + 3] > 0
+    }
+
+    ctx.fillStyle = color
+    for (let y = 0; y < LOGICAL_SIZE; y += 1) {
+      for (let x = 0; x < LOGICAL_SIZE; x += 1) {
+        if (!hasMask(x, y)) continue
+        const touchesOutside =
+          !hasMask(x - 1, y) ||
+          !hasMask(x + 1, y) ||
+          !hasMask(x, y - 1) ||
+          !hasMask(x, y + 1)
+        if (touchesOutside) {
+          ctx.fillRect(x, y, 1, 1)
+        }
+      }
+    }
   }
 
   const fxType = traits.background.fx
@@ -337,18 +452,19 @@ export function drawAgent(traits, canvas, outputSize = 400) {
   if (fxType === 'snowflakes') {
     const flakes = [[3, 4], [10, 7], [32, 5], [36, 10], [6, 33], [14, 35], [29, 32], [35, 27], [2, 20], [38, 22]]
     for (const [x, y] of flakes) {
-      softDot(x, y, effectPalette.snowCore, effectPalette.snowMid, effectPalette.snowOuter)
-      set(x - 2, y, effectPalette.snowFar)
-      set(x + 2, y, effectPalette.snowFar)
-      set(x, y - 2, effectPalette.snowFar)
-      set(x, y + 2, effectPalette.snowFar)
+      bgSoftDot(x, y, effectPalette.snowCore, effectPalette.snowMid, effectPalette.snowOuter)
+      bgSet(x - 2, y, effectPalette.snowFar)
+      bgSet(x + 2, y, effectPalette.snowFar)
+      bgSet(x, y - 2, effectPalette.snowFar)
+      bgSet(x, y + 2, effectPalette.snowFar)
     }
   } else if (fxType === 'softdots') {
     const dots = [[4, 5], [8, 11], [13, 4], [18, 8], [25, 4], [30, 9], [35, 6], [6, 29], [12, 34], [20, 36], [28, 33], [34, 29]]
     for (const [x, y] of dots) {
-      softDot(x, y, effectPalette.dotCore, effectPalette.dotMid, effectPalette.dotOuter)
+      bgSoftDot(x, y, effectPalette.dotCore, effectPalette.dotMid, effectPalette.dotOuter)
     }
   }
+  trackShape = true
   
   const body = traits.body.base
   const bodyHighlight = traits.body.highlight
@@ -389,6 +505,7 @@ export function drawAgent(traits, canvas, outputSize = 400) {
   rect(8, 31, 8, 31, bodyShadow)
   rect(32, 31, 32, 31, bodyShadow)
   
+  trackFeature = true
   rect(12, 28, 27, 38, belly)
   rect(11, 29, 28, 37, belly)
   rect(11, 30, 28, 36, belly)
@@ -504,6 +621,7 @@ export function drawAgent(traits, canvas, outputSize = 400) {
   rect(cx + 3, 14, cx + 7, 14, bodyShadow)
   rect(cx - 8, 13, cx - 4, 13, bodyShadow)
   rect(cx + 4, 13, cx + 8, 13, bodyShadow)
+  trackFeature = false
   
   rect(2, 26, 5, 32, body)
   rect(1, 27, 6, 31, body)
@@ -526,7 +644,8 @@ export function drawAgent(traits, canvas, outputSize = 400) {
   rect(36, 31, 37, 32, bodyHighlight)
   rect(32, 31, 34, 33, body)
   rect(32, 32, 33, 33, bodyHighlight)
-  
+
+  trackFeature = true
   if (traits.beak.type === 'small') {
     rect(cx - 2, 21, cx + 1, 23, beak)
     rect(cx - 1, 20, cx, 22, beak)
@@ -564,7 +683,7 @@ export function drawAgent(traits, canvas, outputSize = 400) {
     rect(cx - 2, 22, cx + 1, 22, beakShadow)
     rect(cx - 3, 21, cx - 3, 22, beakShadow)
   }
-  
+
   const cheeksColor = traits.cheeks?.base || '#FFB6C1'
   const cheeksHighlightColor = traits.cheeks?.highlight || '#FFC5CD'
   rect(cx - 9, 19, cx - 7, 21, cheeksColor)
@@ -745,7 +864,9 @@ export function drawAgent(traits, canvas, outputSize = 400) {
   if (traits.head.type !== 'none' && traits.head.type !== 'scarf') {
     rect(cx - 8, 10, cx + 8, 10, 'rgba(0,0,0,0.12)')
   }
-  
+
+  trackFeature = false
+
   rect(2, 26, 5, 32, body)
   rect(1, 27, 6, 31, body)
   rect(2, 28, 5, 30, bodyHighlight)
@@ -768,6 +889,7 @@ export function drawAgent(traits, canvas, outputSize = 400) {
   rect(32, 31, 34, 33, body)
   rect(32, 32, 33, 33, bodyHighlight)
   
+  trackFeature = true
   rect(10, 37, 14, 38, feet)
   rect(9, 38, 15, 38, feet)
   rect(11, 36, 13, 37, feetHighlight)
@@ -789,7 +911,13 @@ export function drawAgent(traits, canvas, outputSize = 400) {
   rect(27, 39, 28, 40, feetHighlight)
   rect(29, 39, 31, 39, feet)
   rect(30, 39, 31, 39, feetHighlight)
-  
+
+  trackFeature = false
+  if (outlined) {
+    drawSpriteInnerOutline(featureCanvas)
+  }
+
+  trackShape = false
   rect(8, 39, 31, 39, 'rgba(0,0,0,0.3)')
 
   const size = Math.max(256, Number(outputSize) || 400)
@@ -798,7 +926,14 @@ export function drawAgent(traits, canvas, outputSize = 400) {
   canvas.height = size
   outCtx.imageSmoothingEnabled = false
   outCtx.clearRect(0, 0, size, size)
-  outCtx.drawImage(workingCanvas, 0, 0, size, size)
+  outCtx.drawImage(backgroundCanvas, 0, 0, size, size)
+  const spriteScale = 0.9
+  const spriteSize = Math.floor(size * spriteScale)
+  const spriteOffset = Math.floor((size - spriteSize) / 2)
+  outCtx.drawImage(workingCanvas, spriteOffset, spriteOffset, spriteSize, spriteSize)
+  if (outlined) {
+    drawOutputOutline(outCtx, shapeCanvas, size)
+  }
 
   // Keep branding visible without overpowering the generated artwork.
   outCtx.save()
@@ -864,9 +999,9 @@ export function generateRandomPenguinTraits() {
   return t
 }
 
-function renderPenguin4k(traits) {
+function renderPenguin4k(traits, options = {}) {
   const canvas = document.createElement('canvas')
-  drawAgent(traits, canvas, 4096)
+  drawAgent(traits, canvas, 4096, options)
   return canvas
 }
 
@@ -970,7 +1105,7 @@ function App() {
 
   useEffect(() => {
     if (canvasRef.current && !ogMode && hasGenerated && traits) {
-      drawAgent(traits, canvasRef.current)
+      drawAgent(traits, canvasRef.current, 400)
     }
   }, [traits, ogMode, hasGenerated])
 
@@ -994,7 +1129,7 @@ function App() {
         
         setTimeout(async () => {
           const extractedTraits = await convertToPenguinStyle(event.target.result, canvasRef.current, transformStrength)
-            drawAgent(extractedTraits, canvasRef.current)
+            drawAgent(extractedTraits, canvasRef.current, 400)
             setTraits(extractedTraits)
             setUploadedImage(event.target.result)
             setIsGenerating(false)
@@ -1061,7 +1196,7 @@ function App() {
         setTimeout(async () => {
           try {
             setMode('generate')
-            drawAgent(t, canvasRef.current)
+            drawAgent(t, canvasRef.current, 400)
           } finally {
             setIsGenerating(false)
           }
@@ -1157,12 +1292,14 @@ function App() {
             >
               Generate
             </button>
-                <button 
+            {/*
+            <button 
               className={`tab ${mode === 'og' ? 'active' : ''}`}
               onClick={() => { setMode('og'); setTraits(null); setHasGenerated(false); setHasOgGenerated(false); }}
             >
               Transform PFP
             </button>
+            */}
           </div>
           
           <div className={`canvas-wrap ${isGenerating ? 'generating' : ''} ${isRevealing ? 'reveal' : ''} ${!hasGenerated && !hasOgGenerated ? 'matrix-idle' : ''}`}>
@@ -1300,16 +1437,18 @@ function App() {
                 >
                   Generated ({generatedCount})
                 </button>
+                {/*
                 <button 
                   className={`gallery-tab ${galleryTab === 'transformed' ? 'active' : ''}`}
                   onClick={() => { setGalleryTab('transformed'); setCurrentPage(1); }}
                 >
                   Transformed ({transformedCount})
                 </button>
+                */}
               </div>
               <div className="gallery-grid">
                 {filteredPenguins.length === 0 ? (
-                  <p className="empty">No {galleryTab === 'generated' ? 'generated' : 'transformed'} penguins yet. Be the first to create one!</p>
+                  <p className="empty">No generated penguins yet. Be the first to create one!</p>
                 ) : (
                   filteredPenguins
                     .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)

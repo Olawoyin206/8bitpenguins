@@ -4,6 +4,8 @@ import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import { Link } from 'react-router-dom'
 import Button from './Button.jsx'
+import ConnectedWallet from './ConnectedWallet.jsx'
+import ConnectWalletButton from './ConnectWalletButton.jsx'
 import SiteNav from './SiteNav.jsx'
 import './Mint.css'
 import { BLOCK_EXPLORER_URL, CHAIN_ID_HEX, CHAIN_NAME, CONTRACT_ADDRESS, ETH_SEPOLIA_RPC } from './contractConfig.js'
@@ -1194,7 +1196,9 @@ function drawAgent(traits, canvas) {
   if (!canvas) return
   
   const ctx = canvas.getContext('2d')
-  const scale = 9
+  const backgroundScale = 9
+  const spriteScale = 8
+  const LOGICAL_SIZE = 44
   canvas.width = 400
   canvas.height = 400
   
@@ -1203,45 +1207,54 @@ function drawAgent(traits, canvas) {
   
   const offsetX = 2
   const offsetY = 1
+  const spriteInsetX = Math.floor((canvas.width - LOGICAL_SIZE * spriteScale) / 2)
+  const spriteInsetY = Math.floor((canvas.height - LOGICAL_SIZE * spriteScale) / 2)
   
-  const set = (x, y, color) => {
+  const drawPixel = (x, y, color, pixelScale, insetX = 0, insetY = 0) => {
     if (x >= 0 && x < 40 && y >= 0 && y < 40) {
       ctx.fillStyle = color
-      ctx.fillRect((x + offsetX) * scale, (y + offsetY) * scale, scale, scale)
+      ctx.fillRect(
+        insetX + (x + offsetX) * pixelScale,
+        insetY + (y + offsetY) * pixelScale,
+        pixelScale,
+        pixelScale
+      )
     }
   }
+  const set = (x, y, color) => drawPixel(x, y, color, spriteScale, spriteInsetX, spriteInsetY)
+  const bgSet = (x, y, color) => drawPixel(x, y, color, backgroundScale)
   
   const rect = (x1, y1, x2, y2, color) => {
     for (let y = y1; y <= y2; y++) {
       for (let x = x1; x <= x2; x++) set(x, y, color)
     }
   }
-  const softDot = (x, y, core, mid, outer) => {
-    set(x, y, core)
-    set(x - 1, y, mid)
-    set(x + 1, y, mid)
-    set(x, y - 1, mid)
-    set(x, y + 1, mid)
-    set(x - 1, y - 1, outer)
-    set(x + 1, y - 1, outer)
-    set(x - 1, y + 1, outer)
-    set(x + 1, y + 1, outer)
+  const bgSoftDot = (x, y, core, mid, outer) => {
+    bgSet(x, y, core)
+    bgSet(x - 1, y, mid)
+    bgSet(x + 1, y, mid)
+    bgSet(x, y - 1, mid)
+    bgSet(x, y + 1, mid)
+    bgSet(x - 1, y - 1, outer)
+    bgSet(x + 1, y - 1, outer)
+    bgSet(x - 1, y + 1, outer)
+    bgSet(x + 1, y + 1, outer)
   }
 
   const fxType = traits.background.fx
   if (fxType === 'snowflakes') {
     const flakes = [[3, 4], [10, 7], [32, 5], [36, 10], [6, 33], [14, 35], [29, 32], [35, 27], [2, 20], [38, 22]]
     for (const [x, y] of flakes) {
-      softDot(x, y, 'rgba(255,255,255,0.9)', 'rgba(255,255,255,0.35)', 'rgba(255,255,255,0.14)')
-      set(x - 2, y, 'rgba(255,255,255,0.08)')
-      set(x + 2, y, 'rgba(255,255,255,0.08)')
-      set(x, y - 2, 'rgba(255,255,255,0.08)')
-      set(x, y + 2, 'rgba(255,255,255,0.08)')
+      bgSoftDot(x, y, 'rgba(255,255,255,0.9)', 'rgba(255,255,255,0.35)', 'rgba(255,255,255,0.14)')
+      bgSet(x - 2, y, 'rgba(255,255,255,0.08)')
+      bgSet(x + 2, y, 'rgba(255,255,255,0.08)')
+      bgSet(x, y - 2, 'rgba(255,255,255,0.08)')
+      bgSet(x, y + 2, 'rgba(255,255,255,0.08)')
     }
   } else if (fxType === 'softdots') {
     const dots = [[4, 5], [8, 11], [13, 4], [18, 8], [25, 4], [30, 9], [35, 6], [6, 29], [12, 34], [20, 36], [28, 33], [34, 29]]
     for (const [x, y] of dots) {
-      softDot(x, y, 'rgba(255,255,255,0.24)', 'rgba(255,255,255,0.11)', 'rgba(255,255,255,0.05)')
+      bgSoftDot(x, y, 'rgba(255,255,255,0.24)', 'rgba(255,255,255,0.11)', 'rgba(255,255,255,0.05)')
     }
   }
   
@@ -1791,11 +1804,12 @@ function Mint() {
   const [activeTab, setActiveTab] = useState('all')
   const [myPage, setMyPage] = useState(1)
   const [allPage, setAllPage] = useState(1)
-  const [isLoadingNfts, setIsLoadingNfts] = useState(false)
+  const [isLoadingMyNfts, setIsLoadingMyNfts] = useState(false)
   const ITEMS_PER_PAGE = 10
   const previewCanvasRef = useRef(null)
   const mintedCanvasRef = useRef(null)
   const lastKnownSupplyRef = useRef(0)
+  const ownershipScanRequestRef = useRef(0)
 
   useEffect(() => {
     fetchContractData(null)
@@ -1831,7 +1845,7 @@ function Mint() {
   useEffect(() => {
     const intervalId = setInterval(() => {
       fetchContractData(account || null, { silent: true, skipOwnershipScan: true })
-    }, 15000)
+    }, 20000)
     return () => clearInterval(intervalId)
   }, [account])
 
@@ -1840,56 +1854,29 @@ function Mint() {
   }, [totalSupply])
 
   useEffect(() => {
-    let cancelled = false
-    const provider = new ethers.JsonRpcProvider(ETH_SEPOLIA_RPC)
-    const contract = new ethers.Contract(CONTRACT_ADDRESS, contractABI, provider)
-    let inFlight = false
-
-    const syncSupply = async () => {
-      if (inFlight || cancelled) return
-      inFlight = true
-      try {
-        const latestSupply = Number(await contract.totalSupply())
-        if (!cancelled && latestSupply !== lastKnownSupplyRef.current) {
-          lastKnownSupplyRef.current = latestSupply
-          setTotalSupply(latestSupply)
-          fetchContractData(account || null, { silent: true, skipOwnershipScan: true })
-          if (account) {
-            setTimeout(() => {
-              if (!cancelled) fetchContractData(account, { silent: true })
-            }, 250)
-          }
-        }
-      } catch (err) {
-        if (!cancelled) {
-          console.error('Supply sync error:', err)
-        }
-      } finally {
-        inFlight = false
-      }
-    }
-
-    const onBlock = () => {
-      syncSupply()
-    }
-
-    syncSupply()
-    provider.on('block', onBlock)
-    const intervalId = setInterval(syncSupply, 8000)
-
-    return () => {
-      cancelled = true
-      provider.off('block', onBlock)
-      clearInterval(intervalId)
-    }
-  }, [account])
-
-  useEffect(() => {
     if (!account && (activeTab.startsWith('my'))) {
       setActiveTab('all')
       setAllPage(1)
     }
   }, [account])
+
+  useEffect(() => {
+    if (!account) {
+      ownershipScanRequestRef.current += 1
+      setIsLoadingMyNfts(false)
+      return
+    }
+
+    if (activeTab !== 'my') return
+
+    if (totalSupply <= 0) {
+      setMyNFTs([])
+      setIsLoadingMyNfts(false)
+      return
+    }
+
+    void fetchOwnedNfts(account, totalSupply)
+  }, [account, activeTab, totalSupply])
 
   useEffect(() => {
     if (previewTraits && previewCanvasRef.current) {
@@ -1943,13 +1930,78 @@ function Mint() {
     setPreviewTraits(traits)
   }
 
+  const fetchOwnedNfts = async (address, totalNum) => {
+    if (!address) {
+      setMyNFTs([])
+      return
+    }
+
+    const requestId = ownershipScanRequestRef.current + 1
+    ownershipScanRequestRef.current = requestId
+    setIsLoadingMyNfts(true)
+
+    try {
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, contractABI, SHARED_RPC_PROVIDER)
+      const tokenIds = Array.from({ length: totalNum }, (_, idx) => idx + 1)
+        .sort((a, b) => b - a)
+      const normalizedAddress = address.toLowerCase()
+      const ownedNfts = []
+      const CHUNK = 8
+
+      for (let i = 0; i < tokenIds.length; i += CHUNK) {
+        if (ownershipScanRequestRef.current !== requestId) return
+
+        const batch = tokenIds.slice(i, i + CHUNK)
+        const ownerResults = await Promise.allSettled(
+          batch.map((tokenId) => contract.ownerOf(tokenId))
+        )
+        const retryIndices = []
+
+        ownerResults.forEach((result, idx) => {
+          if (result.status === 'fulfilled') {
+            if (result.value.toLowerCase() === normalizedAddress) {
+              ownedNfts.push({ tokenId: batch[idx] })
+            }
+          } else {
+            retryIndices.push(idx)
+          }
+        })
+
+        if (retryIndices.length > 0) {
+          const retryResults = await Promise.allSettled(
+            retryIndices.map((idx) => contract.ownerOf(batch[idx]))
+          )
+
+          retryResults.forEach((result, rIdx) => {
+            if (result.status === 'fulfilled' && result.value.toLowerCase() === normalizedAddress) {
+              ownedNfts.push({ tokenId: batch[retryIndices[rIdx]] })
+            }
+          })
+        }
+      }
+
+      if (ownershipScanRequestRef.current !== requestId) return
+
+      const dedupedOwnedNfts = Array.from(
+        new Map(ownedNfts.map((nft) => [nft.tokenId, nft])).values()
+      ).sort((a, b) => b.tokenId - a.tokenId)
+
+      setMyNFTs(dedupedOwnedNfts)
+    } catch (err) {
+      if (ownershipScanRequestRef.current === requestId) {
+        console.error('Ownership scan error:', err)
+      }
+    } finally {
+      if (ownershipScanRequestRef.current === requestId) {
+        setIsLoadingMyNfts(false)
+      }
+    }
+  }
+
   const fetchContractData = async (address, options = {}) => {
     const silent = Boolean(options?.silent)
-    const skipOwnershipScan = Boolean(options?.skipOwnershipScan)
-    if (!silent) setIsLoadingNfts(true)
     try {
-      const provider = new ethers.JsonRpcProvider(ETH_SEPOLIA_RPC)
-      const contract = new ethers.Contract(CONTRACT_ADDRESS, contractABI, provider)
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, contractABI, SHARED_RPC_PROVIDER)
       
       const [supply, maxS, maxW, mintActive, mintPriceRaw] = await Promise.all([
         contract.totalSupply(),
@@ -2056,16 +2108,13 @@ function Mint() {
 
       const totalNum = Number(supply)
       if (totalNum > 0) {
-        const tokenIds = Array.from({ length: totalNum }, (_, idx) => idx + 1)
-        const allNfts = tokenIds
-          .map((tokenId) => ({ tokenId }))
+        const allNfts = Array.from({ length: totalNum }, (_, idx) => ({ tokenId: idx + 1 }))
           .sort((a, b) => b.tokenId - a.tokenId)
 
         const dedupedAllNfts = Array.from(
           new Map(allNfts.map((nft) => [nft.tokenId, nft])).values()
         ).sort((a, b) => b.tokenId - a.tokenId)
 
-        const normalizedAddress = address ? address.toLowerCase() : null
         setAllNFTs(dedupedAllNfts)
         setMetadataCache((prev) => {
           const keep = {}
@@ -2075,49 +2124,22 @@ function Mint() {
           return keep
         })
 
-        if (address && !skipOwnershipScan) {
-          const ownedNfts = []
-          const CHUNK = 8
-          for (let i = 0; i < dedupedAllNfts.length; i += CHUNK) {
-            const batch = dedupedAllNfts.slice(i, i + CHUNK)
-            const ownerResults = await Promise.allSettled(
-              batch.map((nft) => contract.ownerOf(nft.tokenId))
-            )
-            const retryIndices = []
-            ownerResults.forEach((result, idx) => {
-              if (result.status === 'fulfilled') {
-                if (result.value.toLowerCase() === normalizedAddress) ownedNfts.push(batch[idx])
-              } else {
-                retryIndices.push(idx)
-              }
-            })
-            if (retryIndices.length > 0) {
-              const retryResults = await Promise.allSettled(
-                retryIndices.map((idx) => contract.ownerOf(batch[idx].tokenId))
-              )
-              retryResults.forEach((result, rIdx) => {
-                if (result.status === 'fulfilled' && result.value.toLowerCase() === normalizedAddress) {
-                  ownedNfts.push(batch[retryIndices[rIdx]])
-                }
-              })
-            }
-          }
-          const dedupedOwnedNfts = Array.from(
-            new Map(ownedNfts.map((nft) => [nft.tokenId, nft])).values()
-          ).sort((a, b) => b.tokenId - a.tokenId)
-          setMyNFTs(dedupedOwnedNfts)
+        if (!address) {
+          ownershipScanRequestRef.current += 1
+          setMyNFTs([])
+          setIsLoadingMyNfts(false)
         }
       } else {
+        ownershipScanRequestRef.current += 1
         setAllNFTs([])
-        if (address) setMyNFTs([])
+        setMyNFTs([])
         setMetadataCache({})
+        setIsLoadingMyNfts(false)
       }
       setMetadataRefreshKey((k) => k + 1)
     } catch (err) {
       console.error('Contract error:', err)
       if (!silent) setStatus('Error: ' + (err.message?.slice(0, 30) || 'Check network'))
-    } finally {
-      if (!silent) setIsLoadingNfts(false)
     }
   }
 
@@ -2130,6 +2152,8 @@ function Mint() {
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' })
       const address = accounts?.[0]
       if (!address) throw new Error('No account selected')
+      const switched = await ensureEthereumSepolia()
+      if (!switched) return
       setAccount(address)
       fetchContractData(address)
       setStatus('')
@@ -2150,12 +2174,16 @@ function Mint() {
     setAllPage(1)
   }
 
-  const switchToEthereumSepolia = async () => {
+  const ensureEthereumSepolia = async () => {
     try {
+      const currentChainId = await window.ethereum.request({ method: 'eth_chainId' })
+      if (currentChainId === CHAIN_ID_HEX) return true
+
       await window.ethereum.request({
         method: 'wallet_switchEthereumChain',
         params: [{ chainId: CHAIN_ID_HEX }],
       })
+      return true
     } catch {
       try {
         await window.ethereum.request({
@@ -2168,8 +2196,10 @@ function Mint() {
             blockExplorerUrls: [BLOCK_EXPLORER_URL],
           }],
         })
+        return true
       } catch {
-        setStatus('Add Ethereum Sepolia manually')
+        setStatus('Switch to Ethereum Sepolia in your wallet')
+        return false
       }
     }
   }
@@ -2181,6 +2211,8 @@ function Mint() {
     }
     try {
       setIsMinting(true)
+      const switched = await ensureEthereumSepolia()
+      if (!switched) return
       setStatus('Generating...')
       setMintedNFT(null)
       
@@ -2325,29 +2357,24 @@ function Mint() {
             <div className="mint-action-stack">
               <div className="mint-action-head">
                 <span className="mint-action-label">Mint Actions</span>
-                <Button className="mint-network-btn" variant="ghost" size="sm" onClick={switchToEthereumSepolia}>
-                  Ethereum Sepolia
-                </Button>
               </div>
 
               {!account ? (
-                <Button className="mint-connect-btn mint-connect-hero" variant="primary" size="lg" block onClick={connect}>Connect Wallet To Mint</Button>
+                <ConnectWalletButton
+                  className="mint-connect-hero"
+                  label="Connect Wallet To Mint"
+                  onClick={connect}
+                  size="lg"
+                  block
+                />
               ) : (
                 <div className="mint-connected">
-                  <div className="mint-wallet">
-                    <div className="mint-wallet-main">
-                      <span className="mint-wallet-kicker">Connected Wallet</span>
-                      <div className="mint-wallet-tags">
-                        <button className="mint-wallet-addr-btn" disabled>
-                          {account.slice(0, 4)}...{account.slice(-3)}
-                        </button>
-                        <span className="mint-wallet-bal">{balance} Penguins</span>
-                      </div>
-                    </div>
-                    <Button className="mint-disconnect-btn" variant="secondary" size="sm" onClick={disconnectWallet}>
-                      Disconnect
-                    </Button>
-                  </div>
+                  <ConnectedWallet
+                    label="Connected Wallet"
+                    address={`${account.slice(0, 4)}...${account.slice(-3)}`}
+                    badge={`${balance} Penguins`}
+                    onDisconnect={disconnectWallet}
+                  />
 
                   <div className="mint-action-row">
                     <div className="mint-quantity-panel">
@@ -2489,7 +2516,7 @@ function Mint() {
                   refreshKey={metadataRefreshKey}
                   metadataCache={metadataCache}
                   setMetadataCache={setMetadataCache}
-                  isLoading={isLoadingNfts}
+                  isLoading={false}
                 />
               )}
               {account && activeTab === 'my' && (
@@ -2500,7 +2527,7 @@ function Mint() {
                   refreshKey={metadataRefreshKey}
                   metadataCache={metadataCache}
                   setMetadataCache={setMetadataCache}
-                  isLoading={isLoadingNfts}
+                  isLoading={isLoadingMyNfts}
                 />
               )}
             </div>
