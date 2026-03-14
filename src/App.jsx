@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { uploadCanvasToIPFS, saveToSharedGallery, fetchFreshGallery } from './ipfs'
+import SiteNav from './SiteNav.jsx'
 import './App.css'
 
 const GRID_SIZE = 80
@@ -1124,14 +1125,8 @@ function App() {
   }
 
   return (
-    <div className="app">
-      <header>
-        <h1>8bit Penguins</h1>
-        <p>Generate or transform into 8-bit penguins</p>
-        <div className="header-links">
-          <a href="https://x.com/8bitpenguins" target="_blank" rel="noopener noreferrer" className="x-btn">Follow us on X</a>
-        </div>
-      </header>
+    <div className="app-page app">
+      <SiteNav label="Generator" />
 
       <main>
         <div className="preview">
