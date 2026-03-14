@@ -1,108 +1,58 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ethers } from 'ethers'
 import { render3DSnapshot } from './Mint.jsx'
+import SiteNav from './SiteNav.jsx'
 import './Mint.css'
 import { BLOCK_EXPLORER_URL, CHAIN_ID_HEX, CHAIN_NAME, CONTRACT_ADDRESS, ETH_SEPOLIA_RPC } from './contractConfig.js'
 import contractABI from './abi/EightBitPenguinsUpgradeable.abi.js'
 
 const MODEL_TRAITS = {
   background: [
-    { name: 'Light Blue', color: '#ADD8E6' },
-    { name: 'Baby Pink', color: '#F4A6B8' },
-    { name: 'Sky Blue', color: '#87CEEB' },
-    { name: 'Arctic White', color: '#F8FBFF' },
-    { name: 'Soft Lavender', color: '#C8B6FF' },
-    { name: 'Mint Green', color: '#98FFCC' },
-    { name: 'Pastel Pink', color: '#FFD1DC' },
-    { name: 'Royal Blue', color: '#4169E1' },
-    { name: 'Peach Cream', color: '#FFE5B4' },
-    { name: 'Lilac Purple', color: '#D8B4F8' },
-    { name: 'Warm Beige', color: '#F5F5DC' },
-    { name: 'Coral Red', color: '#FF6B6B' },
-    { name: 'Midnight Blue', color: '#1A1A2E' },
-    { name: 'Sunset Orange', color: '#FF7A18' },
-    { name: 'Deep Teal', color: '#0F4C5C' },
-    { name: 'Forest Green', color: '#2E8B57' },
-    { name: 'Charcoal Gray', color: '#36454F' },
-    { name: 'Neon Yellow', color: '#F5FF3B' },
-    { name: 'Electric Cyan', color: '#00FFFF' },
-    { name: 'Golden Glow', color: '#FFD700' },
+    { name: 'Light Blue', color: '#ADD8E6' }, { name: 'Baby Pink', color: '#F4A6B8' }, { name: 'Sky Blue', color: '#87CEEB' }, { name: 'Arctic White', color: '#F8FBFF' },
+    { name: 'Soft Lavender', color: '#C8B6FF' }, { name: 'Mint Green', color: '#98FFCC' }, { name: 'Pastel Pink', color: '#FFD1DC' }, { name: 'Royal Blue', color: '#4169E1' },
+    { name: 'Peach Cream', color: '#FFE5B4' }, { name: 'Lilac Purple', color: '#D8B4F8' }, { name: 'Warm Beige', color: '#F5F5DC' }, { name: 'Coral Red', color: '#FF6B6B' },
+    { name: 'Midnight Blue', color: '#1A1A2E' }, { name: 'Sunset Orange', color: '#FF7A18' }, { name: 'Deep Teal', color: '#0F4C5C' }, { name: 'Forest Green', color: '#2E8B57' },
+    { name: 'Charcoal Gray', color: '#36454F' }, { name: 'Neon Yellow', color: '#F5FF3B' }, { name: 'Electric Cyan', color: '#00FFFF' }, { name: 'Golden Glow', color: '#FFD700' },
     { name: 'Crimson Red', color: '#DC143C' },
   ],
   body: [
-    { name: 'Skeleton Dark Bone', base: '#D6CCB8', highlight: '#E8E2D4', shadow: '#9F8B7D' },
-    { name: 'Snow White', base: '#F5F5F5', highlight: '#FFFFFF', shadow: '#C2C2C2' },
-    { name: 'Jet Black', base: '#1C1C1C', highlight: '#484848', shadow: '#000000' },
-    { name: 'Ash Gray', base: '#B2B2B2', highlight: '#D9D9D9', shadow: '#858585' },
-    { name: 'Cream', base: '#FFF3D6', highlight: '#FFFFEB', shadow: '#CCC2A3' },
-    { name: 'Light Brown', base: '#C68642', highlight: '#E0A86A', shadow: '#8E5C2B' },
-    { name: 'Chocolate Brown', base: '#5C3A21', highlight: '#8A6145', shadow: '#3A2514' },
-    { name: 'Golden Tan', base: '#D2A679', highlight: '#E8C9A4', shadow: '#9E7856' },
-    { name: 'Ice Blue', base: '#CFE9FF', highlight: '#F0F8FF', shadow: '#9FBFCD' },
-    { name: 'Baby Blue', base: '#A7C7E7', highlight: '#D4E9F5', shadow: '#7A96B0' },
-    { name: 'Ocean Blue', base: '#2B6CB0', highlight: '#5A9AD4', shadow: '#1D4D7E' },
-    { name: 'Soft Pink', base: '#F4A6B8', highlight: '#FAD2DD', shadow: '#B77A8B' },
-    { name: 'Bubblegum Pink', base: '#FF77AA', highlight: '#FFA5CC', shadow: '#CC4F7D' },
-    { name: 'Lavender Body', base: '#BFA2DB', highlight: '#D9C9EB', shadow: '#8F76A4' },
-    { name: 'Royal Purple', base: '#6B3FA0', highlight: '#9670BF', shadow: '#4D2A75' },
-    { name: 'Mint Body', base: '#A8E6CF', highlight: '#D4F5E8', shadow: '#7DB39C' },
-    { name: 'Olive Green', base: '#708238', highlight: '#96A65C', shadow: '#515D27' },
-    { name: 'Coral Body', base: '#FF8C69', highlight: '#FFB49B', shadow: '#CC634A' },
-    { name: 'Sunset Gold', base: '#E6B422', highlight: '#F0CC57', shadow: '#B38618' },
-    { name: 'Glass Style', base: '#E0FFFF', highlight: '#F0FFFF', shadow: '#A8C8C8' },
+    { name: 'Skeleton Dark Bone', base: '#D6CCB8', highlight: '#E8E2D4', shadow: '#9F8B7D' }, { name: 'Snow White', base: '#F5F5F5', highlight: '#FFFFFF', shadow: '#C2C2C2' },
+    { name: 'Jet Black', base: '#1C1C1C', highlight: '#484848', shadow: '#000000' }, { name: 'Ash Gray', base: '#B2B2B2', highlight: '#D9D9D9', shadow: '#858585' },
+    { name: 'Cream', base: '#FFF3D6', highlight: '#FFFFEB', shadow: '#CCC2A3' }, { name: 'Light Brown', base: '#C68642', highlight: '#E0A86A', shadow: '#8E5C2B' },
+    { name: 'Chocolate Brown', base: '#5C3A21', highlight: '#8A6145', shadow: '#3A2514' }, { name: 'Golden Tan', base: '#D2A679', highlight: '#E8C9A4', shadow: '#9E7856' },
+    { name: 'Ice Blue', base: '#CFE9FF', highlight: '#F0F8FF', shadow: '#9FBFCD' }, { name: 'Baby Blue', base: '#A7C7E7', highlight: '#D4E9F5', shadow: '#7A96B0' },
+    { name: 'Ocean Blue', base: '#2B6CB0', highlight: '#5A9AD4', shadow: '#1D4D7E' }, { name: 'Soft Pink', base: '#F4A6B8', highlight: '#FAD2DD', shadow: '#B77A8B' },
+    { name: 'Bubblegum Pink', base: '#FF77AA', highlight: '#FFA5CC', shadow: '#CC4F7D' }, { name: 'Lavender Body', base: '#BFA2DB', highlight: '#D9C9EB', shadow: '#8F76A4' },
+    { name: 'Royal Purple', base: '#6B3FA0', highlight: '#9670BF', shadow: '#4D2A75' }, { name: 'Mint Body', base: '#A8E6CF', highlight: '#D4F5E8', shadow: '#7DB39C' },
+    { name: 'Olive Green', base: '#708238', highlight: '#96A65C', shadow: '#515D27' }, { name: 'Coral Body', base: '#FF8C69', highlight: '#FFB49B', shadow: '#CC634A' },
+    { name: 'Sunset Gold', base: '#E6B422', highlight: '#F0CC57', shadow: '#B38618' }, { name: 'Glass Style', base: '#E0FFFF', highlight: '#F0FFFF', shadow: '#A8C8C8' },
   ],
   belly: [
-    { name: 'Cream', base: '#FDF5E6', highlight: '#FFFAF0', shadow: '#F5E6D3' },
-    { name: 'Peach', base: '#FFDAB9', highlight: '#FFE4C4', shadow: '#F5CBA7' },
-    { name: 'Light Blue', base: '#D6EAF8', highlight: '#EBF5FB', shadow: '#AED6F1' },
-    { name: 'Mint', base: '#D5F5E3', highlight: '#E8F8F5', shadow: '#ABEBC6' },
+    { name: 'Cream', base: '#FDF5E6', highlight: '#FFFAF0', shadow: '#F5E6D3' }, { name: 'Peach', base: '#FFDAB9', highlight: '#FFE4C4', shadow: '#F5CBA7' },
+    { name: 'Light Blue', base: '#D6EAF8', highlight: '#EBF5FB', shadow: '#AED6F1' }, { name: 'Mint', base: '#D5F5E3', highlight: '#E8F8F5', shadow: '#ABEBC6' },
     { name: 'Lavender', base: '#E8DAEF', highlight: '#F4ECF7', shadow: '#D2B4DE' },
   ],
   beak: [
-    { name: 'Small', type: 'small', base: '#FF9F43', highlight: '#FFBE76', shadow: '#E67E22' },
-    { name: 'Large', type: 'large', base: '#FF9F43', highlight: '#FFBE76', shadow: '#E67E22' },
-    { name: 'Wide', type: 'wide', base: '#FF9F43', highlight: '#FFBE76', shadow: '#E67E22' },
-    { name: 'Pointy', type: 'pointy', base: '#FF9F43', highlight: '#FFBE76', shadow: '#E67E22' },
-    { name: 'Round', type: 'round', base: '#FF9F43', highlight: '#FFBE76', shadow: '#E67E22' },
-    { name: 'Puffy', type: 'puffy', base: '#FF9F43', highlight: '#FFBE76', shadow: '#E67E22' },
+    { name: 'Small', type: 'small', base: '#FF9F43', highlight: '#FFBE76', shadow: '#E67E22' }, { name: 'Large', type: 'large', base: '#FF9F43', highlight: '#FFBE76', shadow: '#E67E22' },
+    { name: 'Wide', type: 'wide', base: '#FF9F43', highlight: '#FFBE76', shadow: '#E67E22' }, { name: 'Pointy', type: 'pointy', base: '#FF9F43', highlight: '#FFBE76', shadow: '#E67E22' },
+    { name: 'Round', type: 'round', base: '#FF9F43', highlight: '#FFBE76', shadow: '#E67E22' }, { name: 'Puffy', type: 'puffy', base: '#FF9F43', highlight: '#FFBE76', shadow: '#E67E22' },
   ],
   eyes: [
-    { name: 'Normal', type: 'round' },
-    { name: 'Happy', type: 'happy' },
-    { name: 'Sad', type: 'sad' },
-    { name: 'Angry', type: 'angry' },
-    { name: 'Sleepy', type: 'sleepy' },
-    { name: 'Surprised', type: 'surprised' },
-    { name: 'Wink', type: 'wink' },
-    { name: 'Side-eye', type: 'sideeye' },
-    { name: 'Closed', type: 'closed' },
-    { name: 'Sparkle', type: 'sparkle' },
+    { name: 'Normal', type: 'round' }, { name: 'Happy', type: 'happy' }, { name: 'Sad', type: 'sad' }, { name: 'Angry', type: 'angry' }, { name: 'Sleepy', type: 'sleepy' },
+    { name: 'Surprised', type: 'surprised' }, { name: 'Wink', type: 'wink' }, { name: 'Side-eye', type: 'sideeye' }, { name: 'Closed', type: 'closed' }, { name: 'Sparkle', type: 'sparkle' },
   ],
   head: [
-    { name: 'None', type: 'none' },
-    { name: 'Cap Gold', type: 'cap', color: '#FFD700', highlight: '#FFE44D', shadow: '#CCAC00' },
-    { name: 'Cap Matte Black', type: 'cap', color: '#2B2B2B', highlight: '#545454', shadow: '#141414' },
-    { name: 'Cap Sapphire Blue', type: 'cap', color: '#0F52BA', highlight: '#3D71D1', shadow: '#0A3A8C' },
-    { name: 'Cap Crimson', type: 'cap', color: '#DC143C', highlight: '#E54767', shadow: '#A00F2C' },
-    { name: 'Cap Royal Gold', type: 'cap', color: '#FAD02E', highlight: '#FFE170', shadow: '#C9A823' },
-    { name: 'Beanie Gold', type: 'beanie', color: '#FFD700', highlight: '#FFE44D', shadow: '#CCAC00' },
-    { name: 'Beanie Matte Black', type: 'beanie', color: '#2B2B2B', highlight: '#545454', shadow: '#141414' },
-    { name: 'Beanie Sapphire Blue', type: 'beanie', color: '#0F52BA', highlight: '#3D71D1', shadow: '#0A3A8C' },
-    { name: 'Beanie Crimson', type: 'beanie', color: '#DC143C', highlight: '#E54767', shadow: '#A00F2C' },
-    { name: 'Beanie Royal Gold', type: 'beanie', color: '#FAD02E', highlight: '#FFE170', shadow: '#C9A823' },
-    { name: 'Scarf Gold', type: 'scarf', color: '#FFD700', highlight: '#FFE44D', shadow: '#CCAC00' },
-    { name: 'Scarf Matte Black', type: 'scarf', color: '#2B2B2B', highlight: '#545454', shadow: '#141414' },
-    { name: 'Scarf Sapphire Blue', type: 'scarf', color: '#0F52BA', highlight: '#3D71D1', shadow: '#0A3A8C' },
-    { name: 'Scarf Crimson', type: 'scarf', color: '#DC143C', highlight: '#E54767', shadow: '#A00F2C' },
-    { name: 'Scarf Royal Gold', type: 'scarf', color: '#FAD02E', highlight: '#FFE170', shadow: '#C9A823' },
-    { name: 'Headband Gold', type: 'headband', color: '#FFD700', highlight: '#FFE44D', shadow: '#CCAC00' },
-    { name: 'Headband Matte Black', type: 'headband', color: '#2B2B2B', highlight: '#545454', shadow: '#141414' },
-    { name: 'Headband Sapphire Blue', type: 'headband', color: '#0F52BA', highlight: '#3D71D1', shadow: '#0A3A8C' },
-    { name: 'Headband Crimson', type: 'headband', color: '#DC143C', highlight: '#E54767', shadow: '#A00F2C' },
-    { name: 'Headband Royal Gold', type: 'headband', color: '#FAD02E', highlight: '#FFE170', shadow: '#C9A823' },
-    { name: 'Crown Imperial', type: 'crown', style: 'imperial' },
-    { name: 'Crown Elegant', type: 'crown', style: 'elegant' },
-    { name: 'Halo', type: 'halo' },
+    { name: 'None', type: 'none' }, { name: 'Cap Gold', type: 'cap', color: '#FFD700', highlight: '#FFE44D', shadow: '#CCAC00' }, { name: 'Cap Matte Black', type: 'cap', color: '#2B2B2B', highlight: '#545454', shadow: '#141414' },
+    { name: 'Cap Sapphire Blue', type: 'cap', color: '#0F52BA', highlight: '#3D71D1', shadow: '#0A3A8C' }, { name: 'Cap Crimson', type: 'cap', color: '#DC143C', highlight: '#E54767', shadow: '#A00F2C' },
+    { name: 'Cap Royal Gold', type: 'cap', color: '#FAD02E', highlight: '#FFE170', shadow: '#C9A823' }, { name: 'Beanie Gold', type: 'beanie', color: '#FFD700', highlight: '#FFE44D', shadow: '#CCAC00' },
+    { name: 'Beanie Matte Black', type: 'beanie', color: '#2B2B2B', highlight: '#545454', shadow: '#141414' }, { name: 'Beanie Sapphire Blue', type: 'beanie', color: '#0F52BA', highlight: '#3D71D1', shadow: '#0A3A8C' },
+    { name: 'Beanie Crimson', type: 'beanie', color: '#DC143C', highlight: '#E54767', shadow: '#A00F2C' }, { name: 'Beanie Royal Gold', type: 'beanie', color: '#FAD02E', highlight: '#FFE170', shadow: '#C9A823' },
+    { name: 'Scarf Gold', type: 'scarf', color: '#FFD700', highlight: '#FFE44D', shadow: '#CCAC00' }, { name: 'Scarf Matte Black', type: 'scarf', color: '#2B2B2B', highlight: '#545454', shadow: '#141414' },
+    { name: 'Scarf Sapphire Blue', type: 'scarf', color: '#0F52BA', highlight: '#3D71D1', shadow: '#0A3A8C' }, { name: 'Scarf Crimson', type: 'scarf', color: '#DC143C', highlight: '#E54767', shadow: '#A00F2C' },
+    { name: 'Scarf Royal Gold', type: 'scarf', color: '#FAD02E', highlight: '#FFE170', shadow: '#C9A823' }, { name: 'Headband Gold', type: 'headband', color: '#FFD700', highlight: '#FFE44D', shadow: '#CCAC00' },
+    { name: 'Headband Matte Black', type: 'headband', color: '#2B2B2B', highlight: '#545454', shadow: '#141414' }, { name: 'Headband Sapphire Blue', type: 'headband', color: '#0F52BA', highlight: '#3D71D1', shadow: '#0A3A8C' },
+    { name: 'Headband Crimson', type: 'headband', color: '#DC143C', highlight: '#E54767', shadow: '#A00F2C' }, { name: 'Headband Royal Gold', type: 'headband', color: '#FAD02E', highlight: '#FFE170', shadow: '#C9A823' },
+    { name: 'Crown Imperial', type: 'crown', style: 'imperial' }, { name: 'Crown Elegant', type: 'crown', style: 'elegant' }, { name: 'Halo', type: 'halo' },
   ],
 }
 
@@ -158,12 +108,6 @@ async function optimizeImageDataUrl(inputDataUrl, opts = {}) {
   return canvas.toDataURL('image/jpeg', quality)
 }
 
-async function waitForConfirmationWithTimeout(provider, txHash, timeoutMs = 120000) {
-  const receipt = await provider.waitForTransaction(txHash, 1, timeoutMs)
-  if (!receipt) throw new Error('Confirmation timeout')
-  return receipt
-}
-
 function findByName(list, name, fallback) {
   return list.find((item) => item.name === name) || fallback
 }
@@ -178,6 +122,12 @@ function traitsFromAttributes(attributes = []) {
     eyes: findByName(MODEL_TRAITS.eyes, map.Eyes, FALLBACK_TRAITS.eyes),
     head: findByName(MODEL_TRAITS.head, map.Head, FALLBACK_TRAITS.head),
   }
+}
+
+async function waitForConfirmationWithTimeout(provider, txHash, timeoutMs = 120000) {
+  const receipt = await provider.waitForTransaction(txHash, 1, timeoutMs)
+  if (!receipt) throw new Error('Confirmation timeout')
+  return receipt
 }
 
 async function fetchTokenMetadata(provider, tokenId) {
@@ -250,6 +200,243 @@ function selectedStateLabel({ selectedNFT, selectedIsEvolved, selectedIsUnreveal
   return { label: 'Ready', tone: 'live' }
 }
 
+async function withTimeout(promise, ms, fallbackValue) {
+  let timer
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((resolve) => {
+        timer = setTimeout(() => resolve(fallbackValue), ms)
+      }),
+    ])
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+function pickErrorMessage(err) {
+  return (
+    err?.reason ||
+    err?.shortMessage ||
+    err?.info?.error?.message ||
+    err?.error?.message ||
+    err?.message ||
+    'Evolve failed'
+  )
+}
+
+function isGenericRevertMessage(message) {
+  const value = String(message || '').toLowerCase()
+  return value.includes('require(false)') || value.includes('execution reverted') || value.includes('missing revert data')
+}
+
+function storageKeyForOwnedTokens(address) {
+  return `penguin:evolve:owned:${String(address || '').toLowerCase()}`
+}
+
+function evolvedProgressCacheKey() {
+  return 'penguin:evolve:progress'
+}
+
+function readOwnedTokenCache(address) {
+  if (!address || typeof window === 'undefined') return []
+  try {
+    const raw = window.localStorage.getItem(storageKeyForOwnedTokens(address))
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed?.tokenIds)) return []
+    return parsed.tokenIds
+      .map((value) => Number(value))
+      .filter((value) => Number.isInteger(value) && value > 0)
+      .sort((a, b) => b - a)
+  } catch {
+    return []
+  }
+}
+
+function writeOwnedTokenCache(address, tokenIds) {
+  if (!address || typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(
+      storageKeyForOwnedTokens(address),
+      JSON.stringify({
+        tokenIds: Array.from(new Set((tokenIds || []).map((value) => Number(value)).filter((value) => Number.isInteger(value) && value > 0))).sort((a, b) => b - a),
+        updatedAt: Date.now(),
+      })
+    )
+  } catch {}
+}
+
+function readEvolvedProgressCache() {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage.getItem(evolvedProgressCacheKey())
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (!Number.isInteger(parsed?.count) || !Number.isInteger(parsed?.blockNumber)) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function writeEvolvedProgressCache(count, blockNumber) {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(
+      evolvedProgressCacheKey(),
+      JSON.stringify({
+        count: Number(count) || 0,
+        blockNumber: Number(blockNumber) || 0,
+        updatedAt: Date.now(),
+      })
+    )
+  } catch {}
+}
+
+async function getLogsInChunks(provider, filter, fromBlock, toBlock, step = 50000) {
+  const logs = []
+  let start = Number(fromBlock)
+  const end = Number(toBlock)
+  while (start <= end) {
+    const chunkEnd = Math.min(start + step - 1, end)
+    const chunkLogs = await provider.getLogs({ ...filter, fromBlock: start, toBlock: chunkEnd })
+    logs.push(...chunkLogs)
+    start = chunkEnd + 1
+  }
+  return logs
+}
+
+async function discoverOwnedTokenIds(contract, address) {
+  const lower = String(address || '').toLowerCase()
+  if (!lower) return []
+
+  const latestBlock = await contract.runner.provider.getBlockNumber()
+  const normalizedAddress = ethers.zeroPadValue(ethers.getAddress(address), 32)
+  const transferEvent = contract.interface.getEvent('Transfer')
+  const transferTopic = transferEvent.topicHash
+  const [incomingLogs, outgoingLogs] = await Promise.all([
+    getLogsInChunks(
+      contract.runner.provider,
+      { address: CONTRACT_ADDRESS, topics: [transferTopic, null, normalizedAddress] },
+      0,
+      latestBlock
+    ),
+    getLogsInChunks(
+      contract.runner.provider,
+      { address: CONTRACT_ADDRESS, topics: [transferTopic, normalizedAddress] },
+      0,
+      latestBlock
+    ),
+  ])
+
+  const ownedSet = new Set()
+  incomingLogs.forEach((log) => {
+    const parsed = contract.interface.parseLog(log)
+    const tokenId = Number(parsed?.args?.tokenId)
+    if (Number.isInteger(tokenId) && tokenId > 0) ownedSet.add(tokenId)
+  })
+  outgoingLogs.forEach((log) => {
+    const parsed = contract.interface.parseLog(log)
+    const tokenId = Number(parsed?.args?.tokenId)
+    if (Number.isInteger(tokenId) && tokenId > 0) ownedSet.delete(tokenId)
+  })
+
+  const candidateIds = Array.from(ownedSet).sort((a, b) => b - a)
+  if (candidateIds.length === 0) return []
+
+  const verified = []
+  const CHUNK = 10
+  for (let i = 0; i < candidateIds.length; i += CHUNK) {
+    const batch = candidateIds.slice(i, i + CHUNK)
+    const results = await Promise.allSettled(batch.map((tokenId) => contract.ownerOf(tokenId)))
+    results.forEach((result, idx) => {
+      if (result.status === 'fulfilled' && String(result.value).toLowerCase() === lower) {
+        verified.push(batch[idx])
+      }
+    })
+  }
+  return verified.sort((a, b) => b - a)
+}
+
+async function fetchEvolvedCount(contract) {
+  const provider = contract.runner.provider
+  const latestBlock = await provider.getBlockNumber()
+  const cached = readEvolvedProgressCache()
+  const eventDef = contract.interface.getEvent('TokenEvolved3D')
+  const eventTopic = eventDef.topicHash
+
+  if (cached && cached.blockNumber >= latestBlock) {
+    return cached.count
+  }
+
+  const seen = new Set()
+  let count = 0
+  let fromBlock = 0
+
+  if (cached && cached.blockNumber >= 0) {
+    fromBlock = cached.blockNumber + 1
+    count = cached.count
+  }
+
+  const logs = await getLogsInChunks(
+    provider,
+    { address: CONTRACT_ADDRESS, topics: [eventTopic] },
+    fromBlock,
+    latestBlock
+  )
+
+  if (fromBlock > 0) {
+    logs.forEach((log) => {
+      const parsed = contract.interface.parseLog(log)
+      const tokenId = Number(parsed?.args?.tokenId)
+      if (Number.isInteger(tokenId) && tokenId > 0) seen.add(tokenId)
+    })
+    count += seen.size
+  } else {
+    logs.forEach((log) => {
+      const parsed = contract.interface.parseLog(log)
+      const tokenId = Number(parsed?.args?.tokenId)
+      if (Number.isInteger(tokenId) && tokenId > 0) seen.add(tokenId)
+    })
+    count = seen.size
+  }
+
+  writeEvolvedProgressCache(count, latestBlock)
+  return count
+}
+
+async function fallbackOwnedTokenIds(contract, address, supplyNum, balanceNum) {
+  const all = Array.from({ length: supplyNum }, (_, i) => ({ tokenId: i + 1 })).sort((a, b) => b.tokenId - a.tokenId)
+  const owned = []
+  const lower = String(address || '').toLowerCase()
+  const CHUNK = 8
+  for (let i = 0; i < all.length; i += CHUNK) {
+    if (owned.length >= balanceNum) break
+    const batch = all.slice(i, i + CHUNK)
+    const results = await Promise.allSettled(batch.map((nft) => contract.ownerOf(nft.tokenId)))
+    const retryIndices = []
+    results.forEach((r, idx) => {
+      if (r.status === 'fulfilled') {
+        if (String(r.value).toLowerCase() === lower) owned.push(batch[idx].tokenId)
+      } else {
+        retryIndices.push(idx)
+      }
+    })
+    if (retryIndices.length > 0) {
+      const retryResults = await Promise.allSettled(
+        retryIndices.map((idx) => contract.ownerOf(batch[idx].tokenId))
+      )
+      retryResults.forEach((r, rIdx) => {
+        if (r.status === 'fulfilled' && String(r.value).toLowerCase() === lower) {
+          owned.push(batch[retryIndices[rIdx]].tokenId)
+        }
+      })
+    }
+  }
+  return Array.from(new Set(owned)).sort((a, b) => b - a).slice(0, balanceNum)
+}
+
 function Evolve() {
   const provider = useMemo(() => new ethers.JsonRpcProvider(ETH_SEPOLIA_RPC), [])
   const [account, setAccount] = useState(null)
@@ -272,6 +459,7 @@ function Evolve() {
   const [globalTotalMinted, setGlobalTotalMinted] = useState(0)
   const [globalEvolvedCount, setGlobalEvolvedCount] = useState(0)
   const [isLoadingGlobalProgress, setIsLoadingGlobalProgress] = useState(false)
+  const [isRefreshingOwned, setIsRefreshingOwned] = useState(false)
 
   const isEvolvedMeta = (meta) => {
     if (!meta) return false
@@ -295,25 +483,16 @@ function Evolve() {
       setGlobalTotalMinted(supplyNum)
       if (supplyNum <= 0) {
         setGlobalEvolvedCount(0)
+        writeEvolvedProgressCache(0, await provider.getBlockNumber())
         return
       }
       setIsLoadingGlobalProgress(true)
-      let evolved = 0
-      const CHUNK = 6
-      for (let i = 1; i <= supplyNum; i += CHUNK) {
-        const batch = Array.from({ length: Math.min(CHUNK, supplyNum - i + 1) }, (_, idx) => i + idx)
-        const results = await Promise.allSettled(batch.map((tokenId) => fetchTokenMetadata(provider, tokenId)))
-        results.forEach((r) => {
-          if (r.status !== 'fulfilled') return
-          const meta = r.value
-          const evolvedByFlag = Boolean(meta?.evolved3D)
-          const evolvedByTrait = (meta?.attributes || []).some(
-            (a) => a?.trait_type === 'Evolution' && String(a.value).toLowerCase().includes('evolved')
-          )
-          if (evolvedByFlag || evolvedByTrait) evolved += 1
-        })
+      const cached = readEvolvedProgressCache()
+      if (cached && Number.isInteger(cached.count)) {
+        setGlobalEvolvedCount(Math.min(cached.count, supplyNum))
       }
-      setGlobalEvolvedCount(evolved)
+      const evolved = await withTimeout(fetchEvolvedCount(contract), 5000, cached?.count ?? 0)
+      setGlobalEvolvedCount(Math.min(evolved, supplyNum))
     } catch {
       setGlobalTotalMinted(0)
       setGlobalEvolvedCount(0)
@@ -325,12 +504,12 @@ function Evolve() {
   const fetchContractData = async (address, options = {}) => {
     const silent = Boolean(options?.silent)
     if (!silent) setIsLoadingNfts(true)
+    if (silent) setIsRefreshingOwned(true)
     try {
       const contract = new ethers.Contract(CONTRACT_ADDRESS, contractABI, provider)
       const [supply] = await Promise.all([contract.totalSupply()])
       const supplyNum = Number(supply)
       setGlobalTotalMinted(supplyNum)
-      const all = Array.from({ length: supplyNum }, (_, i) => ({ tokenId: i + 1 })).sort((a, b) => b.tokenId - a.tokenId)
 
       if (!address) {
         setMyNFTs([])
@@ -341,41 +520,33 @@ function Evolve() {
       setBalance(balanceNum)
       if (balanceNum <= 0) {
         setMyNFTs([])
+        writeOwnedTokenCache(address, [])
         return
       }
 
-      const owned = []
-      const lower = address.toLowerCase()
-      const CHUNK = 8
-      for (let i = 0; i < all.length; i += CHUNK) {
-        if (owned.length >= balanceNum) break
-        const batch = all.slice(i, i + CHUNK)
-        const results = await Promise.allSettled(batch.map((nft) => contract.ownerOf(nft.tokenId)))
-        const retryIndices = []
-        results.forEach((r, idx) => {
-          if (r.status === 'fulfilled') {
-            if (r.value.toLowerCase() === lower) owned.push(batch[idx])
-          } else {
-            retryIndices.push(idx)
-          }
-        })
-        if (retryIndices.length > 0) {
-          const retryResults = await Promise.allSettled(
-            retryIndices.map((idx) => contract.ownerOf(batch[idx].tokenId))
-          )
-          retryResults.forEach((r, rIdx) => {
-            if (r.status === 'fulfilled' && r.value.toLowerCase() === lower) {
-              owned.push(batch[retryIndices[rIdx]])
-            }
-          })
-        }
-        if (owned.length >= balanceNum) break
+      const cachedTokenIds = readOwnedTokenCache(address)
+      if (cachedTokenIds.length > 0) {
+        setMyNFTs(cachedTokenIds.slice(0, balanceNum).map((tokenId) => ({ tokenId })))
       }
-      setMyNFTs(owned.slice(0, balanceNum))
+
+      let ownedTokenIds = []
+      try {
+        ownedTokenIds = await withTimeout(discoverOwnedTokenIds(contract, address), 5000, [])
+      } catch {
+        ownedTokenIds = []
+      }
+
+      if (ownedTokenIds.length !== balanceNum) {
+        ownedTokenIds = await fallbackOwnedTokenIds(contract, address, supplyNum, balanceNum)
+      }
+
+      writeOwnedTokenCache(address, ownedTokenIds)
+      setMyNFTs(ownedTokenIds.slice(0, balanceNum).map((tokenId) => ({ tokenId })))
     } catch (err) {
       if (!silent) setStatus(`Error: ${err.message?.slice(0, 50) || 'Unable to fetch contract'}`)
     } finally {
       if (!silent) setIsLoadingNfts(false)
+      if (silent) setIsRefreshingOwned(false)
     }
   }
 
@@ -512,13 +683,17 @@ function Evolve() {
         const browserProvider = new ethers.BrowserProvider(window.ethereum)
         const signer = await browserProvider.getSigner()
         const contract = new ethers.Contract(CONTRACT_ADDRESS, contractABI, signer)
+        const network = await browserProvider.getNetwork()
+        if (`0x${network.chainId.toString(16)}`.toLowerCase() !== CHAIN_ID_HEX.toLowerCase()) {
+          throw new Error(`Wrong network. Switch to ${CHAIN_NAME}.`)
+        }
 
         setStatus('Rendering 3D image...')
         const snapshot = render3DSnapshot(modelTraits, {
-          width: 512,
-          height: 512,
+          width: 1080,
+          height: 1080,
           format: 'image/jpeg',
-          quality: 0.8,
+          quality: 1,
           fast: false,
         })
         if (!snapshot) throw new Error('Failed to render 3D snapshot')
@@ -528,28 +703,71 @@ function Evolve() {
 
         setStatus('Compressing image...')
         const optimizedSnapshot = await optimizeImageDataUrl(snapshot, {
-          width: 512,
-          height: 512,
-          quality: 0.8,
+          width: 1080,
+          height: 1080,
+          quality: 1,
         })
 
-        if (optimizedSnapshot.length > 180000) {
+        if (optimizedSnapshot.length > 10000000) {
           throw new Error('JPEG payload is too large for on-chain storage gas limits')
         }
 
         setStatus('Confirm in wallet...')
         const attrsJson = JSON.stringify(updatedAttributes)
         const tokenId = selectedNFT.tokenId
-        await contract.evolveTo3D.estimateGas(tokenId, optimizedSnapshot, attrsJson)
-        const tx = await contract.evolveTo3D(tokenId, optimizedSnapshot, attrsJson)
+        let tx
+        let usedImageOnlyFallback = false
+        let effectiveAttributes = updatedAttributes
+
+        const onchainOwner = String(await contract.ownerOf(tokenId)).toLowerCase()
+        if (onchainOwner !== String(account).toLowerCase()) {
+          throw new Error('Not token owner')
+        }
+
+        try {
+          await contract.evolveTo3D.staticCall(tokenId, optimizedSnapshot, attrsJson)
+          const gasEstimate = await contract.evolveTo3D.estimateGas(tokenId, optimizedSnapshot, attrsJson)
+          tx = await contract.evolveTo3D(tokenId, optimizedSnapshot, attrsJson, {
+            gasLimit: (gasEstimate * 120n) / 100n,
+          })
+        } catch (fullErr) {
+          const fullMsg = pickErrorMessage(fullErr)
+          if (!isGenericRevertMessage(fullMsg)) throw fullErr
+
+          try {
+            await contract.evolveTo3DImageOnly.staticCall(tokenId, optimizedSnapshot)
+          } catch (imageOnlyErr) {
+            const imageOnlyMsg = pickErrorMessage(imageOnlyErr)
+            if (!isGenericRevertMessage(imageOnlyMsg)) throw imageOnlyErr
+          }
+
+          try {
+            const gasEstimate = await contract.evolveTo3DImageOnly.estimateGas(tokenId, optimizedSnapshot)
+            tx = await contract.evolveTo3DImageOnly(tokenId, optimizedSnapshot, {
+              gasLimit: (gasEstimate * 120n) / 100n,
+            })
+          } catch (imageOnlyEstimateErr) {
+            const imageOnlyMsg = pickErrorMessage(imageOnlyEstimateErr)
+            if (!isGenericRevertMessage(imageOnlyMsg)) throw imageOnlyEstimateErr
+
+            const data = contract.interface.encodeFunctionData('evolveTo3DImageOnly', [tokenId, optimizedSnapshot])
+            tx = await signer.sendTransaction({
+              to: CONTRACT_ADDRESS,
+              data,
+              gasLimit: 3500000n,
+            })
+          }
+          usedImageOnlyFallback = true
+          effectiveAttributes = currentAttributes
+        }
 
         const afterConfirmed = async () => {
           setSelectedNFT((prev) =>
-            prev ? { ...prev, meta: { ...prev.meta, image: optimizedSnapshot, attributes: updatedAttributes, evolved3D: true } } : prev
+            prev ? { ...prev, meta: { ...prev.meta, image: optimizedSnapshot, attributes: effectiveAttributes, evolved3D: true } } : prev
           )
           setMetaByToken((prev) => ({
             ...prev,
-            [tokenId]: { ...(prev[tokenId] || {}), image: optimizedSnapshot, attributes: updatedAttributes, evolved3D: true },
+            [tokenId]: { ...(prev[tokenId] || {}), image: optimizedSnapshot, attributes: effectiveAttributes, evolved3D: true },
           }))
           try {
             const refreshedMeta = await fetchTokenMetadata(provider, tokenId)
@@ -558,7 +776,11 @@ function Evolve() {
               prevSel && prevSel.tokenId === tokenId ? { ...prevSel, meta: refreshedMeta } : prevSel
             )
           } catch {}
-          setStatus(`NFT #${tokenId} evolved to 3D.`)
+          setStatus(
+            usedImageOnlyFallback
+              ? `NFT #${tokenId} evolved to 3D with image-only mode.`
+              : `NFT #${tokenId} evolved to 3D.`
+          )
           setActiveTab('evolved')
           setEvolvedPage(1)
           setRefreshKey((k) => k + 1)
@@ -593,15 +815,17 @@ function Evolve() {
           throw confirmErr
         }
       } catch (err) {
-        const msg =
-          err?.reason ||
-          err?.shortMessage ||
-          err?.info?.error?.message ||
-          err?.error?.message ||
-          err?.message ||
-          'Evolve failed'
+        const msg = pickErrorMessage(err)
         if (String(msg).toLowerCase().includes('too large')) {
           setStatus('Error: JPEG snapshot is too large for on-chain gas limit.')
+        } else if (String(msg).toLowerCase().includes('not token owner')) {
+          setStatus('Error: connected wallet does not own this NFT.')
+        } else if (String(msg).toLowerCase().includes('invalid token')) {
+          setStatus('Error: token does not exist on-chain.')
+        } else if (String(msg).toLowerCase().includes('attributes required')) {
+          setStatus('Error: NFT traits could not be prepared for evolve.')
+        } else if (isGenericRevertMessage(msg)) {
+          setStatus('Error: full evolve payload was rejected. Try again; image-only fallback is now enabled.')
         } else {
           setStatus(`Error: ${String(msg).slice(0, 160)}`)
         }
@@ -632,6 +856,7 @@ function Evolve() {
   const selectedTraitsCount = selectedMeta?.attributes?.length || 0
   const displayTabTitle = activeTab === 'evolved' ? 'My 3D NFTs' : 'My 2D NFTs'
   const displayTabHint = activeTab === 'evolved' ? 'Open traits and review evolved penguins.' : 'Select a 2D penguin and evolve it to 3D.'
+  const showBlockingGalleryLoad = !account ? false : (isLoadingNfts && myNFTs.length === 0) || (isHydratingMeta && shownNFTs.length === 0)
 
   useEffect(() => {
     if (page > totalPages) setPage(totalPages)
@@ -692,13 +917,7 @@ function Evolve() {
   return (
     <>
     <div className="mint-page evolve-page">
-      <header>
-        <h1>8bit Penguins</h1>
-        <p>SELECT - EVOLVE - 3D</p>
-        <div className="header-links">
-          <a href="https://x.com/8bitpenguins" target="_blank" rel="noopener noreferrer" className="x-btn">Follow us on X</a>
-        </div>
-      </header>
+      <SiteNav label="Select · Evolve · 3D" />
 
       <div className="mint-layout">
         <div className="mint-card">
@@ -823,6 +1042,9 @@ function Evolve() {
             </div>
             <span className="evolve-display-hint">{displayTabHint}</span>
           </div>
+          {account && isRefreshingOwned && (
+            <div className="evolve-inline-note">Refreshing wallet NFTs...</div>
+          )}
           <div className="mint-tabs">
             <button
               className={`mint-tab ${activeTab === 'my' ? 'active' : ''}`}
@@ -841,7 +1063,7 @@ function Evolve() {
           <div className="mint-tab-content">
             {!account ? (
               <div className="mint-empty">Connect wallet to view your NFTs</div>
-            ) : isLoadingNfts || isHydratingMeta ? (
+            ) : showBlockingGalleryLoad ? (
               <div className="mint-empty">Loading NFTs...</div>
             ) : shownNFTs.length === 0 ? (
               <div className="mint-empty">

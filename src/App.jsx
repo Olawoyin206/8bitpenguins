@@ -800,21 +800,18 @@ export function drawAgent(traits, canvas, outputSize = 400) {
   outCtx.clearRect(0, 0, size, size)
   outCtx.drawImage(workingCanvas, 0, 0, size, size)
 
-  // Large transparent diagonal watermark to brand generated art.
+  // Keep branding visible without overpowering the generated artwork.
   outCtx.save()
   outCtx.translate(canvas.width / 2, canvas.height / 2)
   outCtx.rotate((-28 * Math.PI) / 180)
   outCtx.textAlign = 'center'
   outCtx.textBaseline = 'middle'
-  outCtx.font = `700 ${Math.floor(size * 0.08)}px "Press Start 2P", "JetBrains Mono", monospace`
-  outCtx.lineWidth = Math.max(3, Math.floor(size * 0.004))
-  outCtx.strokeStyle = 'rgba(0,0,0,0.38)'
-  outCtx.fillStyle = 'rgba(255,255,255,0.30)'
-  outCtx.shadowColor = 'rgba(0,0,0,0.22)'
-  outCtx.shadowBlur = Math.max(2, Math.floor(size * 0.004))
-  outCtx.shadowOffsetX = Math.max(1, Math.floor(size * 0.0015))
-  outCtx.shadowOffsetY = Math.max(1, Math.floor(size * 0.0015))
-  outCtx.strokeText('8bitPenguins', 0, 0)
+  outCtx.font = `700 ${Math.floor(size * 0.06)}px "Press Start 2P", "JetBrains Mono", monospace`
+  outCtx.fillStyle = 'rgba(255,255,255,0.16)'
+  outCtx.shadowColor = 'rgba(0,0,0,0.10)'
+  outCtx.shadowBlur = Math.max(1, Math.floor(size * 0.002))
+  outCtx.shadowOffsetX = 0
+  outCtx.shadowOffsetY = Math.max(1, Math.floor(size * 0.001))
   outCtx.fillText('8bitPenguins', 0, 0)
   outCtx.restore()
 }

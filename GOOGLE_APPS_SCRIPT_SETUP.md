@@ -29,6 +29,7 @@ This guide contains the full Google Apps Script backend used by:
 ```javascript
 const SPREADSHEET_ID = 'PUT_YOUR_SHEET_ID_HERE';
 const DEFAULT_TASK_SHEET = 'Task Submissions';
+const DEFAULT_PUZZLE_SHEET = 'Puzzle Submissions';
 const DEFAULT_LEADERBOARD_SHEET = 'Leaderboard';
 const MAX_LEADERBOARD_ROWS = 100;
 
@@ -58,7 +59,19 @@ function doPost(e) {
       return json_(true, { updated: true, row: result });
     }
 
-    // Generic event write (used by PlayToWL "Puzzle Submissions")
+    // Puzzle submission write with one-wallet-one-submission guard
+    if ((payload.sheetName || '').trim() === DEFAULT_PUZZLE_SHEET) {
+      var puzzleResult = appendPuzzleSubmissionUnique_(DEFAULT_PUZZLE_SHEET, payload);
+      if (!puzzleResult.ok) {
+        return json_(false, {
+          errorCode: puzzleResult.errorCode,
+          error: puzzleResult.error
+        });
+      }
+      return json_(true, { saved: true, sheetName: DEFAULT_PUZZLE_SHEET });
+    }
+
+    // Generic event write
     if (payload.sheetName) {
       appendObjectToSheet_(payload.sheetName, payload);
       return json_(true, { saved: true, sheetName: payload.sheetName });
@@ -122,6 +135,54 @@ function appendObjectToSheet_(sheetName, obj) {
     });
 
     sh.appendRow(row);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function appendPuzzleSubmissionUnique_(sheetName, obj) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var sh = getOrCreateSheet_(sheetName);
+    var data = Object.assign({}, obj);
+    var incomingWallet = norm_(data.walletAddress);
+    if (!incomingWallet) {
+      return { ok: false, errorCode: 'missing_wallet', error: 'walletAddress is required.' };
+    }
+
+    if (!data.timestamp) data.timestamp = Date.now();
+    data.serverTime = new Date().toISOString();
+
+    var required = [
+      'sheetName', 'eventType', 'xUsername', 'walletAddress', 'tweetLink',
+      'requiredCaption', 'bestScore', 'currentScore', 'moves', 'time',
+      'attemptNumber', 'sessionID', 'qualified', 'imageData', 'timestamp', 'serverTime'
+    ];
+    var keys = Object.keys(data);
+    if (keys.length === 0) keys = required.slice();
+    ensureHeader_(sh, required.concat(keys));
+
+    var values = sh.getDataRange().getValues();
+    var header = values[0] || [];
+    var walletCol = header.indexOf('walletAddress');
+    if (walletCol >= 0 && values.length > 1) {
+      for (var i = 1; i < values.length; i++) {
+        if (norm_(values[i][walletCol]) === incomingWallet) {
+          return {
+            ok: false,
+            errorCode: 'duplicate_wallet',
+            error: 'Wallet already submitted.'
+          };
+        }
+      }
+    }
+
+    var row = header.map(function (k) {
+      return Object.prototype.hasOwnProperty.call(data, k) ? data[k] : '';
+    });
+    sh.appendRow(row);
+    return { ok: true };
   } finally {
     lock.releaseLock();
   }
@@ -265,7 +326,7 @@ Your app currently points to:
 Both should use the same deployed Web App URL, for example:
 
 ```text
-https://script.google.com/macros/s/AKfycbzqgy0yX3nGOlMBxGVDdwFQstC0e2ADgW0ESL9hol2yD1eiY3RF3uxq7cbuHYTaMSNt/exec
+https://script.google.com/macros/s/AKfycbzjI_MtGVQX6pyisMDL8aD_ah7YCG_73NNaEY2Ye5BgWw-Q04J9sfHL95jn7FriLCcl/exec
 ```
 
 ## 6) Quick tests
@@ -314,6 +375,30 @@ Send POST body:
 }
 ```
 
+### Test puzzle submission duplicate guard (POST)
+
+Send this once (expected success), then send it again unchanged (expected duplicate):
+
+```json
+{
+  "sheetName": "Puzzle Submissions",
+  "eventType": "puzzle_submission",
+  "xUsername": "@puzzleuser",
+  "walletAddress": "0x3333333333333333333333333333333333333333",
+  "tweetLink": "https://x.com/test/status/1234567890",
+  "requiredCaption": "Just Solved The @8bitpenguin_xyz puzzle",
+  "bestScore": 900,
+  "currentScore": 900,
+  "moves": 41,
+  "time": 118,
+  "attemptNumber": 1,
+  "sessionID": "b_test_3333",
+  "qualified": true,
+  "imageData": "/favicon.png",
+  "timestamp": 1760000000000
+}
+```
+
 ## 7) Puzzle submission details (what is sent after successful solve)
 
 When a user solves the puzzle and submits proof on the PlayToWL page, `src/PlayToWL.jsx` sends this payload to Google Apps Script:
@@ -328,6 +413,10 @@ When a user solves the puzzle and submits proof on the PlayToWL page, `src/PlayT
   "requiredCaption": "Just Solved The @8bitpenguin_xyz puzzle",
   "bestScore": 910,
   "currentScore": 905,
+  "moves": 44,
+  "time": 126,
+  "attemptNumber": 2,
+  "sessionID": "btest1234",
   "qualified": true,
   "imageData": "data:image/png;base64,... or /favicon.png",
   "timestamp": 1760000000000
@@ -344,9 +433,18 @@ Field meaning:
 - `requiredCaption`: Required tweet caption text.
 - `bestScore`: Best local score recorded for that browser.
 - `currentScore`: Current run score at submission time.
+- `moves`: Move count for the submitted solved run.
+- `time`: Solve duration in seconds for the submitted run.
+- `attemptNumber`: Attempt number used in current rate-limit window.
+- `sessionID`: Browser/session identifier used by the game.
 - `qualified`: Whether score reached target threshold.
 - `imageData`: Qualified image snapshot/base64 (or fallback image URL).
 - `timestamp`: Client timestamp in milliseconds.
+
+Duplicate-wallet behavior:
+
+- First submission for wallet: `{"ok":true,"saved":true,...}`
+- Any later submission with same `walletAddress`: `{"ok":false,"errorCode":"duplicate_wallet","error":"Wallet already submitted."}`
 
 After this, leaderboard sync also sends:
 

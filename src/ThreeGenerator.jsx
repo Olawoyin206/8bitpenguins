@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
+import SiteNav from './SiteNav.jsx'
 import './App.css'
 
 const TRAITS = {
@@ -922,13 +923,7 @@ function ThreeGenerator() {
   
   return (
     <div className="app three-page">
-      <header>
-        <h1>8bit Penguins</h1>
-        <p>{fromTokenId ? `3D Evolution for #${fromTokenId}${fromName ? ` - ${fromName}` : ''}` : '3D Voxel Penguins'}</p>
-        <div className="header-links">
-          <a href="https://x.com/8bitpenguins" target="_blank" rel="noopener noreferrer" className="x-btn">Follow us on X</a>
-        </div>
-      </header>
+      <SiteNav label={fromTokenId ? `3D #${fromTokenId}${fromName ? ` · ${fromName}` : ''}` : '3D Voxel'} />
 
       <main>
         <div className="three-generator">
