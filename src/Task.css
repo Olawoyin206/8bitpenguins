@@ -183,13 +183,12 @@
 }
 
 .task-btn {
-  display: inline-block;
   padding: 8px 14px;
   background: #ffffff;
   border: 1px solid #ffffff;
   color: #0d1117;
   text-decoration: none;
-  border-radius: 3px;
+  border-radius: var(--ui-button-radius);
   font-size: 0.62rem;
   letter-spacing: 1px;
   text-transform: uppercase;
@@ -203,10 +202,16 @@
   color: #0d1117;
 }
 
+.task-btn:active {
+  background: #ffffff;
+  border-color: #ffffff;
+  color: #0d1117;
+}
+
 .task-btn.clicked {
-  background: #484f58;
-  border-color: #484f58;
-  color: #ffffff;
+  background: #ffffff;
+  border-color: #ffffff;
+  color: #0d1117;
 }
 
 .completed-badge {
@@ -231,8 +236,7 @@
   background: #ffffff;
   border: 1px solid #ffffff;
   color: #0d1117;
-  border-radius: 3px;
-  cursor: pointer;
+  border-radius: var(--ui-button-radius);
   font-family: 'JetBrains Mono';
   font-size: 0.58rem;
   letter-spacing: 1px;
@@ -243,6 +247,12 @@
 .verify-btn:hover {
   background: #e0e0e0;
   border-color: #e0e0e0;
+  color: #0d1117;
+}
+
+.verify-btn:active {
+  background: #ffffff;
+  border-color: #ffffff;
   color: #0d1117;
 }
 
@@ -590,14 +600,13 @@
   padding: 12px 20px;
   background: #ffffff;
   border: 1px solid #ffffff;
-  border-radius: 4px;
+  border-radius: var(--ui-button-radius);
   color: #0d1117;
   font-family: 'JetBrains Mono';
   font-size: 0.65rem;
   font-weight: 600;
   letter-spacing: 1px;
   text-transform: uppercase;
-  cursor: pointer;
   transition: all 0.15s;
   margin-top: 8px;
 }
@@ -605,6 +614,12 @@
 .submit-btn:hover:not(:disabled) {
   background: #e0e0e0;
   border-color: #e0e0e0;
+}
+
+.submit-btn:active:not(:disabled) {
+  background: #ffffff;
+  border-color: #ffffff;
+  color: #0d1117;
 }
 
 .submit-btn:disabled {
