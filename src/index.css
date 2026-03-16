@@ -2,11 +2,16 @@
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
 :root {
-  --app-bg: #0d1117;
-  --app-surface: #161b22;
-  --app-border: #30363d;
-  --app-text: #c9d1d9;
+  --app-bg: #0f1115;
+  --app-surface: #151821;
+  --app-border: #262b36;
+  --app-text: #d6d9e0;
   --app-font: 'JetBrains Mono';
+  --ui-radius: 5px;
+  --ui-button-radius: 5px;
+  --ui-surface-soft: #12151d;
+  --ui-muted: #8f97a6;
+  --ui-shadow: 0 0 0 1px rgba(255, 255, 255, 0.02);
 }
 
 * {
@@ -14,6 +19,21 @@
   padding: 0;
   box-sizing: border-box;
   font-family: var(--app-font);
+}
+
+:is(
+  .site-nav,
+  .site-nav *,
+  .app-page,
+  .app-page *,
+  .mint-page,
+  .mint-page *,
+  .task-page,
+  .task-page *,
+  .puzzle-page,
+  .puzzle-page *
+) {
+  border-radius: var(--ui-radius) !important;
 }
 
 html, body {
@@ -240,4 +260,336 @@ button, input, select, textarea {
     text-align: center;
     border-radius: 3px;
   }
+}
+
+/* Minimal system preview */
+.site-nav,
+.preview,
+.traits,
+.gallery,
+.mint-card,
+.mint-display,
+.mint-phase-summary,
+.mint-phase-card,
+.mint-gallery-card,
+.task-progress,
+.task-card,
+.submission-form,
+.arcade-section,
+.puzzle-board-card,
+.side-card,
+.admin-whitelist-phase-card,
+.admin-whitelist-preview,
+.admin-locked,
+.evolve-selected-card,
+.evolve-gallery-card,
+.mint-wallet {
+  background: var(--app-surface) !important;
+  border-color: var(--app-border) !important;
+  box-shadow: var(--ui-shadow) !important;
+}
+
+.site-nav,
+.task-progress,
+.task-card,
+.submission-form,
+.puzzle-board-card,
+.side-card,
+.mint-card,
+.mint-display,
+.mint-phase-summary,
+.mint-phase-card,
+.mint-gallery-card,
+.admin-whitelist-phase-card,
+.admin-whitelist-preview,
+.admin-locked,
+.evolve-selected-card,
+.evolve-gallery-card,
+.mint-wallet,
+.preview,
+.traits,
+.gallery,
+.arcade-section {
+  backdrop-filter: none !important;
+}
+
+.site-nav-brand,
+.mint-card-title,
+.task-page h2,
+.section-head h2,
+.task-progress-head h2,
+.mint-action-label,
+.mint-quantity-label,
+.mint-supply-label,
+.mint-wallet-kicker,
+.mint-phase-summary-label,
+.mint-phase-detail-label,
+.stat-pill span {
+  letter-spacing: 0.08em !important;
+  text-shadow: none !important;
+}
+
+.site-nav-brand {
+  font-size: 0.92rem !important;
+  letter-spacing: 0.12em !important;
+}
+
+.site-nav-label,
+.site-nav-link,
+.mint-supply-label,
+.mint-card-title,
+.task-progress-head span,
+.player-cell,
+.board-qualification p,
+.task-page h2,
+.mint-wallet-kicker,
+.stat-pill span,
+.mint-phase-summary-label {
+  color: var(--ui-muted) !important;
+}
+
+.task-progress-fill,
+.score-fill,
+.mint-supply-fill {
+  background: #f0f2f5 !important;
+}
+
+.mint-card-badge,
+.status-chip,
+.mint-wallet-bal,
+.mint-phase-summary-status,
+.arcade-pill,
+.admin-locked-badge,
+.mint-card-badge,
+.badge {
+  box-shadow: none !important;
+  filter: none !important;
+}
+
+.mint-card-badge,
+.status-chip,
+.mint-phase-summary-status,
+.arcade-pill,
+.badge {
+  background: #1b2029 !important;
+  border-color: var(--app-border) !important;
+  color: #eef1f5 !important;
+}
+
+.mint-wallet-bal {
+  background: #1b2029 !important;
+  border-color: var(--app-border) !important;
+  color: #eef1f5 !important;
+}
+
+.status-chip.ok,
+.arcade-pill.qualified-pill,
+.board-qualification .ok {
+  background: #1a231c !important;
+  border-color: #2f5640 !important;
+  color: #b6d7c3 !important;
+}
+
+.status-chip.warn {
+  background: #241f18 !important;
+  border-color: #5b4730 !important;
+  color: #d8c2a0 !important;
+}
+
+.canvas-wrap,
+.minted-nft,
+.mint-gallery-item,
+.gallery-item,
+.nft-gallery-item,
+.tile,
+.mint-quantity-panel,
+.mint-phase-summary-stat,
+.task-submit-panel,
+.arcade-board,
+.unlock-message,
+.board-qualification,
+.stat-pill {
+  background: var(--ui-surface-soft) !important;
+  border-color: var(--app-border) !important;
+  box-shadow: none !important;
+}
+
+.canvas-wrap,
+.minted-nft,
+.mint-gallery-item,
+.gallery-item,
+.nft-gallery-item,
+.task-submit-panel,
+.arcade-board,
+.unlock-message,
+.board-qualification,
+.stat-pill {
+  filter: none !important;
+}
+
+.mint-phase-summary-stat,
+.mint-phase-summary-stat-highlight,
+.mint-phase-card,
+.task-submit-panel,
+.arcade-board,
+.puzzle-board-card.alert-red,
+.puzzle-board-card.alert-amber,
+.minted-nft {
+  background-image: none !important;
+}
+
+.joined-image,
+.reference-image {
+  background-color: var(--ui-surface-soft) !important;
+  border-color: var(--app-border) !important;
+  box-shadow: none !important;
+  filter: none !important;
+}
+
+.mint-gallery-item:hover,
+.gallery-item:hover,
+.nft-gallery-item:hover,
+.tile:hover,
+.mint-phase-card:hover,
+.mint-phase-summary-stat:hover {
+  transform: none !important;
+  box-shadow: none !important;
+  border-color: #343b48 !important;
+}
+
+.mint-gallery-item.evolved,
+.gallery-item.selected,
+.nft-gallery-item.evolved {
+  box-shadow: none !important;
+}
+
+.task-progress-fill,
+.score-fill,
+.mint-supply-fill {
+  background-image: none !important;
+}
+
+.arcade-board,
+.canvas-wrap.generating::before {
+  background: var(--ui-surface-soft) !important;
+}
+
+.arcade-player,
+.arcade-item.coin,
+.arcade-item.bomb {
+  box-shadow: none !important;
+}
+
+.task-card.completed,
+.unlock-message,
+.unlock-message.already-submitted {
+  background: var(--app-surface) !important;
+}
+
+.btn,
+.ui-button,
+.puzzle-btn,
+.task-btn,
+.verify-btn,
+.submit-btn,
+.gallery-tab,
+.puzzle-tab,
+.site-nav-link,
+.refresh-btn,
+.page-btn {
+  box-shadow: none !important;
+}
+
+.btn,
+.puzzle-btn,
+.task-btn,
+.verify-btn,
+.submit-btn,
+.page-btn,
+.refresh-btn,
+.gallery-tab,
+.puzzle-tab,
+.site-nav-link {
+  border-color: var(--app-border) !important;
+  background: #1a1e27 !important;
+  color: #eef1f5 !important;
+}
+
+.btn.primary,
+.btn.white,
+.mint-submit-btn,
+.mint-connect-btn,
+.mint-disconnect-btn,
+.mint-page-btn,
+.mint-evolve-btn,
+.admin-action-btn,
+.admin-phase-btn,
+.puzzle-btn.primary,
+.puzzle-btn.white {
+  background: #f3f4f6 !important;
+  border-color: #f3f4f6 !important;
+  color: #12151b !important;
+}
+
+.btn:hover,
+.ui-button:hover:not(:disabled),
+.puzzle-btn:hover:not(:disabled),
+.task-btn:hover,
+.verify-btn:hover,
+.submit-btn:hover:not(:disabled),
+.site-nav-link:hover,
+.gallery-tab:hover:not(.active),
+.puzzle-tab:hover:not(.active),
+.page-btn:hover:not(:disabled),
+.refresh-btn:hover {
+  transform: none !important;
+  background: #202530 !important;
+  border-color: #313746 !important;
+  color: #ffffff !important;
+}
+
+.btn.primary:hover,
+.btn.white:hover,
+.mint-submit-btn:hover:not(:disabled),
+.mint-connect-btn:hover:not(:disabled),
+.mint-disconnect-btn:hover:not(:disabled),
+.mint-page-btn:hover:not(:disabled),
+.mint-evolve-btn:hover:not(:disabled),
+.admin-action-btn:hover:not(:disabled),
+.admin-phase-btn:hover:not(:disabled),
+.puzzle-btn.primary:hover,
+.puzzle-btn.white:hover {
+  background: #e6e9ee !important;
+  border-color: #e6e9ee !important;
+  color: #12151b !important;
+}
+
+.minted-nft,
+.puzzle-board-card.alert-amber,
+.puzzle-board-card.alert-red,
+.task-card.completed {
+  animation: none !important;
+  box-shadow: var(--ui-shadow) !important;
+}
+
+.site-nav-link.active,
+.tab.active,
+.gallery-tab.active,
+.puzzle-tab.active,
+.mint-tab.active,
+.mint-phase-item.active,
+.mint-phase-status.active {
+  background: #ffffff !important;
+  border-color: #ffffff !important;
+  color: #0f1115 !important;
+}
+
+.puzzle-btn:active:not(:disabled),
+.task-btn:active,
+.verify-btn:active,
+.submit-btn:active:not(:disabled),
+.shuffle-btn:active:not(:disabled) {
+  background: #ffffff !important;
+  border-color: #ffffff !important;
+  color: #0f1115 !important;
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { drawAgent, generateRandomPenguinTraits } from './App'
 import SiteNav from './SiteNav.jsx'
 import './PlayToWL.css'
@@ -20,6 +20,15 @@ const REQUIRED_TWEET_CAPTION = 'Just Solved The @8bitpenguin_xyz puzzle'
 const REQUIRED_TWEET_CTA = 'Solve The Puzzle And Secure Whitelist: https://8bitpenguins.xyz/play-to-wl'
 const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzkipcZmhdUrpFNJkJ6y4tctkHwKlhG8tEgH2f20syjAx_TD8JML6xiNxSHmQcMTo6h/exec'
 const LEADERBOARD_SHEET = 'Leaderboard'
+
+function isTouchDevice() {
+  if (typeof window === 'undefined') return false
+  return Boolean(
+    window.matchMedia?.('(pointer: coarse)').matches ||
+    'ontouchstart' in window ||
+    navigator.maxTouchPoints > 0
+  )
+}
 
 async function buildPuzzleReferenceImage() {
   try {
@@ -271,6 +280,9 @@ function PlayToWL() {
   const [browserId] = useState(() => getBrowserId())
   const [tiles, setTiles] = useState(() => shuffleTiles())
   const [slideMove, setSlideMove] = useState(null)
+  const slideLockRef = useRef(false)
+  const slideTimeoutRef = useRef(null)
+  const instantMoveRef = useRef(isTouchDevice())
   const [hasStarted, setHasStarted] = useState(false)
   const [moves, setMoves] = useState(0)
   const [timeSec, setTimeSec] = useState(0)
@@ -293,6 +305,7 @@ function PlayToWL() {
   const [isLeaderboardLoading, setIsLeaderboardLoading] = useState(false)
   const [lastLeaderboardSync, setLastLeaderboardSync] = useState(null)
   const [activeTab, setActiveTab] = useState('game')
+  const [leaderboardSearch, setLeaderboardSearch] = useState('')
   const [verifiedBestScore, setVerifiedBestScore] = useState(0)
 
   const solved = useMemo(() => tiles.every((v, idx) => v === idx), [tiles])
@@ -316,6 +329,11 @@ function PlayToWL() {
     })
     return idx >= 0 ? idx + 1 : null
   }, [leaderboard, xUsername, walletAddress, browserId])
+  const filteredLeaderboard = useMemo(() => {
+    const query = normalizeX(leaderboardSearch)
+    if (!query) return leaderboard
+    return leaderboard.filter((row) => normalizeX(row.xUsername).includes(query))
+  }, [leaderboard, leaderboardSearch])
 
   const openModal = (title, message, tone = 'info', action = null) => {
     setModal({
@@ -483,6 +501,14 @@ function PlayToWL() {
   }, [])
 
   useEffect(() => {
+    return () => {
+      if (slideTimeoutRef.current) {
+        window.clearTimeout(slideTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
     if (!hasProfile) return
     if (!xUsername || !validateEvmAddress(walletAddress)) return
     let cancelled = false
@@ -514,6 +540,11 @@ function PlayToWL() {
   }, [hasProfile, xUsername, walletAddress, leaderboard])
 
   const resetGame = () => {
+    if (slideTimeoutRef.current) {
+      window.clearTimeout(slideTimeoutRef.current)
+      slideTimeoutRef.current = null
+    }
+    slideLockRef.current = false
     if (slideMove) return
     setTiles(shuffleTiles())
     setHasStarted(false)
@@ -530,6 +561,11 @@ function PlayToWL() {
   }
 
   const failRun = (reason) => {
+    if (slideTimeoutRef.current) {
+      window.clearTimeout(slideTimeoutRef.current)
+      slideTimeoutRef.current = null
+    }
+    slideLockRef.current = false
     setSlideMove(null)
     setGameState('playing')
     setTiles(shuffleTiles())
@@ -748,7 +784,7 @@ function PlayToWL() {
 
   const handleTileSlide = (index) => {
     if (gameState !== 'playing') return
-    if (slideMove) return
+    if (slideMove || slideLockRef.current) return
     if (tiles[index] === EMPTY_TILE) return
 
     const emptyIndex = tiles.indexOf(EMPTY_TILE)
@@ -762,6 +798,21 @@ function PlayToWL() {
       return
     }
 
+    slideLockRef.current = true
+
+    if (instantMoveRef.current) {
+      setTiles((prev) => {
+        const next = [...prev]
+        const nowEmptyIndex = next.indexOf(EMPTY_TILE)
+        ;[next[index], next[nowEmptyIndex]] = [next[nowEmptyIndex], next[index]]
+        return next
+      })
+      setHasStarted(true)
+      setMoves((m) => m + 1)
+      slideLockRef.current = false
+      return
+    }
+
     setSlideMove({
       fromIndex: index,
       tileId: tiles[index],
@@ -769,7 +820,7 @@ function PlayToWL() {
       colDelta: emptyCol - fromCol
     })
 
-    window.setTimeout(() => {
+    slideTimeoutRef.current = window.setTimeout(() => {
       setTiles((prev) => {
         const next = [...prev]
         const nowEmptyIndex = next.indexOf(EMPTY_TILE)
@@ -779,6 +830,8 @@ function PlayToWL() {
       setHasStarted(true)
       setMoves((m) => m + 1)
       setSlideMove(null)
+      slideLockRef.current = false
+      slideTimeoutRef.current = null
     }, SLIDE_MS)
   }
 
@@ -912,7 +965,7 @@ function PlayToWL() {
                   const isSlidingTile = slideMove && slideMove.tileId === tileId && slideMove.fromIndex === idx
                   return (
                     <button
-                      key={`${tileId}-${idx}`}
+                      key={tileId}
                       className={`tile ${tileId === EMPTY_TILE ? 'empty' : ''} ${isSlidingTile ? 'sliding' : ''}`}
                       onClick={() => handleTileSlide(idx)}
                       style={isSlidingTile ? {
@@ -979,8 +1032,34 @@ function PlayToWL() {
                 </span>
                 {isLeaderboardLoading && <span className="leaderboard-pill loading">Syncing now...</span>}
               </div>
+              <div className="leaderboard-search-row">
+                <label className="leaderboard-search-field" htmlFor="leaderboard-search">
+                  <span className="leaderboard-search-label">Search X Handle</span>
+                  <input
+                    id="leaderboard-search"
+                    type="text"
+                    className="leaderboard-search-input"
+                    placeholder="@yourhandle"
+                    value={leaderboardSearch}
+                    onChange={(e) => setLeaderboardSearch(e.target.value)}
+                  />
+                </label>
+                {leaderboardSearch.trim() && (
+                  <button
+                    type="button"
+                    className="puzzle-btn white leaderboard-search-clear"
+                    onClick={() => setLeaderboardSearch('')}
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
               {leaderboard.length === 0 ? (
                 <p>No entries yet.</p>
+              ) : filteredLeaderboard.length === 0 ? (
+                <p className="leaderboard-empty">
+                  No leaderboard entries found for that X handle.
+                </p>
               ) : (
                 <div className="leaderboard-list">
                   <div className="leader-row leader-header" aria-hidden="true">
@@ -991,7 +1070,7 @@ function PlayToWL() {
                     <span className="leader-time">Moves</span>
                     <span className="leader-time">Time</span>
                   </div>
-                  {leaderboard.slice(0, 100).map((row, index) => (
+                  {filteredLeaderboard.slice(0, 100).map((row, index) => (
                     <div key={`${row.browserId}-${index}`} className={`leader-row rank-${index + 1}`}>
                       <span className="leader-rank">#{index + 1}</span>
                       <span className="leader-name">{row.xUsername || `Anon-${String(row.browserId || '').slice(-4)}`}</span>

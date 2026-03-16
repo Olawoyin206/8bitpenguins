@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ethers } from 'ethers'
 import * as XLSX from 'xlsx'
+import ConnectedWallet from './ConnectedWallet.jsx'
+import ConnectWalletButton from './ConnectWalletButton.jsx'
 import SiteNav from './SiteNav.jsx'
 import './Mint.css'
 import { BLOCK_EXPLORER_URL, CHAIN_ID_HEX, CHAIN_NAME, CONTRACT_ADDRESS, ETH_SEPOLIA_RPC } from './contractConfig.js'
@@ -367,6 +369,8 @@ function Admin() {
     try {
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' })
       const next = accounts?.[0] || null
+      const switched = await ensureEthereumSepolia()
+      if (!switched) return
       setAccount(next)
       setStatus('')
       await syncState(next)
@@ -382,12 +386,16 @@ function Admin() {
     setStatus('Wallet disconnected')
   }
 
-  const switchToEthereumSepolia = async () => {
+  const ensureEthereumSepolia = async () => {
     try {
+      const currentChainId = await window.ethereum.request({ method: 'eth_chainId' })
+      if (currentChainId === CHAIN_ID_HEX) return true
+
       await window.ethereum.request({
         method: 'wallet_switchEthereumChain',
         params: [{ chainId: CHAIN_ID_HEX }],
       })
+      return true
     } catch {
       try {
         await window.ethereum.request({
@@ -400,8 +408,10 @@ function Admin() {
             blockExplorerUrls: [BLOCK_EXPLORER_URL],
           }],
         })
+        return true
       } catch {
-        setStatus('Add Ethereum Sepolia manually')
+        setStatus('Switch to Ethereum Sepolia in your wallet')
+        return false
       }
     }
   }
@@ -417,6 +427,8 @@ function Admin() {
     }
 
     try {
+      const switched = await ensureEthereumSepolia()
+      if (!switched) return false
       setIsBusy(true)
       setStatus(`${label}...`)
       setLastTxHash('')
@@ -862,9 +874,8 @@ function Admin() {
             </p>
             {account && <div className="admin-locked-owner">Authorized owner: {owner}</div>}
             <div className="admin-inline-actions admin-locked-actions">
-              <button className="mint-network-btn" onClick={switchToEthereumSepolia}>Switch to Ethereum Sepolia</button>
               {!account ? (
-                <button className="mint-connect-btn" onClick={connect}>Connect Wallet</button>
+                <ConnectWalletButton onClick={connect} />
               ) : (
                 <button className="mint-disconnect-btn" onClick={disconnectWallet}>Disconnect</button>
               )}
@@ -902,17 +913,12 @@ function Admin() {
                 </div>
               </div>
 
-              <button className="mint-network-btn" onClick={switchToEthereumSepolia}>Switch to Ethereum Sepolia</button>
-
-              <div className="mint-connected">
-                <div className="mint-wallet">
-                  <div className="mint-wallet-main">
-                    <button className="mint-wallet-addr-btn" disabled>{shortAddress(account)}</button>
-                    <span className="mint-wallet-bal admin-ok">Owner</span>
-                  </div>
-                  <button className="mint-disconnect-btn" onClick={disconnectWallet}>Disconnect</button>
-                </div>
-              </div>
+              <ConnectedWallet
+                address={shortAddress(account)}
+                badge="Owner"
+                badgeClassName="admin-ok"
+                onDisconnect={disconnectWallet}
+              />
 
               {status && <div className={`mint-status ${status.includes('Error') ? 'error' : ''}`}>{status}</div>}
               {lastTxHash && (

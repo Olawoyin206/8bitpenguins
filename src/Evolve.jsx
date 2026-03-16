@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ethers } from 'ethers'
+import ConnectedWallet from './ConnectedWallet.jsx'
+import ConnectWalletButton from './ConnectWalletButton.jsx'
 import { render3DSnapshot } from './Mint.jsx'
 import SiteNav from './SiteNav.jsx'
 import './Mint.css'
@@ -600,6 +602,8 @@ function Evolve() {
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' })
       const address = accounts?.[0]
       if (!address) throw new Error('No account selected')
+      const switched = await ensureEthereumSepolia()
+      if (!switched) return
       setAccount(address)
       setStatus('')
       fetchContractData(address)
@@ -623,9 +627,13 @@ function Evolve() {
     setStatus('Wallet disconnected')
   }
 
-  const switchToEthereumSepolia = async () => {
+  const ensureEthereumSepolia = async () => {
     try {
+      const currentChainId = await window.ethereum.request({ method: 'eth_chainId' })
+      if (currentChainId === CHAIN_ID_HEX) return true
+
       await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CHAIN_ID_HEX }] })
+      return true
     } catch {
       try {
         await window.ethereum.request({
@@ -638,8 +646,10 @@ function Evolve() {
             blockExplorerUrls: [BLOCK_EXPLORER_URL],
           }],
         })
+        return true
       } catch {
-        setStatus('Add Ethereum Sepolia manually')
+        setStatus('Switch to Ethereum Sepolia in your wallet')
+        return false
       }
     }
   }
@@ -667,6 +677,8 @@ function Evolve() {
     }
     ;(async () => {
       try {
+        const switched = await ensureEthereumSepolia()
+        if (!switched) return
         setIsEvolving(true)
         setLastTxHash('')
         setStatus(`Preparing 3D snapshot for #${selectedNFT.tokenId}...`)
@@ -955,21 +967,14 @@ function Evolve() {
             </div>
           </div>
 
-          <button className="mint-network-btn" onClick={switchToEthereumSepolia}>Switch to Ethereum Sepolia</button>
-
           {!account ? (
-            <button className="mint-connect-btn" onClick={connect}>Connect Wallet</button>
+            <ConnectWalletButton onClick={connect} />
           ) : (
-            <div className="mint-connected">
-              <div className="mint-wallet">
-                <div className="mint-wallet-main">
-                  <button className="mint-wallet-addr-btn" disabled>{account.slice(0, 4)}...{account.slice(-3)}</button>
-                  <span className="mint-wallet-bal">{balance} Penguins</span>
-                </div>
-                <button className="mint-disconnect-btn" onClick={disconnectWallet}>Disconnect</button>
-              </div>
-
-            </div>
+            <ConnectedWallet
+              address={`${account.slice(0, 4)}...${account.slice(-3)}`}
+              badge={`${balance} Penguins`}
+              onDisconnect={disconnectWallet}
+            />
           )}
 
           {activeTab !== 'evolved' && (

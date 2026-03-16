@@ -271,10 +271,27 @@
 
 .tweet-link-input {
   margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .tweet-link-input .quote-instruction {
-  margin-bottom: 8px;
+  margin-bottom: 0;
+}
+
+.tweet-link-field {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.tweet-link-field label {
+  font-size: 0.62rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #8b949e;
 }
 
 .tweet-link-input input {
@@ -298,7 +315,7 @@
 }
 
 .tweet-link-input .verify-btn {
-  margin-top: 12px;
+  margin-top: 2px;
   width: auto;
   padding: 8px 20px;
 }

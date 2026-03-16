@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import SiteNav from './SiteNav.jsx'
 import './Task.css'
 import {
+  extractTweetMetaFromLink,
   extractTweetIdFromLink,
   getTaskPinnedPostId,
   getTaskPinnedPostLink,
@@ -26,8 +27,79 @@ function validateTwitterUsername(value) {
   return TWITTER_USERNAME_PATTERN.test(normalized)
 }
 
+function normalizeTweetLink(value) {
+  const raw = String(value || '').trim()
+  if (!raw) return ''
+
+  try {
+    const url = new URL(raw)
+    url.hostname = url.hostname.toLowerCase()
+
+    const parts = url.pathname.split('/').filter(Boolean)
+    const statusIndex = parts.findIndex((part) => part.toLowerCase() === 'status')
+    if (statusIndex >= 1) {
+      const candidate = parts[statusIndex - 1]
+      const parent = parts[statusIndex - 2] || ''
+      const isReservedPath = candidate.toLowerCase() === 'web' && parent.toLowerCase() === 'i'
+      if (!isReservedPath && TWITTER_USERNAME_PATTERN.test(candidate || '')) {
+        parts[statusIndex - 1] = candidate.toLowerCase()
+      }
+    }
+
+    url.pathname = `/${parts.join('/')}`
+    return url.toString()
+  } catch {
+    return raw
+  }
+}
+
+function extractUsernameFromHtml(html) {
+  const match = String(html || '').match(/https:\/\/(?:x|twitter)\.com\/([A-Za-z0-9_]{1,15})\/status\/\d+/i)
+  return match?.[1] || ''
+}
+
+function usernamesMatch(linkUsername, submittedUsername) {
+  const normalizedLinkUsername = String(linkUsername || '').trim().replace(/^@+/, '').toLowerCase()
+  const normalizedSubmittedUsername = String(submittedUsername || '').trim().replace(/^@+/, '').toLowerCase()
+  if (!normalizedLinkUsername) return true
+  return normalizedLinkUsername === normalizedSubmittedUsername
+}
+
+async function verifyLiveTweetLink(tweetLink) {
+  const normalizedTweetLink = normalizeTweetLink(tweetLink)
+  const endpoint = `https://publish.x.com/oembed?omit_script=1&url=${encodeURIComponent(normalizedTweetLink)}`
+  const response = await fetch(endpoint)
+  const payload = await response.json().catch(() => null)
+
+  if (!response.ok || !payload) {
+    return {
+      ok: false,
+      error: String(payload?.error || `HTTP ${response.status}`),
+      authorUsername: '',
+    }
+  }
+
+  let authorUsername = ''
+  try {
+    if (typeof payload.author_url === 'string') {
+      const authorUrl = new URL(payload.author_url)
+      const candidate = authorUrl.pathname.split('/').filter(Boolean)[0] || ''
+      if (TWITTER_USERNAME_PATTERN.test(candidate)) {
+        authorUsername = candidate
+      }
+    }
+  } catch {}
+
+  if (!authorUsername && typeof payload.html === 'string') {
+    authorUsername = extractUsernameFromHtml(payload.html)
+  }
+
+  return { ok: true, authorUsername }
+}
+
 async function fetchTaskSubmissionStatus({ tweetLink, twitterUsername = '', walletAddress = '' }) {
-  const tweetId = extractTweetIdFromLink(tweetLink)
+  const normalizedTweetLink = normalizeTweetLink(tweetLink)
+  const tweetId = extractTweetIdFromLink(normalizedTweetLink)
   if (!tweetId) {
     return { ok: false, exists: false, error: 'invalid_link' }
   }
@@ -36,7 +108,7 @@ async function fetchTaskSubmissionStatus({ tweetLink, twitterUsername = '', wall
     action: 'task_submission_status',
     sheetName: TASK_SUBMISSION_SHEET,
     tweetId,
-    tweetLink: String(tweetLink || '').trim(),
+    tweetLink: normalizedTweetLink,
     twitterUsername: normalizeTwitterUsername(twitterUsername),
     walletAddress: normalizeWalletAddress(walletAddress),
   })
@@ -160,7 +232,7 @@ function Task() {
   }
 
   const validateTweetLink = (link) => {
-    const tweetId = extractTweetIdFromLink(link)
+    const { tweetId } = extractTweetMetaFromLink(link)
     if (!tweetId) return false
     return tweetId !== targetTweetId
   }
@@ -200,25 +272,67 @@ function Task() {
       return
     }
 
+    if (task.requiresLink && !twitterUsername.trim()) {
+      setTaskError(prev => ({ ...prev, [taskId]: 'Enter your X username before verifying the quote link' }))
+      setTweetLinkStatus(null)
+      return
+    }
+
+    if (task.requiresLink && !validateTwitterUsername(twitterUsername)) {
+      setTaskError(prev => ({ ...prev, [taskId]: 'Enter a valid X username before verifying the quote link' }))
+      setTweetLinkStatus(null)
+      return
+    }
+
     if (task.requiresLink) {
+      const normalizedTwitterUsername = normalizeTwitterUsername(twitterUsername)
+      const normalizedTweetLink = normalizeTweetLink(tweetLink)
       setIsCheckingTweetLink(true)
       setTweetLinkStatus({ type: 'info', message: 'Checking submitted X link...' })
 
       try {
-        const status = await fetchTaskSubmissionStatus({ tweetLink })
+        const liveTweet = await verifyLiveTweetLink(normalizedTweetLink)
+        if (!liveTweet.ok) {
+          setTaskError(prev => ({ ...prev, [taskId]: null }))
+          setTweetLinkStatus({ type: 'error', message: 'This X link could not be verified as a live post.' })
+          return
+        }
+
+        const { username: linkUsername } = extractTweetMetaFromLink(normalizedTweetLink)
+        if (!usernamesMatch(linkUsername, normalizedTwitterUsername)) {
+          setTaskError(prev => ({ ...prev, [taskId]: null }))
+          setTweetLinkStatus({
+            type: 'error',
+            message: 'The X username in the quote link does not match your entered username.',
+          })
+          return
+        }
+
+        if (!usernamesMatch(liveTweet.authorUsername, normalizedTwitterUsername)) {
+          setTaskError(prev => ({ ...prev, [taskId]: null }))
+          setTweetLinkStatus({
+            type: 'error',
+            message: 'The verified X author on this link does not match your entered username.',
+          })
+          return
+        }
+
+        const status = await fetchTaskSubmissionStatus({ tweetLink: normalizedTweetLink })
         if (status.ok && status.duplicateTweet) {
-          setTaskError(prev => ({ ...prev, [taskId]: 'This X link has already been submitted' }))
+          setTaskError(prev => ({ ...prev, [taskId]: null }))
           setTweetLinkStatus({ type: 'error', message: 'This X link has already been submitted.' })
           return
         }
 
         if (status.ok) {
-          setTweetLinkStatus({ type: 'success', message: 'X link contains a valid tweet ID and has not been submitted.' })
+          setTweetLinkStatus({ type: 'success', message: 'X link was verified as a live post and has not been submitted.' })
         } else {
           setTweetLinkStatus({ type: 'warning', message: 'Could not verify duplicate X links right now. Final submit will still enforce checks.' })
+          return
         }
       } catch {
-        setTweetLinkStatus({ type: 'warning', message: 'Could not verify duplicate X links right now. Final submit will still enforce checks.' })
+        setTweetLinkStatus({ type: 'error', message: 'Could not verify this X link right now. Please try again.' })
+        return
       } finally {
         setIsCheckingTweetLink(false)
       }
@@ -256,7 +370,8 @@ function Task() {
 
     const normalizedTwitterUsername = normalizeTwitterUsername(twitterUsername)
     const normalizedWalletAddress = normalizeWalletAddress(walletAddress)
-    const extractedTweetId = extractTweetIdFromLink(tweetLink)
+    const normalizedTweetLink = normalizeTweetLink(tweetLink)
+    const { tweetId: extractedTweetId, username: linkUsername } = extractTweetMetaFromLink(normalizedTweetLink)
 
     if (!extractedTweetId) {
       setSubmitStatus({ type: 'error', message: 'Only direct X status links with a tweet ID are allowed' })
@@ -265,8 +380,49 @@ function Task() {
     }
 
     try {
+      const liveTweet = await verifyLiveTweetLink(normalizedTweetLink)
+      if (!liveTweet.ok) {
+        setSubmitStatus({ type: 'error', message: 'This X link could not be verified as a live post' })
+        setTweetLinkStatus({ type: 'error', message: 'This X link could not be verified as a live post.' })
+        setIsSubmitting(false)
+        return
+      }
+
+      if (!usernamesMatch(linkUsername, normalizedTwitterUsername)) {
+        setSubmitStatus({
+          type: 'error',
+          message: `The X username in the quote link does not match ${normalizedTwitterUsername}`,
+        })
+        setTweetLinkStatus({
+          type: 'error',
+          message: 'The X username in the quote link does not match the submitted username.',
+        })
+        setIsSubmitting(false)
+        return
+      }
+
+      if (!usernamesMatch(liveTweet.authorUsername, normalizedTwitterUsername)) {
+        setSubmitStatus({
+          type: 'error',
+          message: `The verified X author does not match ${normalizedTwitterUsername}`,
+        })
+        setTweetLinkStatus({
+          type: 'error',
+          message: 'The verified X author on this link does not match the submitted username.',
+        })
+        setIsSubmitting(false)
+        return
+      }
+    } catch {
+      setSubmitStatus({ type: 'error', message: 'Could not verify this X link live. Please try again.' })
+      setTweetLinkStatus({ type: 'error', message: 'Could not verify this X link live. Please try again.' })
+      setIsSubmitting(false)
+      return
+    }
+
+    try {
       const linkStatus = await fetchTaskSubmissionStatus({
-        tweetLink,
+        tweetLink: normalizedTweetLink,
         twitterUsername: normalizedTwitterUsername,
         walletAddress: normalizedWalletAddress,
       })
@@ -293,7 +449,7 @@ function Task() {
     const submission = {
       twitterUsername: normalizedTwitterUsername,
       walletAddress: normalizedWalletAddress,
-      tweetLink: String(tweetLink || '').trim(),
+      tweetLink: normalizedTweetLink,
       tweetId: extractedTweetId,
       timestamp: Date.now()
     }
@@ -445,19 +601,37 @@ function Task() {
 
                       {task.requiresLink && !task.completed && (
                         <div className="tweet-link-input">
+                          <div className="tweet-link-field">
+                            <label htmlFor="quote-twitter-username">X Username</label>
+                            <input
+                              id="quote-twitter-username"
+                              type="text"
+                              placeholder="@username"
+                              value={twitterUsername}
+                              onChange={(e) => {
+                                setTwitterUsername(e.target.value)
+                                setTweetLinkStatus(null)
+                                setTaskError(prev => ({ ...prev, quote: null }))
+                              }}
+                            />
+                          </div>
                           <div className="quote-instruction">
                             <span>Quote with: <strong>"8bit Penguins Coming To Ethereum"</strong></span>
                           </div>
-                          <input
-                            type="text"
-                            placeholder="Paste your quote tweet link here"
-                            value={tweetLink}
-                            onChange={(e) => {
-                              setTweetLink(e.target.value)
-                              setTweetLinkStatus(null)
-                              setTaskError(prev => ({ ...prev, quote: null }))
-                            }}
-                          />
+                          <div className="tweet-link-field">
+                            <label htmlFor="quote-tweet-link">Quote Tweet Link</label>
+                            <input
+                              id="quote-tweet-link"
+                              type="text"
+                              placeholder="Paste your quote tweet link here"
+                              value={tweetLink}
+                              onChange={(e) => {
+                                setTweetLink(e.target.value)
+                                setTweetLinkStatus(null)
+                                setTaskError(prev => ({ ...prev, quote: null }))
+                              }}
+                            />
+                          </div>
                           <button
                             className="verify-btn"
                             onClick={() => handleVerify(task.id)}
@@ -503,24 +677,13 @@ function Task() {
                   <div className="task-submit-layout">
                     <aside className="task-submit-panel task-submit-summary">
                       <h4>Submission Checklist</h4>
-                      <p>Use your correct X handle.</p>
+                      <p>Your X username was captured and verified during the quote-tweet step.</p>
+                      <p>Enter the wallet you want reviewed for whitelist access.</p>
                       <p>Wallet must be a valid EVM address starting with <strong>0x</strong>.</p>
-                      <p>One submission per user is allowed.</p>
-                      <p>All submitted details will be verified before whitelist approval.</p>
+                      <p>One submission is allowed per X username, wallet, and quote link.</p>
                     </aside>
 
                     <form onSubmit={handleSubmit} className="submission-form task-submit-panel">
-                      <div className="form-group">
-                        <label htmlFor="twitter">Twitter Username</label>
-                        <input
-                          type="text"
-                          id="twitter"
-                          value={twitterUsername}
-                          onChange={(e) => setTwitterUsername(e.target.value)}
-                          placeholder="@username"
-                        />
-                      </div>
-
                       <div className="form-group">
                         <label htmlFor="wallet">EVM Wallet Address</label>
                         <input

@@ -4,6 +4,15 @@
 
 :is(
   .ui-button,
+  .btn,
+  .page-btn,
+  .gallery-tab,
+  .refresh-btn,
+  .puzzle-btn,
+  .puzzle-tab,
+  .task-btn,
+  .verify-btn,
+  .submit-btn,
   .mint-submit-btn,
   .mint-connect-btn,
   .mint-network-btn,
@@ -17,7 +26,6 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: none;
   border-radius: var(--ui-button-radius);
   font-family: inherit;
   font-weight: 600;
@@ -33,6 +41,15 @@
 
 :is(
   .ui-button,
+  .btn,
+  .page-btn,
+  .gallery-tab,
+  .refresh-btn,
+  .puzzle-btn,
+  .puzzle-tab,
+  .task-btn,
+  .verify-btn,
+  .submit-btn,
   .mint-submit-btn,
   .mint-connect-btn,
   .mint-network-btn,
@@ -47,6 +64,40 @@
 
 :is(
   .ui-button,
+  .btn,
+  .page-btn,
+  .gallery-tab,
+  .refresh-btn,
+  .puzzle-btn,
+  .puzzle-tab,
+  .task-btn,
+  .verify-btn,
+  .submit-btn,
+  .mint-submit-btn,
+  .mint-connect-btn,
+  .mint-network-btn,
+  .mint-page-btn,
+  .mint-evolve-btn,
+  .admin-action-btn,
+  .admin-phase-btn
+):active:not(:disabled) {
+  transform: none;
+  background: #ffffff;
+  border-color: #ffffff;
+  color: #0d1117;
+}
+
+:is(
+  .ui-button,
+  .btn,
+  .page-btn,
+  .gallery-tab,
+  .refresh-btn,
+  .puzzle-btn,
+  .puzzle-tab,
+  .task-btn,
+  .verify-btn,
+  .submit-btn,
   .mint-submit-btn,
   .mint-connect-btn,
   .mint-network-btn,
