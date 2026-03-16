@@ -303,6 +303,38 @@
   padding: 8px 20px;
 }
 
+.tweet-link-status {
+  margin-top: 10px;
+  border-radius: 3px;
+  padding: 8px 10px;
+  font-size: 0.64rem;
+  border: 1px solid #30363d;
+}
+
+.tweet-link-status.info {
+  background: rgba(88, 166, 255, 0.1);
+  border-color: #58a6ff;
+  color: #58a6ff;
+}
+
+.tweet-link-status.success {
+  background: rgba(57, 255, 20, 0.1);
+  border-color: #39ff14;
+  color: #39ff14;
+}
+
+.tweet-link-status.warning {
+  background: rgba(255, 191, 0, 0.1);
+  border-color: #ffbf00;
+  color: #ffbf00;
+}
+
+.tweet-link-status.error {
+  background: rgba(248, 81, 73, 0.1);
+  border-color: #f85149;
+  color: #f85149;
+}
+
 .link-warning {
   background: rgba(248, 81, 73, 0.1);
   border: 1px solid #f85149;

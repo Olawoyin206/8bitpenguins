@@ -18,7 +18,7 @@ const PUZZLE_BROWSER_ID_KEY = 'puzzleBrowserId'
 const PUZZLE_PLAYER_PROFILE_KEY = 'puzzlePlayerProfile'
 const REQUIRED_TWEET_CAPTION = 'Just Solved The @8bitpenguin_xyz puzzle'
 const REQUIRED_TWEET_CTA = 'Solve The Puzzle And Secure Whitelist: https://8bitpenguins.xyz/play-to-wl'
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwBo9wDhr2DYdQSsmhvek2JnY4oo_MYa9FV-WrgzDJ4BctN3IAv3PQvUvZ0QlmZPd0/exec'
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzkipcZmhdUrpFNJkJ6y4tctkHwKlhG8tEgH2f20syjAx_TD8JML6xiNxSHmQcMTo6h/exec'
 const LEADERBOARD_SHEET = 'Leaderboard'
 
 async function buildPuzzleReferenceImage() {

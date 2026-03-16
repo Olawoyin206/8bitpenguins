@@ -1,7 +1,66 @@
 import { useState, useEffect, useMemo } from 'react'
 import SiteNav from './SiteNav.jsx'
 import './Task.css'
-import { getTaskPinnedPostId, getTaskPinnedPostLink, TASK_CONFIG_UPDATED_EVENT } from './taskConfig.js'
+import {
+  extractTweetIdFromLink,
+  getTaskPinnedPostId,
+  getTaskPinnedPostLink,
+  TASK_CONFIG_UPDATED_EVENT,
+} from './taskConfig.js'
+
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzkipcZmhdUrpFNJkJ6y4tctkHwKlhG8tEgH2f20syjAx_TD8JML6xiNxSHmQcMTo6h/exec'
+const TASK_SUBMISSION_SHEET = 'Task Submissions'
+const TWITTER_USERNAME_PATTERN = /^[A-Za-z0-9_]{1,15}$/
+
+function normalizeTwitterUsername(value) {
+  const trimmed = String(value || '').trim().replace(/^@+/, '')
+  return trimmed ? `@${trimmed}` : ''
+}
+
+function normalizeWalletAddress(value) {
+  return String(value || '').trim().toLowerCase()
+}
+
+function validateTwitterUsername(value) {
+  const normalized = String(value || '').trim().replace(/^@+/, '')
+  return TWITTER_USERNAME_PATTERN.test(normalized)
+}
+
+async function fetchTaskSubmissionStatus({ tweetLink, twitterUsername = '', walletAddress = '' }) {
+  const tweetId = extractTweetIdFromLink(tweetLink)
+  if (!tweetId) {
+    return { ok: false, exists: false, error: 'invalid_link' }
+  }
+
+  const query = new URLSearchParams({
+    action: 'task_submission_status',
+    sheetName: TASK_SUBMISSION_SHEET,
+    tweetId,
+    tweetLink: String(tweetLink || '').trim(),
+    twitterUsername: normalizeTwitterUsername(twitterUsername),
+    walletAddress: normalizeWalletAddress(walletAddress),
+  })
+
+  const response = await fetch(`${GOOGLE_SCRIPT_URL}?${query.toString()}`)
+  const payload = await response.json().catch(() => null)
+
+  if (!response.ok || payload?.ok === false) {
+    return {
+      ok: false,
+      exists: false,
+      error: String(payload?.errorCode || payload?.error || 'lookup_failed'),
+    }
+  }
+
+  return {
+    ok: true,
+    exists: Boolean(payload?.exists),
+    duplicateTweet: Boolean(payload?.duplicateTweet),
+    duplicateTwitterUsername: Boolean(payload?.duplicateTwitterUsername),
+    duplicateWalletAddress: Boolean(payload?.duplicateWalletAddress),
+    tweetId,
+  }
+}
 
 function Task() {
   const [alreadySubmitted, setAlreadySubmitted] = useState(() => {
@@ -24,6 +83,8 @@ function Task() {
   const [showForm, setShowForm] = useState(false)
   const [showLinkWarning, setShowLinkWarning] = useState({})
   const [taskError, setTaskError] = useState({})
+  const [tweetLinkStatus, setTweetLinkStatus] = useState(null)
+  const [isCheckingTweetLink, setIsCheckingTweetLink] = useState(false)
   const [pinnedPostLink, setPinnedPostLink] = useState(() => getTaskPinnedPostLink())
   const targetTweetId = useMemo(() => getTaskPinnedPostId(pinnedPostLink), [pinnedPostLink])
 
@@ -99,13 +160,8 @@ function Task() {
   }
 
   const validateTweetLink = (link) => {
-    const match = link.trim().match(
-      /^https:\/\/(x\.com|twitter\.com|mobile\.twitter\.com)\/([\w.-]+)\/status\/(\d+)(\?.*)?$/
-    )
-
-    if (!match) return false
-
-    const tweetId = match[3]
+    const tweetId = extractTweetIdFromLink(link)
+    if (!tweetId) return false
     return tweetId !== targetTweetId
   }
 
@@ -124,7 +180,7 @@ function Task() {
     }
   }
 
-  const handleVerify = (taskId) => {
+  const handleVerify = async (taskId) => {
     const task = tasks.find(t => t.id === taskId)
     if (!task) return
 
@@ -140,7 +196,32 @@ function Task() {
 
     if (task.requiresLink && !validateTweetLink(tweetLink)) {
       setTaskError(prev => ({ ...prev, [taskId]: 'Enter a valid quote-tweet link, not the original post link' }))
+      setTweetLinkStatus(null)
       return
+    }
+
+    if (task.requiresLink) {
+      setIsCheckingTweetLink(true)
+      setTweetLinkStatus({ type: 'info', message: 'Checking submitted X link...' })
+
+      try {
+        const status = await fetchTaskSubmissionStatus({ tweetLink })
+        if (status.ok && status.duplicateTweet) {
+          setTaskError(prev => ({ ...prev, [taskId]: 'This X link has already been submitted' }))
+          setTweetLinkStatus({ type: 'error', message: 'This X link has already been submitted.' })
+          return
+        }
+
+        if (status.ok) {
+          setTweetLinkStatus({ type: 'success', message: 'X link contains a valid tweet ID and has not been submitted.' })
+        } else {
+          setTweetLinkStatus({ type: 'warning', message: 'Could not verify duplicate X links right now. Final submit will still enforce checks.' })
+        }
+      } catch {
+        setTweetLinkStatus({ type: 'warning', message: 'Could not verify duplicate X links right now. Final submit will still enforce checks.' })
+      } finally {
+        setIsCheckingTweetLink(false)
+      }
     }
 
     setTaskError(prev => ({ ...prev, [taskId]: null }))
@@ -155,40 +236,128 @@ function Task() {
       return
     }
 
+    if (!validateTwitterUsername(twitterUsername)) {
+      setSubmitStatus({ type: 'error', message: 'Enter a valid X username using only letters, numbers, and underscores' })
+      return
+    }
+
     if (!validateEvmAddress(walletAddress)) {
       setSubmitStatus({ type: 'error', message: 'Please enter a valid EVM wallet address' })
+      return
+    }
+
+    if (!validateTweetLink(tweetLink)) {
+      setSubmitStatus({ type: 'error', message: 'Please enter a valid quote-tweet link before submitting' })
       return
     }
 
     setIsSubmitting(true)
     setSubmitStatus(null)
 
+    const normalizedTwitterUsername = normalizeTwitterUsername(twitterUsername)
+    const normalizedWalletAddress = normalizeWalletAddress(walletAddress)
+    const extractedTweetId = extractTweetIdFromLink(tweetLink)
+
+    if (!extractedTweetId) {
+      setSubmitStatus({ type: 'error', message: 'Only direct X status links with a tweet ID are allowed' })
+      setIsSubmitting(false)
+      return
+    }
+
+    try {
+      const linkStatus = await fetchTaskSubmissionStatus({
+        tweetLink,
+        twitterUsername: normalizedTwitterUsername,
+        walletAddress: normalizedWalletAddress,
+      })
+      if (linkStatus.ok && linkStatus.duplicateTweet) {
+        setSubmitStatus({ type: 'error', message: 'This X link has already been submitted' })
+        setTweetLinkStatus({ type: 'error', message: 'This X link has already been submitted.' })
+        setIsSubmitting(false)
+        return
+      }
+      if (linkStatus.ok && linkStatus.duplicateTwitterUsername) {
+        setSubmitStatus({ type: 'error', message: 'This X username has already been submitted' })
+        setIsSubmitting(false)
+        return
+      }
+      if (linkStatus.ok && linkStatus.duplicateWalletAddress) {
+        setSubmitStatus({ type: 'error', message: 'This wallet address has already been submitted' })
+        setIsSubmitting(false)
+        return
+      }
+    } catch {
+      // Final POST still performs the authoritative duplicate check when the Apps Script supports it.
+    }
+
     const submission = {
-      twitterUsername: twitterUsername.startsWith('@') ? twitterUsername : `@${twitterUsername}`,
-      walletAddress,
-      tweetLink,
+      twitterUsername: normalizedTwitterUsername,
+      walletAddress: normalizedWalletAddress,
+      tweetLink: String(tweetLink || '').trim(),
+      tweetId: extractedTweetId,
       timestamp: Date.now()
     }
 
-    localStorage.setItem('taskSubmission', JSON.stringify(submission))
-
     try {
-      await fetch('https://script.google.com/macros/s/AKfycbwBo9wDhr2DYdQSsmhvek2JnY4oo_MYa9FV-WrgzDJ4BctN3IAv3PQvUvZ0QlmZPd0/exec', {
+      const response = await fetch(GOOGLE_SCRIPT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify(submission)
       })
-    } catch (err) {
+      const payload = await response.json().catch(() => null)
+
+      const errorCode = String(payload?.errorCode || payload?.error || '').toLowerCase()
+      const duplicateTweet =
+        errorCode.includes('duplicate_tweet_id') ||
+        errorCode.includes('duplicate_tweet_link') ||
+        errorCode.includes('tweet already submitted')
+      const duplicateTwitterUsername =
+        errorCode.includes('duplicate_twitter_username') ||
+        errorCode.includes('duplicate_x_username') ||
+        errorCode.includes('username already submitted')
+      const duplicateWalletAddress =
+        errorCode.includes('duplicate_wallet_address') ||
+        errorCode.includes('duplicate_wallet') ||
+        errorCode.includes('wallet already submitted')
+
+      if (!response.ok || payload?.ok === false) {
+        if (duplicateTweet) {
+          setSubmitStatus({ type: 'error', message: 'This X link has already been submitted' })
+          setTweetLinkStatus({ type: 'error', message: 'This X link has already been submitted.' })
+          setIsSubmitting(false)
+          return
+        }
+        if (duplicateTwitterUsername) {
+          setSubmitStatus({ type: 'error', message: 'This X username has already been submitted' })
+          setIsSubmitting(false)
+          return
+        }
+        if (duplicateWalletAddress) {
+          setSubmitStatus({ type: 'error', message: 'This wallet address has already been submitted' })
+          setIsSubmitting(false)
+          return
+        }
+
+        throw new Error(String(payload?.error || `HTTP ${response.status}`))
+      }
+    } catch {
       console.log('Sheet sync skipped')
+      setSubmitStatus({ type: 'error', message: 'Could not submit right now. Please try again.' })
+      setIsSubmitting(false)
+      return
     }
+
+    localStorage.setItem('taskSubmission', JSON.stringify(submission))
 
     await new Promise(resolve => setTimeout(resolve, 1000))
 
     setIsSubmitted(true)
+    setAlreadySubmitted(true)
     setSubmitStatus({ type: 'success', message: 'Submission successful!' })
     setTwitterUsername('')
     setWalletAddress('')
     setTweetLink('')
+    setTweetLinkStatus(null)
     setIsSubmitting(false)
   }
 
@@ -283,14 +452,24 @@ function Task() {
                             type="text"
                             placeholder="Paste your quote tweet link here"
                             value={tweetLink}
-                            onChange={(e) => setTweetLink(e.target.value)}
+                            onChange={(e) => {
+                              setTweetLink(e.target.value)
+                              setTweetLinkStatus(null)
+                              setTaskError(prev => ({ ...prev, quote: null }))
+                            }}
                           />
                           <button
                             className="verify-btn"
                             onClick={() => handleVerify(task.id)}
+                            disabled={isCheckingTweetLink}
                           >
-                            Verify
+                            {isCheckingTweetLink ? 'Checking...' : 'Verify'}
                           </button>
+                          {tweetLinkStatus && (
+                            <div className={`tweet-link-status ${tweetLinkStatus.type}`}>
+                              {tweetLinkStatus.message}
+                            </div>
+                          )}
                         </div>
                       )}
 
