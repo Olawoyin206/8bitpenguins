@@ -1,10 +1,17 @@
 import { useEffect, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
+import './SiteNav.css'
 
-const NAV_ITEMS = [
+const DEV_NAV_ITEMS = [
+  { to: '/', label: 'Tasks' },
+  { to: '/generate', label: 'Generate' },
+  { to: '/play-to-wl', label: 'Play To WL' },
+]
+const PROD_NAV_ITEMS = [
   { to: '/', label: 'Tasks' },
   { to: '/play-to-wl', label: 'Play To WL' },
 ]
+const NAV_ITEMS = import.meta.env.PROD ? PROD_NAV_ITEMS : DEV_NAV_ITEMS
 
 function SiteNav({ label = '' }) {
   const location = useLocation()
@@ -18,7 +25,7 @@ function SiteNav({ label = '' }) {
     <nav className={`site-nav${isMenuOpen ? ' is-open' : ''}`} aria-label="Primary">
       <div className="site-nav-topbar">
         <div className="site-nav-brand-wrap">
-          <NavLink to="/" className="site-nav-brand">
+          <NavLink to="/" className="site-nav-brand" onClick={() => setIsMenuOpen(false)}>
             8bit Penguins
           </NavLink>
           {label ? <span className="site-nav-label">{label}</span> : null}
@@ -43,6 +50,7 @@ function SiteNav({ label = '' }) {
           <NavLink
             key={item.to}
             to={item.to}
+            onClick={() => setIsMenuOpen(false)}
             className={({ isActive }) => `site-nav-link${isActive ? ' active' : ''}`}
           >
             {item.label}
