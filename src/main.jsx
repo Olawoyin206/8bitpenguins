@@ -24,7 +24,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="/task" element={<Task />} />
           {LOCK_NON_TASK_PAGES ? (
             <>
-              <Route path="/generate" element={<Error404 />} />
+              <Route path="/generate" element={<App />} />
               <Route path="/mint" element={<Error404 />} />
               <Route path="/admin" element={<Error404 />} />
               <Route path="/evolve" element={<Error404 />} />

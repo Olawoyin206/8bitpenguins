@@ -2,16 +2,12 @@ import { useEffect, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import './SiteNav.css'
 
-const DEV_NAV_ITEMS = [
+const SHARED_NAV_ITEMS = [
   { to: '/', label: 'Tasks' },
   { to: '/generate', label: 'Generate' },
   { to: '/play-to-wl', label: 'Play To WL' },
 ]
-const PROD_NAV_ITEMS = [
-  { to: '/', label: 'Tasks' },
-  { to: '/play-to-wl', label: 'Play To WL' },
-]
-const NAV_ITEMS = import.meta.env.PROD ? PROD_NAV_ITEMS : DEV_NAV_ITEMS
+const NAV_ITEMS = SHARED_NAV_ITEMS
 
 function SiteNav({ label = '' }) {
   const location = useLocation()
