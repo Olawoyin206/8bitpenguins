@@ -3,6 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 
 const NAV_ITEMS = [
   { to: '/', label: 'Tasks' },
+  { to: '/play-to-wl', label: 'Play To WL' },
 ]
 
 function SiteNav({ label = '' }) {
