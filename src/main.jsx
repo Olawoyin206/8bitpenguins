@@ -52,7 +52,7 @@ createRoot(document.getElementById('root')).render(
               <Route path="/admin" element={<Error404 />} />
               <Route path="/evolve" element={<Error404 />} />
               <Route path="/3d" element={<Error404 />} />
-              <Route path="/play-to-wl" element={<Error404 />} />
+              <Route path="/play-to-wl" element={<PlayToWL />} />
             </>
           ) : (
             <>

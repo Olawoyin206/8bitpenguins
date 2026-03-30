@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { drawAgent, generateRandomPenguinTraits } from './App'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { drawAgent, generateRandomPenguinTraits } from './penguin2d.js'
 import SiteNav from './SiteNav.jsx'
 import './PlayToWL.css'
 
@@ -18,8 +18,10 @@ const PUZZLE_BROWSER_ID_KEY = 'puzzleBrowserId'
 const PUZZLE_PLAYER_PROFILE_KEY = 'puzzlePlayerProfile'
 const REQUIRED_TWEET_CAPTION = 'Just Solved The @8bitpenguin_xyz puzzle'
 const REQUIRED_TWEET_CTA = 'Solve The Puzzle And Secure Whitelist: https://8bitpenguins.xyz/play-to-wl'
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzkipcZmhdUrpFNJkJ6y4tctkHwKlhG8tEgH2f20syjAx_TD8JML6xiNxSHmQcMTo6h/exec'
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxlV10JU23c6vuhwge81fSKZg_QJfJ6UyxPw7CBdHxvzTy7MyxZGFKPLpAh8hrZJrd3/exec'
 const LEADERBOARD_SHEET = 'Leaderboard'
+const LEADERBOARD_PAGE_SIZE = 100
+const LEADERBOARD_FETCH_LIMIT = 1000
 
 function isTouchDevice() {
   if (typeof window === 'undefined') return false
@@ -39,7 +41,7 @@ async function buildPuzzleReferenceImage() {
 
   const canvas = document.createElement('canvas')
   const traits = generateRandomPenguinTraits()
-  drawAgent(traits, canvas, 4096)
+  drawAgent(traits, canvas, 2048)
   return canvas.toDataURL('image/png')
 }
 
@@ -117,11 +119,6 @@ function normalizeX(v) {
   return String(v || '').trim().replace(/^@+/, '').toLowerCase()
 }
 
-function formatLeaderboardTime(ts) {
-  if (!ts) return '-'
-  return new Date(Number(ts)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-}
-
 function getBrowserId() {
   const existing = localStorage.getItem(PUZZLE_BROWSER_ID_KEY)
   if (existing) return existing
@@ -133,14 +130,46 @@ function getBrowserId() {
 function loadLeaderboard() {
   try {
     const parsed = JSON.parse(localStorage.getItem(PUZZLE_LEADERBOARD_KEY) || '[]')
-    return Array.isArray(parsed) ? parsed : []
+    return Array.isArray(parsed) ? parsed.map(compactLeaderboardRow) : []
   } catch {
     return []
   }
 }
 
+function compactLeaderboardRow(row) {
+  return {
+    browserId: String(row?.browserId || row?.browser_id || ''),
+    xUsername: String(row?.xUsername || row?.x_username || row?.xHandle || ''),
+    walletAddress: String(row?.walletAddress || row?.wallet_address || ''),
+    score: Number(row?.score || 0),
+    moves:
+      Number.isFinite(Number(row?.moves)) && Number(row?.moves) > 0
+        ? Number(row.moves)
+        : null,
+    timeSec:
+      Number.isFinite(Number(row?.timeSec || row?.time_sec || row?.time)) &&
+      Number(row?.timeSec || row?.time_sec || row?.time) > 0
+        ? Number(row?.timeSec || row?.time_sec || row?.time)
+        : null,
+    updatedAt: Number(row?.updatedAt || row?.updated_at || row?.timestamp || Date.now()),
+  }
+}
+
 function saveLeaderboard(entries) {
-  localStorage.setItem(PUZZLE_LEADERBOARD_KEY, JSON.stringify(entries))
+  const compact = Array.isArray(entries) ? entries.map(compactLeaderboardRow) : []
+  try {
+    localStorage.setItem(PUZZLE_LEADERBOARD_KEY, JSON.stringify(compact))
+  } catch {
+    try {
+      localStorage.setItem(PUZZLE_LEADERBOARD_KEY, JSON.stringify(compact.slice(0, 25)))
+    } catch {
+      try {
+        localStorage.setItem(PUZZLE_LEADERBOARD_KEY, JSON.stringify(compact.slice(0, 10)))
+      } catch {
+        // Keep the in-memory leaderboard if storage is full.
+      }
+    }
+  }
 }
 
 function loadPlayerProfile() {
@@ -155,6 +184,28 @@ function loadPlayerProfile() {
     }
   } catch {
     return { xUsername: '', walletAddress: '', ready: false }
+  }
+}
+
+function pruneLegacyPuzzleStorage() {
+  try {
+    const raw = localStorage.getItem(PUZZLE_SUBMISSION_KEY)
+    if (!raw) return
+    if (raw.length < 8000) return
+    const parsed = JSON.parse(raw)
+    localStorage.setItem(
+      PUZZLE_SUBMISSION_KEY,
+      JSON.stringify({
+        walletAddress: String(parsed?.walletAddress || ''),
+        xUsername: String(parsed?.xUsername || ''),
+        score: Number(parsed?.score || parsed?.currentScore || 0),
+        moves: Number(parsed?.moves || 0),
+        time: Number(parsed?.time || parsed?.timeSec || 0),
+        timestamp: Number(parsed?.timestamp || Date.now()),
+      })
+    )
+  } catch {
+    // Ignore corrupt or missing legacy submission payloads.
   }
 }
 
@@ -204,7 +255,7 @@ async function fetchGoogleLeaderboard() {
   const query = new URLSearchParams({
     action: 'leaderboard',
     sheetName: LEADERBOARD_SHEET,
-    limit: '100',
+    limit: String(LEADERBOARD_FETCH_LIMIT),
   })
 
   const res = await fetch(`${GOOGLE_SCRIPT_URL}?${query.toString()}`)
@@ -230,7 +281,7 @@ async function fetchGoogleLeaderboard() {
     }))
     .filter((row) => row.score > 0)
     .sort(compareLeaderboardRows)
-    .slice(0, 100)
+    .slice(0, LEADERBOARD_FETCH_LIMIT)
 }
 
 async function syncLeaderboardEntry(entry) {
@@ -283,13 +334,14 @@ function PlayToWL() {
   const slideLockRef = useRef(false)
   const slideTimeoutRef = useRef(null)
   const instantMoveRef = useRef(isTouchDevice())
+  const solvedRunHandledRef = useRef(false)
   const [hasStarted, setHasStarted] = useState(false)
   const [moves, setMoves] = useState(0)
   const [timeSec, setTimeSec] = useState(0)
   const [gameState, setGameState] = useState('playing')
   const [bestScore, setBestScore] = useState(() => Number(localStorage.getItem('arcadeBestScore') || 0))
   const [qualified, setQualified] = useState(() => localStorage.getItem('arcadeQualified') === 'true')
-  const [referenceImage, setReferenceImage] = useState('')
+  const [referenceImage, setReferenceImage] = useState(IMAGE_SRC)
   const [qualifiedImage, setQualifiedImage] = useState('')
   const [xUsername, setXUsername] = useState(() => initialProfile.xUsername)
   const [walletAddress, setWalletAddress] = useState(() => initialProfile.walletAddress)
@@ -306,10 +358,53 @@ function PlayToWL() {
   const [lastLeaderboardSync, setLastLeaderboardSync] = useState(null)
   const [activeTab, setActiveTab] = useState('game')
   const [leaderboardSearch, setLeaderboardSearch] = useState('')
+  const [leaderboardPage, setLeaderboardPage] = useState(1)
   const [verifiedBestScore, setVerifiedBestScore] = useState(0)
+  const [winConfetti, setWinConfetti] = useState([])
 
   const solved = useMemo(() => tiles.every((v, idx) => v === idx), [tiles])
   const score = useMemo(() => computeScore(moves, timeSec, { includeBonuses: false }), [moves, timeSec])
+  const projectedFinalScore = useMemo(() => computeScore(moves, timeSec, { includeBonuses: true }), [moves, timeSec])
+  const scoreBreakdown = useMemo(() => {
+    const normalizedMoves = Math.max(0, Number(moves) || 0)
+    const normalizedTime = Math.max(0, Number(timeSec) || 0)
+    const movePenalty =
+      Math.min(normalizedMoves, 30) * 3 +
+      Math.min(Math.max(0, normalizedMoves - 30), 30) * 5 +
+      Math.max(0, normalizedMoves - 60) * 7
+    const timePenalty =
+      Math.min(normalizedTime, 120) * 0.5 +
+      Math.min(Math.max(0, normalizedTime - 120), 180) * 1 +
+      Math.max(0, normalizedTime - 300) * 1.5
+    const efficiencyBonus = normalizedMoves <= 30 ? 120 : 0
+    const speedBonus = normalizedTime <= 90 ? 100 : 0
+    const stabilityBonus = normalizedMoves <= 60 ? 60 : 0
+    return {
+      movePenalty: Math.round(movePenalty),
+      timePenalty: Math.round(timePenalty),
+      potentialBonus: efficiencyBonus + speedBonus + stabilityBonus,
+      efficiencyBonus,
+      speedBonus,
+      stabilityBonus,
+    }
+  }, [moves, timeSec])
+
+  const triggerWinConfetti = () => {
+    const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#FF8C00', '#39FF14', '#FF1493']
+    const pieces = Array.from({ length: 88 }, (_, index) => ({
+      id: `${Date.now()}-${index}-${Math.random().toString(36).slice(2, 6)}`,
+      left: 2 + Math.random() * 96,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      delay: Math.random() * 0.45,
+      size: 6 + Math.random() * 9,
+      driftX: -140 + Math.random() * 280,
+      rotateStart: -140 + Math.random() * 280,
+      rotateEnd: 420 + Math.random() * 520,
+      duration: 1.8 + Math.random() * 1.2,
+    }))
+    setWinConfetti(pieces)
+    window.setTimeout(() => setWinConfetti([]), 2600)
+  }
   const scoreAlertLevel = useMemo(() => {
     const activeAttempt = hasStarted && gameState === 'playing'
     if (!activeAttempt) return 'none'
@@ -334,6 +429,62 @@ function PlayToWL() {
     if (!query) return leaderboard
     return leaderboard.filter((row) => normalizeX(row.xUsername).includes(query))
   }, [leaderboard, leaderboardSearch])
+  const bestReferenceScore = useMemo(
+    () => Math.max(Number(bestScore || 0), Number(verifiedBestScore || 0)),
+    [bestScore, verifiedBestScore]
+  )
+  const projectedDeltaToBest = projectedFinalScore - bestReferenceScore
+  const boardStatus = useMemo(() => {
+    if (gameState === 'won') {
+      return qualified ? { label: 'Qualified', tone: 'ok' } : { label: 'Solved', tone: 'warn' }
+    }
+    if (gameState === 'lost') {
+      return { label: 'Failed', tone: 'warn' }
+    }
+    if (bestReferenceScore >= PUZZLE_TARGET_SCORE) {
+      return { label: 'Qualified', tone: 'ok' }
+    }
+    if (!hasStarted) {
+      return { label: 'Ready', tone: '' }
+    }
+    if (projectedFinalScore < PUZZLE_TARGET_SCORE) {
+      return { label: 'Below Target', tone: 'warn' }
+    }
+    if (projectedFinalScore <= PUZZLE_TARGET_SCORE + 60) {
+      return { label: 'Risk Zone', tone: 'warn' }
+    }
+    return { label: 'On Pace', tone: '' }
+  }, [gameState, qualified, hasStarted, projectedFinalScore, bestReferenceScore])
+  const rivalSnapshot = useMemo(() => {
+    if (!Array.isArray(leaderboard) || leaderboard.length === 0 || !userRank) return { above: null, below: null }
+    return {
+      above: userRank > 1 ? leaderboard[userRank - 2] : null,
+      below: leaderboard[userRank] || null,
+    }
+  }, [leaderboard, userRank])
+  const rivalDelta = useMemo(() => {
+    if (!rivalSnapshot.above) return null
+    return Number(rivalSnapshot.above.score || 0) - projectedFinalScore
+  }, [rivalSnapshot, projectedFinalScore])
+  const totalLeaderboardPages = Math.max(1, Math.ceil(filteredLeaderboard.length / LEADERBOARD_PAGE_SIZE))
+  const paginatedLeaderboard = useMemo(() => {
+    const start = (leaderboardPage - 1) * LEADERBOARD_PAGE_SIZE
+    return filteredLeaderboard.slice(start, start + LEADERBOARD_PAGE_SIZE)
+  }, [filteredLeaderboard, leaderboardPage])
+
+  useEffect(() => {
+    pruneLegacyPuzzleStorage()
+  }, [])
+
+  useEffect(() => {
+    setLeaderboardPage(1)
+  }, [leaderboardSearch])
+
+  useEffect(() => {
+    if (leaderboardPage > totalLeaderboardPages) {
+      setLeaderboardPage(totalLeaderboardPages)
+    }
+  }, [leaderboardPage, totalLeaderboardPages])
 
   const openModal = (title, message, tone = 'info', action = null) => {
     setModal({
@@ -351,7 +502,7 @@ function PlayToWL() {
     setModalAction(null)
   }
 
-  const refreshLeaderboard = async (silent = false) => {
+  const refreshLeaderboard = useCallback(async (silent = false) => {
     setIsLeaderboardLoading(true)
     try {
       const rows = await fetchGoogleLeaderboard()
@@ -365,7 +516,7 @@ function PlayToWL() {
     } finally {
       setIsLeaderboardLoading(false)
     }
-  }
+  }, [])
 
   const syncRunToLeaderboard = async (finalScore, finalMoves, finalTimeSec) => {
     const entry = {
@@ -398,12 +549,13 @@ function PlayToWL() {
     return () => clearInterval(id)
   }, [gameState, hasStarted])
 
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     if (!hasStarted) return
     if (gameState !== 'playing') return
     if (score >= PUZZLE_TARGET_SCORE) return
     setSlideMove(null)
-    setGameState('won')
+    setGameState('lost')
     openModal('Score Dropped', `Score is below ${PUZZLE_TARGET_SCORE}. Click Try Again to restart.`, 'error', {
       label: 'Try Again',
       onClick: resetGame,
@@ -411,13 +563,19 @@ function PlayToWL() {
   }, [score, hasStarted, gameState])
 
   useEffect(() => {
-    if (!solved || gameState === 'won') return
+    if (!solved || gameState === 'won' || gameState === 'lost') return
+    if (solvedRunHandledRef.current) return
+    solvedRunHandledRef.current = true
     const finalScore = computeScore(moves, timeSec, { includeBonuses: true })
     const nextBest = Math.max(bestScore, finalScore)
+    const solvedImage = referenceImage || IMAGE_SRC
+
+    setGameState('won')
     setBestScore(nextBest)
     localStorage.setItem('arcadeBestScore', String(nextBest))
     if (finalScore >= PUZZLE_TARGET_SCORE) {
       const previousHigh = Math.max(Number(bestScore || 0), Number(verifiedBestScore || 0))
+      const hasPreviousHigh = previousHigh > 0
       const beatBest = finalScore > previousHigh
       localStorage.setItem('arcadeQualified', 'true')
       localStorage.setItem('arcadeQualifiedScore', String(finalScore))
@@ -427,47 +585,61 @@ function PlayToWL() {
       setQualifiedScore(finalScore)
       setQualifiedMoves(moves)
       setQualifiedTime(timeSec)
-      setQualifiedImage(referenceImage)
-      syncRunToLeaderboard(finalScore, moves, timeSec)
-      submitQualifiedProof(finalScore, moves, timeSec)
-      openModal(
-        'Qualified',
-        beatBest
-          ? `Final score ${finalScore}. New personal best (previous ${previousHigh}). Post your victory now.`
-          : `Final score ${finalScore}. Qualified for whitelist, but your best score remains ${previousHigh}. Post your victory now.`,
-        'success',
-        {
-          label: 'Tweet Victory',
-          onClick: () => handleComposeTweet({ score: finalScore, moves, timeSec }),
-        }
-      )
+      setQualifiedImage(solvedImage)
+      window.setTimeout(() => {
+        syncRunToLeaderboard(finalScore, moves, timeSec)
+        submitQualifiedProof(finalScore, moves, timeSec)
+        openModal(
+          'Qualified',
+          !hasPreviousHigh
+            ? `Final score ${finalScore}. Qualified for whitelist. Post your victory now.`
+            : beatBest
+              ? `Final score ${finalScore}. New personal best (previous ${previousHigh}). Post your victory now.`
+              : `Final score ${finalScore}. Qualified for whitelist, but your best score remains ${previousHigh}. Post your victory now.`,
+          'success',
+          {
+            label: 'Tweet Victory',
+            onClick: () => handleComposeTweet({ score: finalScore, moves, timeSec }),
+          }
+        )
+      }, 0)
     } else {
-      if (finalScore >= 350) {
-        openModal('Near Miss', `Final score ${finalScore}. You are close, try again.`, 'info', {
-          label: 'Try Again',
-          onClick: resetGame,
-        })
-      } else {
-        openModal('Try Again', `Final score ${finalScore}. Keep going, you can improve this run.`, 'error', {
-          label: 'Try Again',
-          onClick: resetGame,
-        })
-      }
+      window.setTimeout(() => {
+        if (finalScore >= 350) {
+          openModal('Near Miss', `Final score ${finalScore}. You are close, try again.`, 'info', {
+            label: 'Try Again',
+            onClick: resetGame,
+          })
+        } else {
+          openModal('Try Again', `Final score ${finalScore}. Keep going, you can improve this run.`, 'error', {
+            label: 'Try Again',
+            onClick: resetGame,
+          })
+        }
+      }, 0)
     }
-    setGameState('won')
   }, [solved, gameState, moves, timeSec, bestScore, referenceImage, browserId, verifiedBestScore])
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   useEffect(() => {
-    if (bestScore < PUZZLE_TARGET_SCORE) return
+    if (gameState === 'won') {
+      triggerWinConfetti()
+    } else {
+      setWinConfetti([])
+    }
+  }, [gameState])
+
+  useEffect(() => {
+    if (bestReferenceScore < PUZZLE_TARGET_SCORE) return
     if (!qualified) {
       setQualified(true)
       localStorage.setItem('arcadeQualified', 'true')
     }
     if (qualifiedScore < PUZZLE_TARGET_SCORE) {
-      setQualifiedScore(bestScore)
-      localStorage.setItem('arcadeQualifiedScore', String(bestScore))
+      setQualifiedScore(bestReferenceScore)
+      localStorage.setItem('arcadeQualifiedScore', String(bestReferenceScore))
     }
-  }, [bestScore, qualified, qualifiedScore])
+  }, [bestReferenceScore, qualified, qualifiedScore])
 
   useEffect(() => {
     let cancelled = false
@@ -498,7 +670,7 @@ function PlayToWL() {
       refreshLeaderboard(true)
     }, 20000)
     return () => clearInterval(id)
-  }, [])
+  }, [refreshLeaderboard])
 
   useEffect(() => {
     return () => {
@@ -551,6 +723,8 @@ function PlayToWL() {
     setMoves(0)
     setTimeSec(0)
     setGameState('playing')
+    setWinConfetti([])
+    solvedRunHandledRef.current = false
   }
 
   const handlePlayAgain = async () => {
@@ -573,6 +747,7 @@ function PlayToWL() {
     setMoves(0)
     setTimeSec(0)
     openModal('Run Reset', `${reason}. Start a new run now.`, 'info')
+    solvedRunHandledRef.current = false
   }
 
   const handleShuffle = () => {
@@ -723,7 +898,6 @@ function PlayToWL() {
       attemptNumber: 0,
       sessionID: browserId,
       qualified: true,
-      imageData: qualifiedImage || referenceImage,
       timestamp: Date.now()
     }
 
@@ -742,20 +916,30 @@ function PlayToWL() {
       }
 
       const apiError = String(responseData?.errorCode || responseData?.error || '').toLowerCase()
-      const duplicateWallet = apiError.includes('duplicate_wallet') || apiError.includes('wallet already submitted')
-      if (!response.ok || responseData?.ok === false) {
-        if (duplicateWallet) {
-          localStorage.setItem(PUZZLE_SUBMISSION_KEY, JSON.stringify({ walletAddress: payload.walletAddress, duplicate: true, timestamp: Date.now() }))
-          setAlreadySubmittedProof(true)
-          openModal('Wallet Already Submitted', 'This wallet has already submitted puzzle proof. One wallet can only submit once.', 'error')
-          return
+        const duplicateWallet = apiError.includes('duplicate_wallet') || apiError.includes('wallet already submitted')
+        if (!response.ok || responseData?.ok === false) {
+          if (duplicateWallet) {
+            localStorage.setItem(PUZZLE_SUBMISSION_KEY, JSON.stringify({ walletAddress: payload.walletAddress, duplicate: true, timestamp: Date.now() }))
+            setAlreadySubmittedProof(true)
+            openModal('Wallet Already Submitted', 'This wallet has already submitted puzzle proof. One wallet can only submit once.', 'error')
+            return
+          }
+          throw new Error(String(responseData?.error || `HTTP ${response.status}`))
         }
-        throw new Error(String(responseData?.error || `HTTP ${response.status}`))
-      }
 
-      localStorage.setItem(PUZZLE_SUBMISSION_KEY, JSON.stringify(payload))
-      setAlreadySubmittedProof(true)
-      setVerifiedBestScore(Math.max(Number(identity.bestScore || 0), submittedScore))
+        localStorage.setItem(
+          PUZZLE_SUBMISSION_KEY,
+          JSON.stringify({
+            walletAddress: payload.walletAddress,
+            xUsername: payload.xUsername,
+            score: submittedScore,
+            moves: Number(submittedMoves || 0),
+            time: Number(submittedTime || 0),
+            timestamp: payload.timestamp,
+          })
+        )
+        setAlreadySubmittedProof(true)
+        setVerifiedBestScore(Math.max(Number(identity.bestScore || 0), submittedScore))
       const entry = {
         browserId,
         xUsername: payload.xUsername,
@@ -774,7 +958,6 @@ function PlayToWL() {
       } catch {
         // Keep local ranking if remote sync/read fails.
       }
-      openModal('Score Saved', 'Qualification saved successfully. Tweet your victory to complete social proof.', 'success')
     } catch {
       openModal('Save Failed', 'Could not save qualification right now. Try solving again or refresh and retry.', 'error')
     } finally {
@@ -848,27 +1031,47 @@ function PlayToWL() {
                 <span className="status-chip">Required</span>
               </div>
               <p className="submission-help">Enter your X username and wallet address to unlock the puzzle challenge.</p>
-              <form className="proof-form pregame-form" onSubmit={handleProfileStart}>
-                <label className="proof-label" htmlFor="pregame-x-username">X Username</label>
-                <input
-                  id="pregame-x-username"
-                  type="text"
-                  placeholder="@yourusername"
-                  value={xUsername}
-                  onChange={(e) => setXUsername(e.target.value)}
-                />
-                <label className="proof-label" htmlFor="pregame-wallet">EVM Wallet Address</label>
-                <input
-                  id="pregame-wallet"
-                  type="text"
-                  placeholder="0x..."
-                  value={walletAddress}
-                  onChange={(e) => setWalletAddress(e.target.value)}
-                />
-                <button className="puzzle-btn white" type="submit">
-                  Save & Start Game
-                </button>
-              </form>
+              <div className="pregame-guide">
+                <div className="pregame-guide-card">
+                  <h3>How to Play</h3>
+                  <p>Slide tiles into the empty space until the full image is restored.</p>
+                  <p>You can click any tile adjacent to the empty slot to move it.</p>
+                  <p>Your run starts at 1000 points and your score drops as moves and time increase.</p>
+                </div>
+                <div className="pregame-guide-card">
+                  <h3>Qualification Rules</h3>
+                  <p>Finish with a final score of 500 or higher to qualify.</p>
+                  <p>Fast, efficient solves earn bonus points and improve your leaderboard rank.</p>
+                  <p>Save your profile below first, then the game and leaderboard will unlock.</p>
+                </div>
+              </div>
+              <div className="pregame-flow-divider">
+                <span>Next Step</span>
+              </div>
+              <div className="pregame-form-shell">
+                <p className="pregame-form-lead">Save your profile to unlock the puzzle board and leaderboard.</p>
+                <form className="proof-form pregame-form" onSubmit={handleProfileStart}>
+                  <label className="proof-label" htmlFor="pregame-x-username">X Username</label>
+                  <input
+                    id="pregame-x-username"
+                    type="text"
+                    placeholder="@yourusername"
+                    value={xUsername}
+                    onChange={(e) => setXUsername(e.target.value)}
+                  />
+                  <label className="proof-label" htmlFor="pregame-wallet">EVM Wallet Address</label>
+                  <input
+                    id="pregame-wallet"
+                    type="text"
+                    placeholder="0x..."
+                    value={walletAddress}
+                    onChange={(e) => setWalletAddress(e.target.value)}
+                  />
+                  <button className="puzzle-btn white" type="submit">
+                    Save & Start Game
+                  </button>
+                </form>
+              </div>
             </section>
           </main>
         ) : (
@@ -896,8 +1099,8 @@ function PlayToWL() {
           <section className={`puzzle-board-card ${scoreAlertLevel === 'red' ? 'alert-red' : scoreAlertLevel === 'amber' ? 'alert-amber' : ''}`}>
             <div className="section-head">
               <h2>Puzzle Board</h2>
-              <span className={`status-chip ${qualified ? 'ok' : ''}`}>
-                {qualified ? 'Qualified' : 'In Progress'}
+              <span className={`status-chip ${boardStatus.tone}`}>
+                {boardStatus.label}
               </span>
             </div>
             <div className="puzzle-stats">
@@ -924,13 +1127,15 @@ function PlayToWL() {
 
             {gameState === 'won' ? (
               <div className="puzzle-finished">
-                <div
-                  className="joined-image"
-                  style={{
-                    '--grid-size': GRID,
-                    backgroundImage: `url(${referenceImage})`
-                  }}
-                />
+                <div className="joined-image-wrap">
+                  <div
+                    className="joined-image"
+                    style={{
+                      '--grid-size': GRID,
+                      backgroundImage: `url(${referenceImage})`
+                    }}
+                  />
+                </div>
                 <div className="victory-actions">
                   {qualified ? (
                     <>
@@ -945,10 +1150,23 @@ function PlayToWL() {
                           handleComposeTweet()
                         }}
                       >
-                        {isSubmittingProof ? 'Saving...' : 'Tweet Victory'}
+                        {isSubmittingProof ? 'Saving...' : 'Tweet'}
                       </button>
                     </>
                   ) : null}
+                  <button className="puzzle-btn" type="button" onClick={handlePlayAgain}>
+                    Play Again
+                  </button>
+                </div>
+              </div>
+            ) : gameState === 'lost' ? (
+              <div className="puzzle-finished">
+                <div className="result-banner lost">
+                  <span className="result-kicker">Run Failed</span>
+                  <h3>Score Dropped Below Target</h3>
+                  <p>Your live score fell below {PUZZLE_TARGET_SCORE} before the image was solved. Reset and make a cleaner run.</p>
+                </div>
+                <div className="victory-actions">
                   <button className="puzzle-btn" type="button" onClick={handlePlayAgain}>
                     Play Again
                   </button>
@@ -990,28 +1208,114 @@ function PlayToWL() {
             <p className="instruction">
               {gameState === 'won'
                 ? qualified ? 'Victory unlocked. Tweet your score and keep climbing the leaderboard.' : 'Run complete. Start another attempt to improve.'
+                : gameState === 'lost'
+                  ? `Score dropped below ${PUZZLE_TARGET_SCORE}. Start another attempt to continue.`
                 : 'Slide tiles into the empty space to arrange the image.'}
             </p>
             <div className="puzzle-board-actions">
-              {gameState !== 'won' && (
+              {gameState === 'playing' && (
                 <button className="puzzle-btn shuffle-btn" onClick={handleShuffle}>Shuffle</button>
               )}
             </div>
           </section>
 
-          <aside className="puzzle-side">
-            <div className="side-card">
+            <aside className="puzzle-side">
+            <div className="side-card side-card-reference">
               <h3>Reference</h3>
               <div className="reference-image medium" style={{ backgroundImage: `url(${referenceImage})` }} />
             </div>
 
-            <div className="side-card">
+            <div className="side-card side-card-status">
+              <h3>Run Status</h3>
+              <div className="run-status-grid">
+                <div className="run-status-item">
+                  <span>Final Score</span>
+                  <strong>{projectedFinalScore}</strong>
+                </div>
+                <div className="run-status-item">
+                  <span>Score Left</span>
+                  <strong className={projectedFinalScore >= PUZZLE_TARGET_SCORE ? 'ok' : 'pending'}>
+                    {projectedFinalScore >= PUZZLE_TARGET_SCORE ? '+' : ''}{projectedFinalScore - PUZZLE_TARGET_SCORE}
+                  </strong>
+                </div>
+                <div className="run-status-item">
+                  <span>Vs Best</span>
+                  <strong className={projectedDeltaToBest >= 0 ? 'ok' : 'pending'}>
+                    {projectedDeltaToBest >= 0 ? '+' : ''}{projectedDeltaToBest}
+                  </strong>
+                </div>
+                <div className="run-status-item">
+                  <span>Vs Rival</span>
+                  <strong className={rivalDelta !== null && rivalDelta <= 0 ? 'ok' : 'pending'}>
+                    {rivalDelta === null ? '-' : `${rivalDelta > 0 ? '+' : ''}${rivalDelta}`}
+                  </strong>
+                </div>
+              </div>
+              <div className="run-breakdown">
+                <div className="run-breakdown-row">
+                  <span>Move penalty</span>
+                  <strong>-{scoreBreakdown.movePenalty}</strong>
+                </div>
+                <div className="run-breakdown-row">
+                  <span>Time penalty</span>
+                  <strong>-{scoreBreakdown.timePenalty}</strong>
+                </div>
+                <div className="run-breakdown-row">
+                  <span>Potential bonuses</span>
+                  <strong className="ok">+{scoreBreakdown.potentialBonus}</strong>
+                </div>
+              </div>
+            </div>
+
+            <div className="side-card side-card-bonuses">
+              <h3>Bonus Tracker</h3>
+              <div className="bonus-tracker">
+                <div className={`bonus-chip ${scoreBreakdown.efficiencyBonus ? 'active' : ''}`}>
+                  <span>Low Moves</span>
+                  <strong>{scoreBreakdown.efficiencyBonus ? '+120' : '<= 30 moves'}</strong>
+                </div>
+                <div className={`bonus-chip ${scoreBreakdown.speedBonus ? 'active' : ''}`}>
+                  <span>Fast Time</span>
+                  <strong>{scoreBreakdown.speedBonus ? '+100' : '<= 90 sec'}</strong>
+                </div>
+                <div className={`bonus-chip ${scoreBreakdown.stabilityBonus ? 'active' : ''}`}>
+                  <span>Clean Run</span>
+                  <strong>{scoreBreakdown.stabilityBonus ? '+60' : '<= 60 moves'}</strong>
+                </div>
+              </div>
+            </div>
+
+            <div className="side-card side-card-scoring">
               <h3>Scoring</h3>
-              <p>Your run starts at 1000 points. The live score drops as you use more moves and more time.</p>
-              <p>Moves cost 3 each for the first 30 moves, 5 each for moves 31-60, then 7 each after that.</p>
-              <p>Time costs 0.5 per second for the first 2 minutes, 1 per second for minutes 3-5, then 1.5 per second after 5 minutes.</p>
-              <p>When you finish, bonus points are added: +120 for 30 moves or less, +100 for 90 seconds or less, and +60 for 60 moves or less.</p>
-              <p>You qualify only if your solved final score is 500 or higher after those bonuses are added. Final score never goes below 200.</p>
+              <p>You start every run with 1000 points.</p>
+              <p>Moves reduce your score: 3 points each for the first 30 moves, 5 points each for moves 31 to 60, and 7 points each after that.</p>
+              <p>Time also reduces your score: 0.5 per second for the first 2 minutes, 1 per second for the next 3 minutes, and 1.5 per second after 5 minutes.</p>
+              <p>When you solve the puzzle, you can earn bonuses: +120 for 30 moves or less, +100 for 90 seconds or less, and +60 for 60 moves or less.</p>
+              <p>If your live score drops below 500 before you solve the puzzle, the run ends. To qualify, your final solved score must be 500 or more.</p>
+            </div>
+
+            <div className="side-card side-card-rivals">
+              <h3>Nearby Rivals</h3>
+              {rivalSnapshot.above || rivalSnapshot.below ? (
+                <div className="rival-list">
+                  {rivalSnapshot.above && (
+                    <div className="rival-row">
+                      <span className="rival-label">Above</span>
+                      <span className="rival-name">{rivalSnapshot.above.xUsername || 'Anonymous'}</span>
+                      <strong className="rival-score">{rivalSnapshot.above.score}</strong>
+                    </div>
+                  )}
+                  {rivalSnapshot.below && (
+                    <div className="rival-row">
+                      <span className="rival-label">Below</span>
+                      <span className="rival-name">{rivalSnapshot.below.xUsername || 'Anonymous'}</span>
+                      <strong className="rival-score">{rivalSnapshot.below.score}</strong>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p>Finish a qualified run to anchor your rank, then track the players directly around you.</p>
+              )}
             </div>
 
           </aside>
@@ -1022,7 +1326,7 @@ function PlayToWL() {
                 <h2>Leaderboard</h2>
                 <span className="status-chip">Global</span>
               </div>
-              <p className="leaderboard-subtitle">Global Top 100 ranked by solved score, then lower moves.</p>
+              <p className="leaderboard-subtitle">Global rankings sorted by solved score, then lower moves.</p>
               <div className="leaderboard-meta">
                 <span className="leaderboard-pill">Auto-sync: every 20s</span>
                 <span className="leaderboard-pill">
@@ -1061,6 +1365,7 @@ function PlayToWL() {
                   No leaderboard entries found for that X handle.
                 </p>
               ) : (
+                <>
                 <div className="leaderboard-list">
                   <div className="leader-row leader-header" aria-hidden="true">
                     <span className="leader-rank">Rank</span>
@@ -1070,17 +1375,45 @@ function PlayToWL() {
                     <span className="leader-time">Moves</span>
                     <span className="leader-time">Time</span>
                   </div>
-                  {filteredLeaderboard.slice(0, 100).map((row, index) => (
-                    <div key={`${row.browserId}-${index}`} className={`leader-row rank-${index + 1}`}>
-                      <span className="leader-rank">#{index + 1}</span>
-                      <span className="leader-name">{row.xUsername || `Anon-${String(row.browserId || '').slice(-4)}`}</span>
-                      <span className="leader-wallet">{shortWallet(row.walletAddress)}</span>
-                      <strong className="leader-score">{row.score}</strong>
-                      <span className="leader-time">{Number.isFinite(Number(row.moves)) && Number(row.moves) > 0 ? row.moves : '-'}</span>
-                      <span className="leader-time">{Number.isFinite(Number(row.timeSec)) && Number(row.timeSec) > 0 ? formatElapsed(row.timeSec) : '-'}</span>
-                    </div>
-                  ))}
+                  {paginatedLeaderboard.map((row, index) => {
+                    const rank = (leaderboardPage - 1) * LEADERBOARD_PAGE_SIZE + index + 1
+                    return (
+                      <div key={`${row.browserId}-${rank}`} className={`leader-row rank-${rank}`}>
+                        <span className="leader-rank">#{rank}</span>
+                        <span className="leader-name">{row.xUsername || `Anon-${String(row.browserId || '').slice(-4)}`}</span>
+                        <span className="leader-wallet">{shortWallet(row.walletAddress)}</span>
+                        <strong className="leader-score">{row.score}</strong>
+                        <span className="leader-time">{Number.isFinite(Number(row.moves)) && Number(row.moves) > 0 ? row.moves : '-'}</span>
+                        <span className="leader-time">{Number.isFinite(Number(row.timeSec)) && Number(row.timeSec) > 0 ? formatElapsed(row.timeSec) : '-'}</span>
+                      </div>
+                  )})}
                 </div>
+                {filteredLeaderboard.length > LEADERBOARD_PAGE_SIZE && (
+                  <div className="leaderboard-pagination">
+                    <span className="leaderboard-page-info">
+                      Page {leaderboardPage} of {totalLeaderboardPages}
+                    </span>
+                    <div className="leaderboard-page-actions">
+                      <button
+                        type="button"
+                        className="puzzle-btn white leaderboard-page-btn"
+                        disabled={leaderboardPage <= 1}
+                        onClick={() => setLeaderboardPage((page) => Math.max(1, page - 1))}
+                      >
+                        Previous
+                      </button>
+                      <button
+                        type="button"
+                        className="puzzle-btn white leaderboard-page-btn"
+                        disabled={leaderboardPage >= totalLeaderboardPages}
+                        onClick={() => setLeaderboardPage((page) => Math.min(totalLeaderboardPages, page + 1))}
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
+                </>
               )}
             </section>
           )}
@@ -1088,6 +1421,27 @@ function PlayToWL() {
         </>
         )}
       </div>
+      {winConfetti.length > 0 && (
+        <div className="puzzle-page-confetti" aria-hidden="true">
+          {winConfetti.map((piece) => (
+            <div
+              key={piece.id}
+              className="puzzle-page-confetti-piece"
+              style={{
+                left: `${piece.left}%`,
+                backgroundColor: piece.color,
+                animationDelay: `${piece.delay}s`,
+                animationDuration: `${piece.duration}s`,
+                width: piece.size,
+                height: piece.size,
+                '--confetti-drift-x': `${piece.driftX}px`,
+                '--confetti-rotate-start': `${piece.rotateStart}deg`,
+                '--confetti-rotate-end': `${piece.rotateEnd}deg`,
+              }}
+            />
+          ))}
+        </div>
+      )}
       {modal.open && (
         <div className="puzzle-modal-overlay" onClick={closeModal}>
           <div className={`puzzle-modal ${modal.tone}`} onClick={(e) => e.stopPropagation()}>

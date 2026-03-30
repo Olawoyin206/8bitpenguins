@@ -115,6 +115,76 @@
   margin: 0 auto;
 }
 
+.pregame-guide {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 14px;
+}
+
+.pregame-guide-card {
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  background: #111723;
+  padding: 10px;
+}
+
+.pregame-guide-card h3 {
+  margin: 0 0 8px;
+  font-size: 0.68rem;
+  color: #f0f6fc;
+  letter-spacing: 0.3px;
+}
+
+.pregame-guide-card p {
+  margin: 0 0 8px;
+  font-size: 0.63rem;
+  line-height: 1.55;
+  color: #8b949e;
+}
+
+.pregame-guide-card p:last-child {
+  margin-bottom: 0;
+}
+
+.pregame-flow-divider {
+  position: relative;
+  margin: 2px 0 14px;
+  text-align: center;
+}
+
+.pregame-flow-divider::before {
+  content: '';
+  position: absolute;
+  inset: 50% 0 auto;
+  border-top: 1px solid #30363d;
+}
+
+.pregame-flow-divider span {
+  position: relative;
+  display: inline-block;
+  padding: 0 10px;
+  background: #0d1117;
+  color: #8b949e;
+  font-size: 0.56rem;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+}
+
+.pregame-form-shell {
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #111823 0%, #0f151d 100%);
+  padding: 12px;
+}
+
+.pregame-form-lead {
+  margin: 0 0 10px;
+  color: #c9d1d9;
+  font-size: 0.66rem;
+  line-height: 1.5;
+}
+
 .puzzle-tabs {
   display: flex;
   gap: 0;
@@ -226,8 +296,12 @@
 
 .status-chip.ok {
   border-color: #39ff14;
-  color: #39ff14;
-  background: rgba(57, 255, 20, 0.1);
+  color: #0d1117;
+  background: linear-gradient(180deg, #7dff64 0%, #39ff14 100%);
+  font-weight: 700;
+  box-shadow:
+    0 0 0 1px rgba(57, 255, 20, 0.22),
+    0 0 14px rgba(57, 255, 20, 0.28);
 }
 
 .status-chip.warn {
@@ -341,12 +415,81 @@
   margin: 0 auto;
 }
 
+.joined-image-wrap {
+  position: relative;
+}
+
+.result-banner {
+  margin-bottom: 10px;
+  border: 1px solid #30363d;
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+  background: linear-gradient(180deg, #131a24 0%, #0d1117 100%);
+}
+
+.result-banner.qualified {
+  border-color: rgba(57, 255, 20, 0.52);
+  box-shadow: 0 0 24px rgba(57, 255, 20, 0.12);
+  background:
+    radial-gradient(circle at top, rgba(57, 255, 20, 0.12), transparent 45%),
+    linear-gradient(180deg, #131d18 0%, #0d1117 100%);
+}
+
+.result-banner.lost {
+  border-color: rgba(248, 81, 73, 0.52);
+  box-shadow: 0 0 24px rgba(248, 81, 73, 0.1);
+  background:
+    radial-gradient(circle at top, rgba(248, 81, 73, 0.12), transparent 45%),
+    linear-gradient(180deg, #1b1315 0%, #0d1117 100%);
+}
+
+.result-kicker {
+  display: inline-block;
+  margin-bottom: 8px;
+  font-size: 0.54rem;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: #8b949e;
+}
+
+.result-banner h3 {
+  margin: 0 0 8px;
+  color: #f8fbff;
+  font-size: 0.9rem;
+  letter-spacing: 0.4px;
+}
+
+.result-banner p {
+  margin: 0;
+  color: #c9d1d9;
+  font-size: 0.66rem;
+  line-height: 1.6;
+}
+
 .victory-actions {
   margin-top: 10px;
   display: flex;
   gap: 8px;
   justify-content: center;
   flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.proof-inline-status {
+  width: 100%;
+  margin-top: 2px;
+  border-radius: 4px;
+  padding: 8px 10px;
+  font-size: 0.63rem;
+  line-height: 1.5;
+  border: 1px solid #30363d;
+}
+
+.proof-inline-status.error {
+  color: #f85149;
+  background: rgba(248, 81, 73, 0.1);
+  border-color: rgba(248, 81, 73, 0.45);
 }
 
 .joined-image {
@@ -373,6 +516,42 @@
     calc(100% / var(--grid-size, 3)) 100%,
     100% calc(100% / var(--grid-size, 3));
   pointer-events: none;
+}
+
+.puzzle-page-confetti {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 2100;
+}
+
+.puzzle-page-confetti-piece {
+  position: absolute;
+  top: 0;
+  z-index: 2101;
+  border-radius: 2px;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.18);
+  animation: joinedConfettiFall 2.4s cubic-bezier(0.2, 0.8, 0.25, 1) forwards;
+  transform-origin: center;
+}
+
+@keyframes joinedConfettiFall {
+  0% {
+    transform: translate3d(0, -18px, 0) rotate(var(--confetti-rotate-start, 0deg)) scale(1);
+    opacity: 1;
+  }
+  35% {
+    opacity: 1;
+  }
+  60% {
+    transform: translate3d(calc(var(--confetti-drift-x, 0px) * 0.45), 180px, 0) rotate(calc(var(--confetti-rotate-end, 540deg) * 0.55)) scale(0.92);
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(var(--confetti-drift-x, 0px), 460px, 0) rotate(var(--confetti-rotate-end, 540deg)) scale(0.55);
+    opacity: 0;
+  }
 }
 
 @keyframes puzzleReveal {
@@ -488,9 +667,159 @@
   align-content: start;
 }
 
+.run-status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.run-status-item {
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  background: #111723;
+  padding: 9px 10px;
+  display: grid;
+  gap: 5px;
+}
+
+.run-status-item span {
+  color: #8b949e;
+  font-size: 0.54rem;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.run-status-item strong {
+  color: #f0f6fc;
+  font-size: 0.82rem;
+}
+
+.run-breakdown {
+  margin-top: 10px;
+  border-top: 1px solid #30363d;
+  padding-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.run-breakdown-row {
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  background: #111723;
+  padding: 8px;
+  display: grid;
+  gap: 4px;
+  font-size: 0.58rem;
+  color: #8b949e;
+}
+
+.run-breakdown-row strong {
+  color: #f0f6fc;
+  font-size: 0.72rem;
+}
+
+.bonus-tracker {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.bonus-chip {
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  background: #111723;
+  padding: 8px 10px;
+  display: grid;
+  gap: 4px;
+}
+
+.bonus-chip span {
+  color: #8b949e;
+  font-size: 0.56rem;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+}
+
+.bonus-chip strong {
+  color: #c9d1d9;
+  font-size: 0.64rem;
+}
+
+.bonus-chip.active {
+  border-color: rgba(57, 255, 20, 0.45);
+  background: linear-gradient(180deg, rgba(57, 255, 20, 0.12), rgba(17, 23, 35, 0.96));
+  box-shadow: 0 0 14px rgba(57, 255, 20, 0.08);
+}
+
+.bonus-chip.active strong {
+  color: #39ff14;
+}
+
+.rival-list {
+  display: grid;
+  gap: 8px;
+}
+
+.rival-row {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  background: #111723;
+  padding: 8px 10px;
+}
+
+.rival-label {
+  color: #58a6ff;
+  font-size: 0.54rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.rival-name {
+  color: #f0f6fc;
+  font-size: 0.64rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rival-score {
+  color: #f0f6fc;
+  font-size: 0.72rem;
+}
+
 .leaderboard-list {
   display: grid;
   gap: 6px;
+}
+
+.leaderboard-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.leaderboard-page-info {
+  color: #8b949e;
+  font-size: 0.6rem;
+  letter-spacing: 0.5px;
+}
+
+.leaderboard-page-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.leaderboard-page-btn {
+  min-width: 96px;
 }
 
 .leaderboard-subtitle {
@@ -889,6 +1218,7 @@
 }
 
 .puzzle-modal {
+  position: relative;
   width: min(500px, 100%);
   border: 1px solid #2f3b49;
   border-radius: 14px;
@@ -903,6 +1233,8 @@
   align-items: center;
   gap: 10px;
   margin-bottom: 10px;
+  position: relative;
+  z-index: 3;
 }
 
 .puzzle-modal h3 {
@@ -918,6 +1250,8 @@
   color: #d5dde7;
   font-size: 0.72rem;
   line-height: 1.62;
+  position: relative;
+  z-index: 3;
 }
 
 .puzzle-modal-actions {
@@ -927,6 +1261,8 @@
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+  position: relative;
+  z-index: 3;
 }
 
 .modal-dot {
@@ -980,6 +1316,10 @@
     grid-template-columns: 1fr;
   }
 
+  .pregame-guide {
+    grid-template-columns: 1fr;
+  }
+
   .puzzle-side {
     grid-template-columns: 1fr;
     align-items: start;
@@ -1005,17 +1345,17 @@
 
 
   .puzzle-main {
-    padding: 0 8px 10px;
-    gap: 8px;
+    padding: 0 12px 12px;
+    gap: 10px;
   }
 
   .puzzle-shell.pregame-mode .puzzle-main {
     min-height: calc(100vh - 120px);
-    padding: 8px;
+    padding: 12px;
   }
 
   .puzzle-tabs {
-    margin: 0 8px 8px;
+    margin: 0 12px 10px;
   }
 
   .puzzle-tab {
@@ -1024,9 +1364,41 @@
     padding: 8px 10px;
   }
 
+  .leaderboard-pagination {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .leaderboard-page-actions {
+    width: 100%;
+  }
+
+  .leaderboard-page-btn {
+    flex: 1;
+  }
+
+  .victory-actions {
+    flex-wrap: nowrap;
+    justify-content: stretch;
+  }
+
+  .victory-actions .puzzle-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
   .puzzle-modal {
     border-radius: 12px;
     padding: 14px;
+  }
+
+  .puzzle-board-card,
+  .side-card,
+  .pregame-form-shell,
+  .pregame-guide-card {
+    border-radius: 10px;
   }
 
   .puzzle-modal h3 {
@@ -1052,6 +1424,80 @@
 
   .puzzle-side {
     grid-template-columns: 1fr;
+    gap: 8px;
+    align-items: start;
+  }
+
+  .puzzle-side .side-card {
+    height: 100%;
+    padding: 9px;
+  }
+
+  .puzzle-side .side-card h3 {
+    margin-bottom: 7px;
+  }
+
+  .side-card-status,
+  .side-card-scoring,
+  .side-card-rivals {
+    grid-column: 1 / -1;
+  }
+
+  .side-card-reference {
+    grid-column: span 1;
+  }
+
+  .side-card-bonuses {
+    grid-column: 1 / -1;
+  }
+
+  .side-card-reference {
+    order: 1;
+  }
+
+  .side-card-status {
+    order: 2;
+  }
+
+  .side-card-bonuses {
+    order: 3;
+  }
+
+  .side-card-rivals {
+    order: 4;
+  }
+
+  .side-card-scoring {
+    order: 5;
+  }
+
+  .side-card-reference .reference-image.medium {
+    width: min(100%, 164px);
+  }
+
+  .run-status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .run-breakdown {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bonus-tracker {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .side-card-scoring p {
+    font-size: 0.6rem;
+    line-height: 1.5;
+  }
+
+  .side-card-scoring {
+    opacity: 0.92;
+  }
+
+  .side-card-rivals .rival-row {
+    grid-template-columns: 48px minmax(0, 1fr) auto;
     gap: 6px;
   }
 
@@ -1061,17 +1507,20 @@
   }
 
   .victory-actions {
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: nowrap;
   }
 
   .victory-actions .puzzle-btn {
-    width: 100%;
+    width: auto;
+    flex: 1 1 0;
+    min-width: 0;
   }
 
   .leader-row {
-    grid-template-columns: 26px minmax(0, 1fr) minmax(0, 0.82fr) 50px 38px 50px;
-    gap: 4px;
-    padding: 6px;
+    grid-template-columns: 24px minmax(0, 1fr) minmax(0, 0.8fr) 44px 34px 44px;
+    gap: 3px;
+    padding: 6px 5px;
   }
 
   .leaderboard-meta {
@@ -1131,23 +1580,6 @@
 
   .submission-layout {
     grid-template-columns: 1fr;
-  }
-
-  /* Mobile order: action-first flow */
-  .puzzle-side .side-card.proof-card {
-    order: 1;
-  }
-
-  .puzzle-side .side-card:nth-of-type(1) {
-    order: 2;
-  }
-
-  .puzzle-side .side-card:nth-of-type(2) {
-    order: 3;
-  }
-
-  .puzzle-side .side-card:nth-of-type(3) {
-    order: 4;
   }
 }
 
