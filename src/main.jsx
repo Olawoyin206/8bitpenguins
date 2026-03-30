@@ -2,6 +2,7 @@ import { StrictMode, Suspense, lazy } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Analytics } from '@vercel/analytics/react'
+import Error404 from './Error404.jsx'
 import './index.css'
 import './Button.css'
 
@@ -13,30 +14,6 @@ const Evolve = lazy(() => import('./Evolve.jsx'))
 const Admin = lazy(() => import('./Admin.jsx'))
 const PlayToWL = lazy(() => import('./PlayToWL.jsx'))
 const LOCK_NON_TASK_PAGES = import.meta.env.PROD
-
-function Error404() {
-  return (
-    <div
-      style={{
-        minHeight: '100vh',
-        display: 'grid',
-        placeItems: 'center',
-        background: '#0d1117',
-        color: '#f0f6fc',
-        padding: '24px',
-        fontFamily: '"JetBrains Mono", monospace',
-        textAlign: 'center',
-      }}
-    >
-      <div>
-        <div style={{ fontSize: '3rem', fontWeight: 700, letterSpacing: '0.08em' }}>404</div>
-        <div style={{ fontSize: '0.85rem', color: '#8b949e', textTransform: 'uppercase' }}>
-          Page Not Found
-        </div>
-      </div>
-    </div>
-  )
-}
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
