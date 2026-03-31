@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { generateRandomPenguinTraits, renderPenguin4k } from './penguin2d.js'
 import SiteNav from './SiteNav.jsx'
+import TurnstileWidget from './TurnstileWidget.jsx'
 import { extractTweetMetaFromLink } from './taskConfig.js'
 import './PlayToWL.css'
 
@@ -22,7 +23,10 @@ const PUZZLE_PROFILES_SHEET = 'Puzzle Profiles'
 const REQUIRED_TWEET_CAPTION = 'Just Solved The @8bitspenguins_ puzzle'
 const REQUIRED_TWEET_CTA = 'Solve The Puzzle And Secure Whitelist: https://8bitpenguins.xyz/play-to-wl'
 const VICTORY_QUOTE_TWEET_LINK = 'https://x.com/8bitspenguins_/status/2038544907640373749'
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzl6ZmSnaKuFe5-AkcQEmu7q509YZbCj7XVwUp1GgqwVrb4crINfZQcvAXBXYE_PZiS/exec'
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxx2c8tjTIKtjV6CYUIF4St_wwT058TyUDMkQSSexmwyWSExqgiZWALmNtATvTbFS2o/exec'
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || ''
+const PROFILE_TURNSTILE_ACTION = 'puzzle_profile_start'
+const PROOF_TURNSTILE_ACTION = 'puzzle_proof_submit'
 const LEADERBOARD_SHEET = 'Leaderboard'
 const GAME_ANALYTICS_SHEET = 'Game Analytics'
 const PUZZLE_PROOF_WINDOW_MS = 24 * 60 * 60 * 1000
@@ -650,11 +654,17 @@ function PlayToWL() {
   const [hasProfile, setHasProfile] = useState(() => initialProfile.ready)
   const [isStartingGame, setIsStartingGame] = useState(false)
   const [isSubmittingProof, setIsSubmittingProof] = useState(false)
+  const [profileCaptchaToken, setProfileCaptchaToken] = useState('')
+  const [profileCaptchaStatus, setProfileCaptchaStatus] = useState(() => (TURNSTILE_SITE_KEY ? '' : 'Captcha is not configured right now.'))
+  const [profileCaptchaResetKey, setProfileCaptchaResetKey] = useState(0)
   const [submissionRecord, setSubmissionRecord] = useState(() => initialSubmission)
   const [proofStatus, setProofStatus] = useState(() => initialProofStatus)
   const [isLoadingProofStatus, setIsLoadingProofStatus] = useState(false)
   const [victoryTweetLinkInput, setVictoryTweetLinkInput] = useState(() => initialSubmission.tweetLink)
   const [victoryTweetError, setVictoryTweetError] = useState('')
+  const [proofCaptchaToken, setProofCaptchaToken] = useState('')
+  const [proofCaptchaStatus, setProofCaptchaStatus] = useState(() => (TURNSTILE_SITE_KEY ? '' : 'Captcha is not configured right now.'))
+  const [proofCaptchaResetKey, setProofCaptchaResetKey] = useState(0)
   const [showProofPrompt, setShowProofPrompt] = useState(false)
   const [modal, setModal] = useState({ open: false, title: '', message: '', tone: 'info', actionLabel: '' })
   const [modalAction, setModalAction] = useState(null)
@@ -984,11 +994,26 @@ function PlayToWL() {
           }}
         />
         {victoryTweetError && <p className="victory-proof-error">{victoryTweetError}</p>}
+        <div className="turnstile-block">
+          <TurnstileWidget
+            siteKey={TURNSTILE_SITE_KEY}
+            action={PROOF_TURNSTILE_ACTION}
+            resetKey={proofCaptchaResetKey}
+            onTokenChange={setProofCaptchaToken}
+            onStatusChange={setProofCaptchaStatus}
+          />
+          {proofCaptchaStatus && <p className="turnstile-status">{proofCaptchaStatus}</p>}
+        </div>
         <div className="victory-proof-actions">
           <button className="puzzle-btn white" type="button" onClick={() => handleComposeTweet()}>
             Tweet Victory
           </button>
-          <button className="puzzle-btn" type="submit" disabled={isSubmittingProof} aria-busy={isSubmittingProof}>
+          <button
+            className="puzzle-btn"
+            type="submit"
+            disabled={isSubmittingProof || !TURNSTILE_SITE_KEY || !proofCaptchaToken}
+            aria-busy={isSubmittingProof}
+          >
             {isSubmittingProof ? 'Saving...' : alreadySubmittedProof ? 'Save Link' : 'Submit Proof'}
           </button>
         </div>
@@ -1156,6 +1181,7 @@ function PlayToWL() {
       const beatBest = finalScore > previousHigh
       const nextQualifiedRun = { score: finalScore, moves, timeSec }
       const shouldPromoteQualifiedRun = isBetterQualifiedRun(nextQualifiedRun, bestQualifiedSnapshot)
+      const shouldSyncQualifiedRun = alreadySubmittedProof && shouldPromoteQualifiedRun
       localStorage.setItem('arcadeQualified', 'true')
       setQualified(true)
       if (shouldPromoteQualifiedRun) {
@@ -1165,6 +1191,10 @@ function PlayToWL() {
         setQualifiedScore(finalScore)
         setQualifiedMoves(moves)
         setQualifiedTime(timeSec)
+      }
+      if (shouldSyncQualifiedRun) {
+        setVerifiedBestScore((prev) => Math.max(Number(prev || 0), finalScore))
+        void syncRunToLeaderboard(finalScore, moves, timeSec)
       }
       setQualifiedImage(solvedImage)
       window.setTimeout(() => {
@@ -1201,7 +1231,7 @@ function PlayToWL() {
         }
       }, 0)
     }
-  }, [alreadySubmittedProof, bestQualifiedSnapshot, bestScore, browserId, finishTrackedRun, gameState, moves, referenceImage, savedVictoryTweetLink, solved, timeSec, verifiedBestScore])
+  }, [alreadySubmittedProof, bestQualifiedSnapshot, bestScore, browserId, finishTrackedRun, gameState, moves, referenceImage, savedVictoryTweetLink, solved, syncRunToLeaderboard, timeSec, verifiedBestScore])
   /* eslint-enable react-hooks/exhaustive-deps */
 
   useEffect(() => {
@@ -1451,6 +1481,15 @@ function PlayToWL() {
     event.preventDefault()
     if (isSubmittingProof) return
 
+    if (!TURNSTILE_SITE_KEY) {
+      setVictoryTweetError('Captcha is not configured right now. Try again later.')
+      return
+    }
+    if (!proofCaptchaToken) {
+      setVictoryTweetError('Complete the anti-bot check before submitting proof.')
+      return
+    }
+
     const normalizedTweetLink = normalizeTweetLink(victoryTweetLinkInput)
     const { tweetId, username: linkUsername } = extractTweetMetaFromLink(normalizedTweetLink)
     if (!tweetId) {
@@ -1465,76 +1504,85 @@ function PlayToWL() {
       return
     }
 
-    const liveTweet = await verifyLiveTweetLink(normalizedTweetLink)
-    if (!liveTweet.ok) {
-      setVictoryTweetError('That X link could not be verified as a live post.')
-      return
-    }
-
-    const resolvedTweetUsername = liveTweet.authorUsername || linkUsername
-    if (shouldValidateUsername && !resolvedTweetUsername) {
-      setVictoryTweetError('Could not confirm the username on that X link.')
-      return
-    }
-
-    if (shouldValidateUsername && !usernamesMatch(resolvedTweetUsername, normalizedX)) {
-      setVictoryTweetError('That live tweet belongs to a different X account.')
-      return
-    }
-
-    setVictoryTweetError('')
-    setVictoryTweetLinkInput(normalizedTweetLink)
-
-    if (!normalizeTweetLink(profileTweetLink)) {
-      try {
-        await submitPuzzleProfileRecord({
-          xUsername: normalizedX.startsWith('@') ? normalizedX : `@${normalizedX}`,
-          walletAddress: walletAddress.trim(),
-          tweetLink: normalizedTweetLink,
-          tweetId,
-          verifiedTweetUsername: resolvedTweetUsername.startsWith('@') ? resolvedTweetUsername : `@${resolvedTweetUsername}`,
-        })
-        const nextProfile = {
-          xUsername: normalizedX.startsWith('@') ? normalizedX : `@${normalizedX}`,
-          walletAddress: walletAddress.trim(),
-          tweetLink: normalizedTweetLink,
-        }
-        localStorage.setItem(PUZZLE_PLAYER_PROFILE_KEY, JSON.stringify(nextProfile))
-        setProfileTweetLink(normalizedTweetLink)
-      } catch (error) {
-        setVictoryTweetError(String(error?.message || 'Could not save your tweet record.'))
+    setIsSubmittingProof(true)
+    try {
+      const liveTweet = await verifyLiveTweetLink(normalizedTweetLink)
+      if (!liveTweet.ok) {
+        setVictoryTweetError('That X link could not be verified as a live post.')
         return
       }
-    }
 
-    const submissionDetails = {
-      walletAddress: walletAddress.trim(),
-      xUsername: xUsername.trim(),
-      tweetLink: normalizedTweetLink,
-      tweetId,
-      score: Number(bestQualifiedSnapshot.score || qualifiedScore || bestReferenceScore || score || 0),
-      moves: Number(bestQualifiedSnapshot.moves || qualifiedMoves || moves || 0),
-      time: Number(bestQualifiedSnapshot.timeSec || qualifiedTime || timeSec || 0),
-      timestamp: Date.now(),
-    }
+      const resolvedTweetUsername = liveTweet.authorUsername || linkUsername
+      if (shouldValidateUsername && !resolvedTweetUsername) {
+        setVictoryTweetError('Could not confirm the username on that X link.')
+        return
+      }
 
-    if (alreadySubmittedProof) {
-      setShowProofPrompt(false)
-      persistPuzzleSubmission(submissionDetails)
-      openModal('Victory Tweet Saved', 'Victory tweet saved on this device. We will not ask for it again here.', 'success')
-      return
-    }
+      if (shouldValidateUsername && !usernamesMatch(resolvedTweetUsername, normalizedX)) {
+        setVictoryTweetError('That live tweet belongs to a different X account.')
+        return
+      }
 
-    const didSubmit = await submitQualifiedProof(
-      submissionDetails.score,
-      submissionDetails.moves,
-      submissionDetails.time,
-      normalizedTweetLink
-    )
+      setVictoryTweetError('')
+      setVictoryTweetLinkInput(normalizedTweetLink)
 
-    if (didSubmit) {
-      setShowProofPrompt(false)
-      openModal('Submission Complete', 'Victory tweet captured and puzzle proof submitted.', 'success')
+      if (!normalizeTweetLink(profileTweetLink)) {
+        try {
+          await submitPuzzleProfileRecord({
+            xUsername: normalizedX.startsWith('@') ? normalizedX : `@${normalizedX}`,
+            walletAddress: walletAddress.trim(),
+            tweetLink: normalizedTweetLink,
+            tweetId,
+            verifiedTweetUsername: resolvedTweetUsername.startsWith('@') ? resolvedTweetUsername : `@${resolvedTweetUsername}`,
+          })
+          const nextProfile = {
+            xUsername: normalizedX.startsWith('@') ? normalizedX : `@${normalizedX}`,
+            walletAddress: walletAddress.trim(),
+            tweetLink: normalizedTweetLink,
+          }
+          localStorage.setItem(PUZZLE_PLAYER_PROFILE_KEY, JSON.stringify(nextProfile))
+          setProfileTweetLink(normalizedTweetLink)
+        } catch (error) {
+          setVictoryTweetError(String(error?.message || 'Could not save your tweet record.'))
+          return
+        }
+      }
+
+      const submissionDetails = {
+        walletAddress: walletAddress.trim(),
+        xUsername: xUsername.trim(),
+        tweetLink: normalizedTweetLink,
+        tweetId,
+        score: Number(bestQualifiedSnapshot.score || qualifiedScore || bestReferenceScore || score || 0),
+        moves: Number(bestQualifiedSnapshot.moves || qualifiedMoves || moves || 0),
+        time: Number(bestQualifiedSnapshot.timeSec || qualifiedTime || timeSec || 0),
+        timestamp: Date.now(),
+      }
+
+      if (alreadySubmittedProof) {
+        setShowProofPrompt(false)
+        persistPuzzleSubmission(submissionDetails)
+        openModal('Victory Tweet Saved', 'Victory tweet saved on this device. We will not ask for it again here.', 'success')
+        return
+      }
+
+      const didSubmit = await submitQualifiedProof(
+        submissionDetails.score,
+        submissionDetails.moves,
+        submissionDetails.time,
+        normalizedTweetLink,
+        proofCaptchaToken
+      )
+
+      if (didSubmit) {
+        setShowProofPrompt(false)
+        openModal('Submission Complete', 'Victory tweet captured and puzzle proof submitted.', 'success')
+      }
+    } finally {
+      setIsSubmittingProof(false)
+      setProofCaptchaToken('')
+      setProofCaptchaStatus('')
+      setProofCaptchaResetKey((prev) => prev + 1)
     }
   }
 
@@ -1547,6 +1595,14 @@ function PlayToWL() {
     }
     if (!validateEvmAddress(walletAddress)) {
       openModal('Invalid Wallet', 'Enter a valid EVM wallet address.', 'error')
+      return
+    }
+    if (!TURNSTILE_SITE_KEY) {
+      openModal('Captcha Unavailable', 'Anti-bot protection is not configured right now.', 'error')
+      return
+    }
+    if (!profileCaptchaToken) {
+      openModal('Complete Captcha', 'Complete the anti-bot check before starting the game.', 'error')
       return
     }
 
@@ -1602,6 +1658,9 @@ function PlayToWL() {
       } else {
         openModal('Profile Saved', 'Details saved. You can now play the puzzle.', 'success')
       }
+      setProfileCaptchaToken('')
+      setProfileCaptchaStatus('')
+      setProfileCaptchaResetKey((prev) => prev + 1)
     } finally {
       setIsStartingGame(false)
     }
@@ -1616,7 +1675,7 @@ function PlayToWL() {
     link.click()
   }
 
-  const submitQualifiedProof = async (finalScore, submittedMoves, submittedTime, tweetLink) => {
+  const submitQualifiedProof = async (finalScore, submittedMoves, submittedTime, tweetLink, captchaToken) => {
     if (alreadySubmittedProof) return false
     const normalizedX = xUsername.trim().replace(/^@+/, '')
     if (!normalizedX || normalizedX.length < 2 || !validateEvmAddress(walletAddress)) return false
@@ -1662,10 +1721,11 @@ function PlayToWL() {
       attemptNumber: 0,
       sessionID: browserId,
       qualified: true,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      turnstileToken: String(captchaToken || '').trim(),
+      turnstileAction: PROOF_TURNSTILE_ACTION,
     }
 
-    setIsSubmittingProof(true)
     try {
       const response = await fetch(GOOGLE_SCRIPT_URL, {
         method: 'POST',
@@ -1725,23 +1785,45 @@ function PlayToWL() {
         timeSec: Number(submittedTime || 0),
       }
       setLeaderboard(upsertLeaderboardEntry(entry))
-      try {
-        await syncLeaderboardEntry(entry)
-        const remoteRows = await fetchGoogleLeaderboard()
-        if (remoteRows.length > 0) {
-          setLeaderboard(remoteRows)
-          saveLeaderboard(remoteRows)
+      setProofStatus((prev) => ({
+        ...prev,
+        submitted: true,
+        proofState: 'submitted',
+        tweetLink: normalizedTweetLink,
+        tweetId,
+        xUsername: payload.xUsername,
+        walletAddress: payload.walletAddress,
+        currentScore: Number(submittedScore || 0),
+        moves: Number(submittedMoves || 0),
+        time: Number(submittedTime || 0),
+        submittedAt: payload.timestamp,
+        qualifiedAt: Number(prev?.qualifiedAt || payload.timestamp || 0),
+        proofDeadlineTs: Number(prev?.proofDeadlineTs || 0),
+        msRemaining: 0,
+        expired: false,
+      }))
+      void (async () => {
+        try {
+          await syncLeaderboardEntry(entry)
+          const remoteRows = await fetchGoogleLeaderboard()
+          if (remoteRows.length > 0) {
+            setLeaderboard(remoteRows)
+            saveLeaderboard(remoteRows)
+          }
+        } catch {
+          // Keep optimistic local leaderboard if background sync fails.
         }
-      } catch {
-        // Keep local ranking if remote sync/read fails.
-      }
-      await syncProofStatus()
+
+        try {
+          await syncProofStatus()
+        } catch {
+          // Keep optimistic local proof state if background sync fails.
+        }
+      })()
       return true
     } catch {
       openModal('Save Failed', 'Could not save qualification right now. Try solving again or refresh and retry.', 'error')
       return false
-    } finally {
-      setIsSubmittingProof(false)
     }
   }
 
@@ -1850,7 +1932,22 @@ function PlayToWL() {
                     value={walletAddress}
                     onChange={(e) => setWalletAddress(e.target.value)}
                   />
-                  <button className="puzzle-btn white" type="submit" disabled={isStartingGame} aria-busy={isStartingGame}>
+                  <div className="turnstile-block">
+                    <TurnstileWidget
+                      siteKey={TURNSTILE_SITE_KEY}
+                      action={PROFILE_TURNSTILE_ACTION}
+                      resetKey={profileCaptchaResetKey}
+                      onTokenChange={setProfileCaptchaToken}
+                      onStatusChange={setProfileCaptchaStatus}
+                    />
+                    {profileCaptchaStatus && <p className="turnstile-status">{profileCaptchaStatus}</p>}
+                  </div>
+                  <button
+                    className="puzzle-btn white"
+                    type="submit"
+                    disabled={isStartingGame || !TURNSTILE_SITE_KEY || !profileCaptchaToken}
+                    aria-busy={isStartingGame}
+                  >
                     {isStartingGame ? 'Starting Game...' : 'Save & Start Game'}
                   </button>
                 </form>

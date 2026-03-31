@@ -1107,6 +1107,22 @@
   box-shadow: 0 0 0 1px rgba(88, 166, 255, 0.3);
 }
 
+.turnstile-block {
+  display: grid;
+  gap: 8px;
+}
+
+.turnstile-widget {
+  min-height: 66px;
+}
+
+.turnstile-status {
+  margin: 0;
+  color: #f7c66a;
+  font-size: 0.62rem;
+  line-height: 1.5;
+}
+
 .victory-proof-card {
   margin-top: 16px;
   padding: 16px;
@@ -1551,6 +1567,10 @@
 
   .victory-proof-form {
     gap: 8px;
+  }
+
+  .turnstile-status {
+    font-size: 0.58rem;
   }
 
   .victory-proof-actions {
