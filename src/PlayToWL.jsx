@@ -1264,8 +1264,47 @@ function PlayToWL() {
       return
     }
 
+    const liveTweet = await verifyLiveTweetLink(normalizedTweetLink)
+    if (!liveTweet.ok) {
+      setVictoryTweetError('That X link could not be verified as a live post.')
+      return
+    }
+
+    const resolvedTweetUsername = liveTweet.authorUsername || linkUsername
+    if (!resolvedTweetUsername) {
+      setVictoryTweetError('Could not confirm the username on that X link.')
+      return
+    }
+
+    if (!usernamesMatch(resolvedTweetUsername, normalizedX)) {
+      setVictoryTweetError('That live tweet belongs to a different X account.')
+      return
+    }
+
     setVictoryTweetError('')
     setVictoryTweetLinkInput(normalizedTweetLink)
+
+    if (!normalizeTweetLink(profileTweetLink)) {
+      try {
+        await submitPuzzleProfileRecord({
+          xUsername: normalizedX.startsWith('@') ? normalizedX : `@${normalizedX}`,
+          walletAddress: walletAddress.trim(),
+          tweetLink: normalizedTweetLink,
+          tweetId,
+          verifiedTweetUsername: resolvedTweetUsername.startsWith('@') ? resolvedTweetUsername : `@${resolvedTweetUsername}`,
+        })
+        const nextProfile = {
+          xUsername: normalizedX.startsWith('@') ? normalizedX : `@${normalizedX}`,
+          walletAddress: walletAddress.trim(),
+          tweetLink: normalizedTweetLink,
+        }
+        localStorage.setItem(PUZZLE_PLAYER_PROFILE_KEY, JSON.stringify(nextProfile))
+        setProfileTweetLink(normalizedTweetLink)
+      } catch (error) {
+        setVictoryTweetError(String(error?.message || 'Could not save your tweet record.'))
+        return
+      }
+    }
 
     const submissionDetails = {
       walletAddress: walletAddress.trim(),
@@ -1332,54 +1371,10 @@ function PlayToWL() {
         return
       }
 
-      const normalizedProfileTweetLink = normalizeTweetLink(profileTweetLink)
-      if (!identity.exactPair) {
-        const { tweetId, username: linkUsername } = extractTweetMetaFromLink(normalizedProfileTweetLink)
-        if (!tweetId) {
-          openModal('Tweet Link Required', 'New users must enter a valid X status link before the profile can be saved.', 'error')
-          return
-        }
-
-        if (linkUsername && !usernamesMatch(linkUsername, normalizedX)) {
-          openModal('Username Mismatch', 'The X username inside that tweet link does not match the username you entered.', 'error')
-          return
-        }
-
-        const liveTweet = await verifyLiveTweetLink(normalizedProfileTweetLink)
-        if (!liveTweet.ok) {
-          openModal('Tweet Check Failed', 'That X link could not be verified as a live post. Enter a working tweet link and try again.', 'error')
-          return
-        }
-
-        const resolvedTweetUsername = liveTweet.authorUsername || linkUsername
-        if (!resolvedTweetUsername) {
-          openModal('Tweet Check Failed', 'Could not confirm the username on that X link. Use a direct status link from your account and try again.', 'error')
-          return
-        }
-
-        if (!usernamesMatch(resolvedTweetUsername, normalizedX)) {
-          openModal('Username Mismatch', 'That live tweet belongs to a different X account. Use a tweet link from the same username you entered.', 'error')
-          return
-        }
-
-        try {
-          await submitPuzzleProfileRecord({
-            xUsername: normalizedX.startsWith('@') ? normalizedX : `@${normalizedX}`,
-            walletAddress: walletAddress.trim(),
-            tweetLink: normalizedProfileTweetLink,
-            tweetId,
-            verifiedTweetUsername: resolvedTweetUsername.startsWith('@') ? resolvedTweetUsername : `@${resolvedTweetUsername}`,
-          })
-        } catch (error) {
-          openModal('Profile Save Failed', String(error?.message || 'Could not save your tweet to the sheet. Try again.'), 'error')
-          return
-        }
-      }
-
       const profile = {
         xUsername: normalizedX.startsWith('@') ? normalizedX : `@${normalizedX}`,
         walletAddress: walletAddress.trim(),
-        tweetLink: identity.exactPair ? normalizeTweetLink(initialProfile.tweetLink || profileTweetLink) : normalizedProfileTweetLink,
+        tweetLink: identity.exactPair ? normalizeTweetLink(initialProfile.tweetLink || profileTweetLink) : '',
       }
       localStorage.setItem(PUZZLE_PLAYER_PROFILE_KEY, JSON.stringify(profile))
       setXUsername(profile.xUsername)
@@ -1624,7 +1619,7 @@ function PlayToWL() {
                   <h3>Qualification Rules</h3>
                   <p>Finish with a final score of 500 or higher to qualify.</p>
                   <p>Fast, efficient solves earn bonus points and improve your leaderboard rank.</p>
-                  <p>Save your profile below first, then the game and leaderboard will unlock.</p>
+                  <p>Save your profile below first. Your tweet proof will only be requested after you qualify.</p>
                 </div>
               </div>
               <div className="pregame-flow-divider">
@@ -1649,17 +1644,6 @@ function PlayToWL() {
                     value={walletAddress}
                     onChange={(e) => setWalletAddress(e.target.value)}
                   />
-                  <label className="proof-label" htmlFor="pregame-tweet-link">X Tweet Link</label>
-                  <input
-                    id="pregame-tweet-link"
-                    type="url"
-                    placeholder="https://x.com/yourname/status/..."
-                    value={profileTweetLink}
-                    onChange={(e) => setProfileTweetLink(e.target.value)}
-                  />
-                  <p className="pregame-field-note">
-                    New users must add a live X status link. We will verify that the tweet username matches the X username entered above before saving the profile.
-                  </p>
                   <button className="puzzle-btn white" type="submit" disabled={isStartingGame} aria-busy={isStartingGame}>
                     {isStartingGame ? 'Starting Game...' : 'Save & Start Game'}
                   </button>
