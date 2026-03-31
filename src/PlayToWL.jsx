@@ -23,7 +23,7 @@ const PUZZLE_PROFILES_SHEET = 'Puzzle Profiles'
 const REQUIRED_TWEET_CAPTION = 'Just Solved The @8bitspenguins_ puzzle'
 const REQUIRED_TWEET_CTA = 'Solve The Puzzle And Secure Whitelist: https://8bitpenguins.xyz/play-to-wl'
 const VICTORY_QUOTE_TWEET_LINK = 'https://x.com/8bitspenguins_/status/2038544907640373749'
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxx2c8tjTIKtjV6CYUIF4St_wwT058TyUDMkQSSexmwyWSExqgiZWALmNtATvTbFS2o/exec'
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzA6M5MblCTNx8b68Pyi4QonpCQ01gjUqbEcHr9XLyOMAhwrePp2n259epeViK0saRu/exec'
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || ''
 const PROFILE_TURNSTILE_ACTION = 'puzzle_profile_start'
 const PROOF_TURNSTILE_ACTION = 'puzzle_proof_submit'
@@ -579,10 +579,11 @@ async function fetchPuzzleProofStatus({ xUsername = '', walletAddress = '' }) {
   }
 }
 
-async function submitPuzzleProfileRecord({ xUsername, walletAddress, tweetLink, tweetId, verifiedTweetUsername }) {
+async function submitPuzzleProfileRecord({ browserId, xUsername, walletAddress, tweetLink, tweetId, verifiedTweetUsername }) {
   const payload = {
     sheetName: PUZZLE_PROFILES_SHEET,
     eventType: 'puzzle_profile',
+    browserId,
     xUsername,
     walletAddress,
     tweetLink,
@@ -1529,6 +1530,7 @@ function PlayToWL() {
       if (!normalizeTweetLink(profileTweetLink)) {
         try {
           await submitPuzzleProfileRecord({
+            browserId,
             xUsername: normalizedX.startsWith('@') ? normalizedX : `@${normalizedX}`,
             walletAddress: walletAddress.trim(),
             tweetLink: normalizedTweetLink,
