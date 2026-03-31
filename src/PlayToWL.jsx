@@ -420,6 +420,24 @@ function isBetterQualifiedRun(nextRun, currentRun) {
   return nextTime < currentTime
 }
 
+function isCompleteQualifiedSnapshot(snapshot) {
+  return (
+    Number(snapshot?.score || 0) >= PUZZLE_TARGET_SCORE &&
+    Number(snapshot?.moves || 0) > 0 &&
+    Number.isFinite(Number(snapshot?.timeSec ?? snapshot?.time)) &&
+    Number(snapshot?.timeSec ?? snapshot?.time) >= 0
+  )
+}
+
+function buildQualifiedSnapshotFromEntry(entry) {
+  if (!entry) return null
+  return {
+    score: Number(entry.score || 0),
+    moves: Number(entry.moves || 0),
+    timeSec: Number((entry.timeSec ?? entry.time) || 0),
+  }
+}
+
 function upsertLeaderboardEntry(entry) {
   const rows = loadLeaderboard()
   const idx = rows.findIndex(
@@ -860,6 +878,23 @@ function PlayToWL() {
     submissionRecord?.score,
     submissionRecord?.time,
   ])
+  const persistQualifiedSnapshot = useCallback((snapshot) => {
+    if (!isCompleteQualifiedSnapshot(snapshot)) return
+
+    const nextScore = Number(snapshot.score || 0)
+    const nextMoves = Number(snapshot.moves || 0)
+    const nextTime = Number((snapshot.timeSec ?? snapshot.time) || 0)
+
+    localStorage.setItem('arcadeQualified', 'true')
+    localStorage.setItem('arcadeQualifiedScore', String(nextScore))
+    localStorage.setItem(PUZZLE_QUALIFIED_MOVES_KEY, String(nextMoves))
+    localStorage.setItem(PUZZLE_QUALIFIED_TIME_KEY, String(nextTime))
+
+    setQualified(true)
+    setQualifiedScore((prev) => (prev === nextScore ? prev : nextScore))
+    setQualifiedMoves((prev) => (prev === nextMoves ? prev : nextMoves))
+    setQualifiedTime((prev) => (prev === nextTime ? prev : nextTime))
+  }, [])
   const needsVictoryTweet = hasProfile && bestReferenceScore >= PUZZLE_TARGET_SCORE && !savedVictoryTweetLink
   const projectedDeltaToBest = projectedFinalScore - bestReferenceScore
   const boardStatus = useMemo(() => {
@@ -909,6 +944,10 @@ function PlayToWL() {
   useEffect(() => {
     pruneLegacyPuzzleStorage()
   }, [])
+
+  useEffect(() => {
+    persistQualifiedSnapshot(bestQualifiedSnapshot)
+  }, [bestQualifiedSnapshot, persistQualifiedSnapshot])
 
   useEffect(() => {
     setLeaderboardPage(1)
@@ -1369,9 +1408,35 @@ function PlayToWL() {
   }
 
   const handleComposeTweet = async (details = {}) => {
-    const scoreToShare = Number(bestQualifiedSnapshot.score || details.score || qualifiedScore || bestScore || score || 0)
-    const movesToShare = Number(bestQualifiedSnapshot.moves || details.moves || qualifiedMoves || moves || 0)
-    const timeToShare = Number(bestQualifiedSnapshot.timeSec || details.timeSec || qualifiedTime || timeSec || 0)
+    let snapshotToShare = bestQualifiedSnapshot
+
+    if (!isCompleteQualifiedSnapshot(snapshotToShare) && hasProfile) {
+      try {
+        const remoteRows = await fetchGoogleLeaderboard()
+        if (remoteRows.length > 0) {
+          const nx = normalizeX(xUsername)
+          const nw = normalizeWallet(walletAddress)
+          const remoteEntry =
+            remoteRows.find((row) => {
+              const sameWallet = nw && normalizeWallet(row.walletAddress) === nw
+              const sameX = nx && normalizeX(row.xUsername) === nx
+              const sameBrowser = browserId && row.browserId === browserId
+              return sameWallet || sameX || sameBrowser
+            }) || null
+          const remoteSnapshot = buildQualifiedSnapshotFromEntry(remoteEntry)
+          if (isCompleteQualifiedSnapshot(remoteSnapshot)) {
+            snapshotToShare = remoteSnapshot
+            persistQualifiedSnapshot(remoteSnapshot)
+          }
+        }
+      } catch {
+        // Fall back to the best local snapshot if refresh fails.
+      }
+    }
+
+    const scoreToShare = Number(snapshotToShare.score || details.score || qualifiedScore || bestScore || score || 0)
+    const movesToShare = Number(snapshotToShare.moves || details.moves || qualifiedMoves || moves || 0)
+    const timeToShare = Number(snapshotToShare.timeSec || details.timeSec || qualifiedTime || timeSec || 0)
     const tweetBody =
       `${REQUIRED_TWEET_CAPTION}\n` +
       `Score: ${scoreToShare}\n` +
@@ -1412,7 +1477,8 @@ function PlayToWL() {
     }
 
     const normalizedX = normalizeX(xUsername)
-    if (linkUsername && normalizedX && linkUsername.toLowerCase() !== normalizedX) {
+    const shouldValidateUsername = Boolean(linkUsername)
+    if (shouldValidateUsername && normalizedX && linkUsername.toLowerCase() !== normalizedX) {
       setVictoryTweetError('This tweet link does not match your saved X username.')
       return
     }
@@ -1424,12 +1490,12 @@ function PlayToWL() {
     }
 
     const resolvedTweetUsername = liveTweet.authorUsername || linkUsername
-    if (!resolvedTweetUsername) {
+    if (shouldValidateUsername && !resolvedTweetUsername) {
       setVictoryTweetError('Could not confirm the username on that X link.')
       return
     }
 
-    if (!usernamesMatch(resolvedTweetUsername, normalizedX)) {
+    if (shouldValidateUsername && !usernamesMatch(resolvedTweetUsername, normalizedX)) {
       setVictoryTweetError('That live tweet belongs to a different X account.')
       return
     }
