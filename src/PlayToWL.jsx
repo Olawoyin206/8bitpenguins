@@ -19,9 +19,11 @@ const PUZZLE_BROWSER_ID_KEY = 'puzzleBrowserId'
 const PUZZLE_PLAYER_PROFILE_KEY = 'puzzlePlayerProfile'
 const PUZZLE_SUBMISSIONS_SHEET = 'Puzzle Submissions'
 const PUZZLE_PROFILES_SHEET = 'Puzzle Profiles'
-const REQUIRED_TWEET_CAPTION = 'Just Solved The @8bitpenguin_xyz puzzle'
+const REQUIRED_TWEET_CAPTION = 'Just Solved The @8bitspenguins_ puzzle'
 const REQUIRED_TWEET_CTA = 'Solve The Puzzle And Secure Whitelist: https://8bitpenguins.xyz/play-to-wl'
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwOWJFjbVVeQtN81LaLZsvc8gEqwD2CFIzsUBBLHZ4GU2S_OD-6JXE7-0ZEdHLoEFOu/exec'
+const VICTORY_QUOTE_TWEET_LINK = 'https://x.com/8bitspenguins_/status/2038544907640373749'
+const VICTORY_QUOTE_TWEET_ID = '2038544907640373749'
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx4jADlERUuxtUHGSGrdIWD5FplD7vary4vCS5JBH-6oTzKznWsBbVhdCr8C6yByw9g/exec'
 const LEADERBOARD_SHEET = 'Leaderboard'
 const GAME_ANALYTICS_SHEET = 'Game Analytics'
 const PUZZLE_PROOF_WINDOW_MS = 24 * 60 * 60 * 1000
@@ -176,6 +178,7 @@ async function verifyLiveTweetLink(tweetLink) {
       ok: false,
       error: String(payload?.error || `HTTP ${response.status}`),
       authorUsername: '',
+      html: '',
     }
   }
 
@@ -196,7 +199,22 @@ async function verifyLiveTweetLink(tweetLink) {
     authorUsername = extractUsernameFromHtml(payload.html)
   }
 
-  return { ok: true, authorUsername }
+  return { ok: true, authorUsername, html: String(payload.html || '') }
+}
+
+function tweetQuotesRequiredTarget(tweetLink, liveTweet = null) {
+  const normalizedTargetLink = normalizeTweetLink(VICTORY_QUOTE_TWEET_LINK)
+  const html = String(liveTweet?.html || '').toLowerCase()
+  const incomingTweetId = extractTweetMetaFromLink(tweetLink).tweetId
+  if (!incomingTweetId || incomingTweetId === VICTORY_QUOTE_TWEET_ID) {
+    return false
+  }
+
+  if (html) {
+    return html.includes(normalizedTargetLink.toLowerCase()) || html.includes(`status/${VICTORY_QUOTE_TWEET_ID}`)
+  }
+
+  return false
 }
 
 function getBrowserId() {
@@ -380,6 +398,26 @@ function compareLeaderboardRows(a, b) {
   const moveDiff = aMoves - bMoves
   if (moveDiff !== 0) return moveDiff
   return Number(a.updatedAt || 0) - Number(b.updatedAt || 0)
+}
+
+function isBetterQualifiedRun(nextRun, currentRun) {
+  const nextScore = Number(nextRun?.score || 0)
+  const currentScore = Number(currentRun?.score || 0)
+  if (nextScore !== currentScore) return nextScore > currentScore
+
+  const nextMoves = Number.isFinite(Number(nextRun?.moves)) && Number(nextRun?.moves) > 0 ? Number(nextRun.moves) : Number.MAX_SAFE_INTEGER
+  const currentMoves =
+    Number.isFinite(Number(currentRun?.moves)) && Number(currentRun?.moves) > 0 ? Number(currentRun.moves) : Number.MAX_SAFE_INTEGER
+  if (nextMoves !== currentMoves) return nextMoves < currentMoves
+
+  const nextTime = Number.isFinite(Number(nextRun?.timeSec ?? nextRun?.time)) && Number(nextRun?.timeSec ?? nextRun?.time) > 0
+    ? Number(nextRun.timeSec ?? nextRun.time)
+    : Number.MAX_SAFE_INTEGER
+  const currentTime =
+    Number.isFinite(Number(currentRun?.timeSec ?? currentRun?.time)) && Number(currentRun?.timeSec ?? currentRun?.time) > 0
+      ? Number(currentRun.timeSec ?? currentRun.time)
+      : Number.MAX_SAFE_INTEGER
+  return nextTime < currentTime
 }
 
 function upsertLeaderboardEntry(entry) {
@@ -617,6 +655,7 @@ function PlayToWL() {
   const [isLoadingProofStatus, setIsLoadingProofStatus] = useState(false)
   const [victoryTweetLinkInput, setVictoryTweetLinkInput] = useState(() => initialSubmission.tweetLink)
   const [victoryTweetError, setVictoryTweetError] = useState('')
+  const [showProofPrompt, setShowProofPrompt] = useState(false)
   const [modal, setModal] = useState({ open: false, title: '', message: '', tone: 'info', actionLabel: '' })
   const [modalAction, setModalAction] = useState(null)
   const [qualifiedScore, setQualifiedScore] = useState(() => Number(localStorage.getItem('arcadeQualifiedScore') || 0))
@@ -740,6 +779,19 @@ function PlayToWL() {
     if (!query) return leaderboard
     return leaderboard.filter((row) => normalizeX(row.xUsername).includes(query))
   }, [leaderboard, leaderboardSearch])
+  const bestLeaderboardEntry = useMemo(() => {
+    if (!Array.isArray(leaderboard) || leaderboard.length === 0) return null
+    const nx = normalizeX(xUsername)
+    const nw = normalizeWallet(walletAddress)
+    return (
+      leaderboard.find((row) => {
+        const sameWallet = nw && normalizeWallet(row.walletAddress) === nw
+        const sameX = nx && normalizeX(row.xUsername) === nx
+        const sameBrowser = browserId && row.browserId === browserId
+        return sameWallet || sameX || sameBrowser
+      }) || null
+    )
+  }, [leaderboard, xUsername, walletAddress, browserId])
   const bestReferenceScore = useMemo(
     () => Math.max(Number(bestScore || 0), Number(verifiedBestScore || 0)),
     [bestScore, verifiedBestScore]
@@ -751,6 +803,63 @@ function PlayToWL() {
     if (!alreadySubmittedProof) return ''
     return normalizeTweetLink(proofStatus?.tweetLink || submissionRecord?.tweetLink || '')
   }, [alreadySubmittedProof, proofStatus?.tweetLink, submissionRecord?.tweetLink])
+  const bestQualifiedSnapshot = useMemo(() => {
+    const candidates = [
+      {
+        score: Number(qualifiedScore || 0),
+        moves: Number(qualifiedMoves || 0),
+        timeSec: Number(qualifiedTime || 0),
+      },
+      bestLeaderboardEntry
+        ? {
+            score: Number(bestLeaderboardEntry.score || 0),
+            moves: Number(bestLeaderboardEntry.moves || 0),
+            timeSec: Number(bestLeaderboardEntry.timeSec || 0),
+          }
+        : null,
+      proofStatus?.submitted
+        ? {
+            score: Number(proofStatus?.currentScore || 0),
+            moves: Number(proofStatus?.moves || 0),
+            timeSec: Number(proofStatus?.time || 0),
+          }
+        : null,
+      submissionRecord?.exists
+        ? {
+            score: Number(submissionRecord?.score || 0),
+            moves: Number(submissionRecord?.moves || 0),
+            timeSec: Number(submissionRecord?.time || 0),
+          }
+        : null,
+    ].filter((entry) => entry && Number(entry.score || 0) >= PUZZLE_TARGET_SCORE)
+
+    const bestSnapshot = candidates.reduce((best, candidate) => {
+      if (!best) return candidate
+      return isBetterQualifiedRun(candidate, best) ? candidate : best
+    }, null)
+
+    return (
+      bestSnapshot || {
+        score: Number(bestReferenceScore || 0),
+        moves: Number(qualifiedMoves || 0),
+        timeSec: Number(qualifiedTime || 0),
+      }
+    )
+  }, [
+    bestLeaderboardEntry,
+    bestReferenceScore,
+    proofStatus?.currentScore,
+    proofStatus?.moves,
+    proofStatus?.submitted,
+    proofStatus?.time,
+    qualifiedMoves,
+    qualifiedScore,
+    qualifiedTime,
+    submissionRecord?.exists,
+    submissionRecord?.moves,
+    submissionRecord?.score,
+    submissionRecord?.time,
+  ])
   const needsVictoryTweet = hasProfile && bestReferenceScore >= PUZZLE_TARGET_SCORE && !savedVictoryTweetLink
   const projectedDeltaToBest = projectedFinalScore - bestReferenceScore
   const boardStatus = useMemo(() => {
@@ -832,6 +941,39 @@ function PlayToWL() {
     setModal({ open: false, title: '', message: '', tone: 'info', actionLabel: '' })
     setModalAction(null)
   }
+
+  const renderVictoryProofFormContent = (inputId) => (
+    <>
+      <div className="victory-proof-warning" role="alert">
+        {proofExpired
+          ? 'Proof overdue. Submit your victory tweet now for review. Your rank is not safe until this is resolved.'
+          : 'Proof required. Submit your victory tweet now to keep your rank. No proof in 24 hours means removal from the leaderboard.'}
+      </div>
+      {isLoadingProofStatus && <p className="victory-proof-meta">Checking latest proof status...</p>}
+      <form className="proof-form victory-proof-form" onSubmit={handleVictoryTweetSubmit}>
+        <label className="proof-label" htmlFor={inputId}>Victory Tweet Link</label>
+        <input
+          id={inputId}
+          type="url"
+          placeholder="https://x.com/yourname/status/..."
+          value={victoryTweetLinkInput}
+          onChange={(event) => {
+            setVictoryTweetLinkInput(event.target.value)
+            setVictoryTweetError('')
+          }}
+        />
+        {victoryTweetError && <p className="victory-proof-error">{victoryTweetError}</p>}
+        <div className="victory-proof-actions">
+          <button className="puzzle-btn white" type="button" onClick={() => handleComposeTweet()}>
+            Tweet Victory
+          </button>
+          <button className="puzzle-btn" type="submit" disabled={isSubmittingProof} aria-busy={isSubmittingProof}>
+            {isSubmittingProof ? 'Saving...' : alreadySubmittedProof ? 'Save Link' : 'Submit Proof'}
+          </button>
+        </div>
+      </form>
+    </>
+  )
 
   const persistPuzzleSubmission = useCallback((updates = {}) => {
     setSubmissionRecord((prev) => {
@@ -991,18 +1133,23 @@ function PlayToWL() {
       const previousHigh = Math.max(Number(bestScore || 0), Number(verifiedBestScore || 0))
       const hasPreviousHigh = previousHigh > 0
       const beatBest = finalScore > previousHigh
+      const nextQualifiedRun = { score: finalScore, moves, timeSec }
+      const shouldPromoteQualifiedRun = isBetterQualifiedRun(nextQualifiedRun, bestQualifiedSnapshot)
       localStorage.setItem('arcadeQualified', 'true')
-      localStorage.setItem('arcadeQualifiedScore', String(finalScore))
-      localStorage.setItem(PUZZLE_QUALIFIED_MOVES_KEY, String(moves))
-      localStorage.setItem(PUZZLE_QUALIFIED_TIME_KEY, String(timeSec))
       setQualified(true)
-      setQualifiedScore(finalScore)
-      setQualifiedMoves(moves)
-      setQualifiedTime(timeSec)
+      if (shouldPromoteQualifiedRun) {
+        localStorage.setItem('arcadeQualifiedScore', String(finalScore))
+        localStorage.setItem(PUZZLE_QUALIFIED_MOVES_KEY, String(moves))
+        localStorage.setItem(PUZZLE_QUALIFIED_TIME_KEY, String(timeSec))
+        setQualifiedScore(finalScore)
+        setQualifiedMoves(moves)
+        setQualifiedTime(timeSec)
+      }
       setQualifiedImage(solvedImage)
       window.setTimeout(() => {
-        if (savedVictoryTweetLink && !alreadySubmittedProof) {
-          submitQualifiedProof(finalScore, moves, timeSec, savedVictoryTweetLink)
+        if (!alreadySubmittedProof) {
+          setShowProofPrompt(true)
+          return
         }
         openModal(
           'Qualified',
@@ -1033,7 +1180,7 @@ function PlayToWL() {
         }
       }, 0)
     }
-  }, [alreadySubmittedProof, bestScore, browserId, finishTrackedRun, gameState, moves, referenceImage, savedVictoryTweetLink, solved, timeSec, verifiedBestScore])
+  }, [alreadySubmittedProof, bestQualifiedSnapshot, bestScore, browserId, finishTrackedRun, gameState, moves, referenceImage, savedVictoryTweetLink, solved, timeSec, verifiedBestScore])
   /* eslint-enable react-hooks/exhaustive-deps */
 
   useEffect(() => {
@@ -1081,6 +1228,12 @@ function PlayToWL() {
       setVictoryTweetError('')
     }
   }, [alreadySubmittedProof, hasProfile, savedVictoryTweetLink])
+
+  useEffect(() => {
+    if (alreadySubmittedProof || !needsVictoryTweet) {
+      setShowProofPrompt(false)
+    }
+  }, [alreadySubmittedProof, needsVictoryTweet])
 
   useEffect(() => {
     let cancelled = false
@@ -1216,9 +1369,9 @@ function PlayToWL() {
   }
 
   const handleComposeTweet = async (details = {}) => {
-    const scoreToShare = Number(details.score ?? qualifiedScore ?? bestScore ?? score ?? 0)
-    const movesToShare = Number(details.moves ?? qualifiedMoves ?? moves ?? 0)
-    const timeToShare = Number(details.timeSec ?? qualifiedTime ?? timeSec ?? 0)
+    const scoreToShare = Number(bestQualifiedSnapshot.score || details.score || qualifiedScore || bestScore || score || 0)
+    const movesToShare = Number(bestQualifiedSnapshot.moves || details.moves || qualifiedMoves || moves || 0)
+    const timeToShare = Number(bestQualifiedSnapshot.timeSec || details.timeSec || qualifiedTime || timeSec || 0)
     const tweetBody =
       `${REQUIRED_TWEET_CAPTION}\n` +
       `Score: ${scoreToShare}\n` +
@@ -1229,7 +1382,7 @@ function PlayToWL() {
     if (imageSrc) {
       handleSaveQualifiedImage()
     }
-    const composed = `https://x.com/intent/tweet?text=${encodeURIComponent(tweetBody)}`
+    const composed = `https://x.com/intent/tweet?text=${encodeURIComponent(tweetBody)}&url=${encodeURIComponent(VICTORY_QUOTE_TWEET_LINK)}`
     if (imageSrc && navigator.clipboard?.write && typeof ClipboardItem !== 'undefined') {
       try {
         const res = await fetch(imageSrc)
@@ -1281,6 +1434,11 @@ function PlayToWL() {
       return
     }
 
+    if (!tweetQuotesRequiredTarget(normalizedTweetLink, liveTweet)) {
+      setVictoryTweetError('Your victory tweet must quote the official 8bitspenguins post.')
+      return
+    }
+
     setVictoryTweetError('')
     setVictoryTweetLinkInput(normalizedTweetLink)
 
@@ -1310,13 +1468,17 @@ function PlayToWL() {
       walletAddress: walletAddress.trim(),
       xUsername: xUsername.trim(),
       tweetLink: normalizedTweetLink,
-      score: Number(qualifiedScore || bestReferenceScore || score || 0),
-      moves: Number(qualifiedMoves || moves || 0),
-      time: Number(qualifiedTime || timeSec || 0),
+      tweetId,
+      quotedTargetTweetId: VICTORY_QUOTE_TWEET_ID,
+      quotedTargetTweetLink: VICTORY_QUOTE_TWEET_LINK,
+      score: Number(bestQualifiedSnapshot.score || qualifiedScore || bestReferenceScore || score || 0),
+      moves: Number(bestQualifiedSnapshot.moves || qualifiedMoves || moves || 0),
+      time: Number(bestQualifiedSnapshot.timeSec || qualifiedTime || timeSec || 0),
       timestamp: Date.now(),
     }
 
     if (alreadySubmittedProof) {
+      setShowProofPrompt(false)
       persistPuzzleSubmission(submissionDetails)
       openModal('Victory Tweet Saved', 'Victory tweet saved on this device. We will not ask for it again here.', 'success')
       return
@@ -1330,6 +1492,7 @@ function PlayToWL() {
     )
 
     if (didSubmit) {
+      setShowProofPrompt(false)
       openModal('Submission Complete', 'Victory tweet captured and puzzle proof submitted.', 'success')
     }
   }
@@ -1450,6 +1613,8 @@ function PlayToWL() {
       walletAddress: walletAddress.trim(),
       tweetLink: normalizedTweetLink,
       tweetId,
+      quotedTargetTweetId: VICTORY_QUOTE_TWEET_ID,
+      quotedTargetTweetLink: VICTORY_QUOTE_TWEET_LINK,
       requiredCaption: REQUIRED_TWEET_CAPTION,
       bestScore,
       currentScore: submittedScore,
@@ -1687,39 +1852,7 @@ function PlayToWL() {
                   <h3>Submit Victory Proof</h3>
                   <span className="status-chip warn">Required</span>
                 </div>
-                <p className="victory-proof-copy">
-                  {proofExpired
-                    ? 'Your proof window has expired. Submit your victory tweet link now so the proof can be reviewed.'
-                    : 'You already qualified. Submit your victory tweet link now before you can continue playing or open the leaderboard.'}
-                </p>
-                <div className="victory-proof-warning" role="alert">
-                  {proofExpired
-                    ? 'Your 24-hour proof window has passed. Your leaderboard rank is no longer safe until this proof is resolved.'
-                    : 'Your leaderboard rank is hanging on this proof. If you do not submit your victory proof within the next 24 hours, you will be removed from the leaderboard.'}
-                </div>
-                {isLoadingProofStatus && <p className="victory-proof-meta">Checking latest proof status...</p>}
-                <form className="proof-form victory-proof-form" onSubmit={handleVictoryTweetSubmit}>
-                  <label className="proof-label" htmlFor="victory-tweet-link">Victory Tweet Link</label>
-                  <input
-                    id="victory-tweet-link"
-                    type="url"
-                    placeholder="https://x.com/yourname/status/..."
-                    value={victoryTweetLinkInput}
-                    onChange={(event) => {
-                      setVictoryTweetLinkInput(event.target.value)
-                      setVictoryTweetError('')
-                    }}
-                  />
-                  {victoryTweetError && <p className="victory-proof-error">{victoryTweetError}</p>}
-                  <div className="victory-proof-actions">
-                    <button className="puzzle-btn white" type="button" onClick={() => handleComposeTweet()}>
-                      Tweet Victory
-                    </button>
-                    <button className="puzzle-btn" type="submit" disabled={isSubmittingProof} aria-busy={isSubmittingProof}>
-                      {isSubmittingProof ? 'Saving...' : alreadySubmittedProof ? 'Save Link' : 'Submit Proof'}
-                    </button>
-                  </div>
-                </form>
+                {renderVictoryProofFormContent('victory-tweet-link-inline')}
               </div>
             )}
             <div className="puzzle-stats">
@@ -2090,6 +2223,25 @@ function PlayToWL() {
                 </button>
               )}
               <button className="puzzle-btn white" type="button" onClick={closeModal}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showProofPrompt && needsVictoryTweet && (
+        <div className="puzzle-modal-overlay" onClick={() => setShowProofPrompt(false)}>
+          <div className="puzzle-modal success proof-prompt-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="puzzle-modal-head">
+              <span className="modal-dot success" aria-hidden="true" />
+              <h3>Qualified: Submit Victory Proof</h3>
+            </div>
+            <p className="puzzle-modal-message">
+              Best score {bestQualifiedSnapshot.score || qualifiedScore || bestReferenceScore}. Submit your victory tweet now. If you close this popup, the proof form will remain inline on the game page until you submit it.
+            </p>
+            <div className="victory-proof-card victory-proof-card-modal">
+              {renderVictoryProofFormContent('victory-tweet-link-modal')}
+            </div>
+            <div className="puzzle-modal-actions">
+              <button className="puzzle-btn white" type="button" onClick={() => setShowProofPrompt(false)}>Later</button>
             </div>
           </div>
         </div>
