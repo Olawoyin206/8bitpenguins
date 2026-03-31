@@ -22,8 +22,7 @@ const PUZZLE_PROFILES_SHEET = 'Puzzle Profiles'
 const REQUIRED_TWEET_CAPTION = 'Just Solved The @8bitspenguins_ puzzle'
 const REQUIRED_TWEET_CTA = 'Solve The Puzzle And Secure Whitelist: https://8bitpenguins.xyz/play-to-wl'
 const VICTORY_QUOTE_TWEET_LINK = 'https://x.com/8bitspenguins_/status/2038544907640373749'
-const VICTORY_QUOTE_TWEET_ID = '2038544907640373749'
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx4jADlERUuxtUHGSGrdIWD5FplD7vary4vCS5JBH-6oTzKznWsBbVhdCr8C6yByw9g/exec'
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwt0JSCJju8AoMPjTx1NUkXFf8mDJNuaoG_1m8aydqs2ZrsDTnmx0LsZPFloZKWZSre/exec'
 const LEADERBOARD_SHEET = 'Leaderboard'
 const GAME_ANALYTICS_SHEET = 'Game Analytics'
 const PUZZLE_PROOF_WINDOW_MS = 24 * 60 * 60 * 1000
@@ -178,7 +177,6 @@ async function verifyLiveTweetLink(tweetLink) {
       ok: false,
       error: String(payload?.error || `HTTP ${response.status}`),
       authorUsername: '',
-      html: '',
     }
   }
 
@@ -199,22 +197,7 @@ async function verifyLiveTweetLink(tweetLink) {
     authorUsername = extractUsernameFromHtml(payload.html)
   }
 
-  return { ok: true, authorUsername, html: String(payload.html || '') }
-}
-
-function tweetQuotesRequiredTarget(tweetLink, liveTweet = null) {
-  const normalizedTargetLink = normalizeTweetLink(VICTORY_QUOTE_TWEET_LINK)
-  const html = String(liveTweet?.html || '').toLowerCase()
-  const incomingTweetId = extractTweetMetaFromLink(tweetLink).tweetId
-  if (!incomingTweetId || incomingTweetId === VICTORY_QUOTE_TWEET_ID) {
-    return false
-  }
-
-  if (html) {
-    return html.includes(normalizedTargetLink.toLowerCase()) || html.includes(`status/${VICTORY_QUOTE_TWEET_ID}`)
-  }
-
-  return false
+  return { ok: true, authorUsername }
 }
 
 function getBrowserId() {
@@ -1500,11 +1483,6 @@ function PlayToWL() {
       return
     }
 
-    if (!tweetQuotesRequiredTarget(normalizedTweetLink, liveTweet)) {
-      setVictoryTweetError('Your victory tweet must quote the official 8bitspenguins post.')
-      return
-    }
-
     setVictoryTweetError('')
     setVictoryTweetLinkInput(normalizedTweetLink)
 
@@ -1535,8 +1513,6 @@ function PlayToWL() {
       xUsername: xUsername.trim(),
       tweetLink: normalizedTweetLink,
       tweetId,
-      quotedTargetTweetId: VICTORY_QUOTE_TWEET_ID,
-      quotedTargetTweetLink: VICTORY_QUOTE_TWEET_LINK,
       score: Number(bestQualifiedSnapshot.score || qualifiedScore || bestReferenceScore || score || 0),
       moves: Number(bestQualifiedSnapshot.moves || qualifiedMoves || moves || 0),
       time: Number(bestQualifiedSnapshot.timeSec || qualifiedTime || timeSec || 0),
@@ -1679,8 +1655,6 @@ function PlayToWL() {
       walletAddress: walletAddress.trim(),
       tweetLink: normalizedTweetLink,
       tweetId,
-      quotedTargetTweetId: VICTORY_QUOTE_TWEET_ID,
-      quotedTargetTweetLink: VICTORY_QUOTE_TWEET_LINK,
       requiredCaption: REQUIRED_TWEET_CAPTION,
       bestScore,
       currentScore: submittedScore,
