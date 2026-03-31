@@ -22,7 +22,7 @@ const PUZZLE_PROFILES_SHEET = 'Puzzle Profiles'
 const REQUIRED_TWEET_CAPTION = 'Just Solved The @8bitspenguins_ puzzle'
 const REQUIRED_TWEET_CTA = 'Solve The Puzzle And Secure Whitelist: https://8bitpenguins.xyz/play-to-wl'
 const VICTORY_QUOTE_TWEET_LINK = 'https://x.com/8bitspenguins_/status/2038544907640373749'
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwt0JSCJju8AoMPjTx1NUkXFf8mDJNuaoG_1m8aydqs2ZrsDTnmx0LsZPFloZKWZSre/exec'
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw5vVdNq4fawPsbrZXxWTb6o03ZrQzZVHKbxci1AdfFB6yosvyboVpzqpLRhDgX_T51/exec'
 const LEADERBOARD_SHEET = 'Leaderboard'
 const GAME_ANALYTICS_SHEET = 'Game Analytics'
 const PUZZLE_PROOF_WINDOW_MS = 24 * 60 * 60 * 1000
@@ -431,12 +431,7 @@ function upsertLeaderboardEntry(entry) {
   )
 
   if (idx >= 0) {
-    const existingScore = Number(rows[idx].score || 0)
-    const existingMoves = Number.isFinite(Number(rows[idx].moves)) ? Number(rows[idx].moves) : Number.MAX_SAFE_INTEGER
-    const incomingMoves = Number.isFinite(Number(entry.moves)) ? Number(entry.moves) : Number.MAX_SAFE_INTEGER
-    const shouldUpdate =
-      entry.score > existingScore ||
-      (entry.score === existingScore && incomingMoves < existingMoves)
+    const shouldUpdate = compareLeaderboardRows(entry, rows[idx]) < 0
 
     if (shouldUpdate) {
       rows[idx] = { ...rows[idx], ...entry, updatedAt: Date.now() }
@@ -611,9 +606,13 @@ function verifyIdentityAgainstRows(rows, xUsername, walletAddress) {
   const nw = normalizeWallet(walletAddress)
   const walletMatch = rows.find((row) => normalizeWallet(row.walletAddress) === nw)
   const xMatch = rows.find((row) => normalizeX(row.xUsername) === nx)
-  const exactPair = rows.find(
+  const exactPairRows = rows.filter(
     (row) => normalizeWallet(row.walletAddress) === nw && normalizeX(row.xUsername) === nx
   )
+  const exactPair = exactPairRows.reduce((best, row) => {
+    if (!best) return row
+    return compareLeaderboardRows(row, best) < 0 ? row : best
+  }, null)
 
   const hasConflict =
     (walletMatch && normalizeX(walletMatch.xUsername) !== nx) ||
@@ -1716,12 +1715,14 @@ function PlayToWL() {
         timestamp: payload.timestamp,
       })
       setVerifiedBestScore(Math.max(Number(identity.bestScore || 0), submittedScore))
+      setBestScore((prev) => Math.max(Number(prev || 0), submittedScore))
       const entry = {
         browserId,
         xUsername: payload.xUsername,
         walletAddress: payload.walletAddress,
         score: Number(submittedScore || 0),
         moves: Number(submittedMoves || 0),
+        timeSec: Number(submittedTime || 0),
       }
       setLeaderboard(upsertLeaderboardEntry(entry))
       try {
