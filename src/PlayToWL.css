@@ -227,6 +227,16 @@
   color: #ffffff;
 }
 
+.puzzle-tab:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.puzzle-tab:disabled:hover {
+  background: #21262d;
+  color: #8b949e;
+}
+
 .puzzle-board-card,
 .side-card {
   border: 1px solid #30363d;
@@ -1080,6 +1090,13 @@
   text-transform: uppercase;
 }
 
+.pregame-field-note {
+  margin: -2px 0 2px;
+  color: #8b949e;
+  font-size: 0.62rem;
+  line-height: 1.6;
+}
+
 .proof-form input {
   width: 100%;
   border: 1px solid #30363d;
@@ -1095,6 +1112,79 @@
 .proof-form input:focus {
   border-color: #58a6ff;
   box-shadow: 0 0 0 1px rgba(88, 166, 255, 0.3);
+}
+
+.victory-proof-card {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid rgba(57, 255, 20, 0.26);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(18, 33, 22, 0.96) 0%, rgba(10, 20, 14, 0.98) 100%);
+}
+
+.victory-proof-card-prominent {
+  margin: 12px 0 14px;
+  border-color: rgba(57, 255, 20, 0.45);
+  box-shadow:
+    0 14px 30px rgba(0, 0, 0, 0.24),
+    0 0 0 1px rgba(57, 255, 20, 0.08) inset;
+}
+
+.victory-proof-head {
+  margin-bottom: 10px;
+}
+
+.victory-proof-head h3 {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #f8fbff;
+}
+
+.victory-proof-copy {
+  margin: 0 0 12px;
+  color: #d5dde7;
+  font-size: 0.72rem;
+  line-height: 1.7;
+}
+
+.victory-proof-warning {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid rgba(248, 81, 73, 0.52);
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at top left, rgba(248, 81, 73, 0.18), transparent 55%),
+    linear-gradient(180deg, rgba(40, 15, 18, 0.96) 0%, rgba(24, 11, 13, 0.98) 100%);
+  color: #ffd7d5;
+  font-size: 0.7rem;
+  line-height: 1.65;
+  box-shadow: 0 0 0 1px rgba(248, 81, 73, 0.08) inset;
+}
+
+.victory-proof-meta {
+  margin: -4px 0 10px;
+  color: #8b949e;
+  font-size: 0.62rem;
+}
+
+.victory-proof-form {
+  gap: 10px;
+}
+
+.victory-proof-error {
+  margin: -2px 0 0;
+  color: #f85149;
+  font-size: 0.68rem;
+}
+
+.victory-proof-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.victory-proof-actions .puzzle-btn {
+  flex: 1 1 180px;
 }
 
 .proof-success {
@@ -1415,6 +1505,14 @@
   }
 
   .puzzle-modal-actions .puzzle-btn {
+    width: 100%;
+  }
+
+  .victory-proof-actions {
+    flex-direction: column;
+  }
+
+  .victory-proof-actions .puzzle-btn {
     width: 100%;
   }
 

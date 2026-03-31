@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { drawAgent, generateRandomPenguinTraits } from './penguin2d.js'
+import { generateRandomPenguinTraits, renderPenguin4k } from './penguin2d.js'
 import SiteNav from './SiteNav.jsx'
+import { extractTweetMetaFromLink } from './taskConfig.js'
 import './PlayToWL.css'
 
 const GRID = 3
@@ -16,12 +17,26 @@ const PUZZLE_QUALIFIED_TIME_KEY = 'arcadeQualifiedTime'
 const PUZZLE_LEADERBOARD_KEY = 'puzzleLeaderboard'
 const PUZZLE_BROWSER_ID_KEY = 'puzzleBrowserId'
 const PUZZLE_PLAYER_PROFILE_KEY = 'puzzlePlayerProfile'
+const PUZZLE_SUBMISSIONS_SHEET = 'Puzzle Submissions'
+const PUZZLE_PROFILES_SHEET = 'Puzzle Profiles'
 const REQUIRED_TWEET_CAPTION = 'Just Solved The @8bitpenguin_xyz puzzle'
 const REQUIRED_TWEET_CTA = 'Solve The Puzzle And Secure Whitelist: https://8bitpenguins.xyz/play-to-wl'
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxlV10JU23c6vuhwge81fSKZg_QJfJ6UyxPw7CBdHxvzTy7MyxZGFKPLpAh8hrZJrd3/exec'
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwOWJFjbVVeQtN81LaLZsvc8gEqwD2CFIzsUBBLHZ4GU2S_OD-6JXE7-0ZEdHLoEFOu/exec'
 const LEADERBOARD_SHEET = 'Leaderboard'
+const GAME_ANALYTICS_SHEET = 'Game Analytics'
+const PUZZLE_PROOF_WINDOW_MS = 24 * 60 * 60 * 1000
 const LEADERBOARD_PAGE_SIZE = 100
 const LEADERBOARD_FETCH_LIMIT = 1000
+const TWITTER_USERNAME_PATTERN = /^[A-Za-z0-9_]{1,15}$/
+const GENERATE_RENDER_OPTIONS = {
+  logicalSize: 40,
+  offsetX: 0,
+  offsetY: 0,
+  spriteScale: 0.75,
+  outline: true,
+  innerOutline: true,
+  outerOutline: false,
+}
 
 function isTouchDevice() {
   if (typeof window === 'undefined') return false
@@ -39,10 +54,8 @@ async function buildPuzzleReferenceImage() {
     // Continue with fallback font if font API is unavailable.
   }
 
-  const canvas = document.createElement('canvas')
   const traits = generateRandomPenguinTraits()
-  drawAgent(traits, canvas, 2048)
-  return canvas.toDataURL('image/png')
+  return renderPenguin4k(traits, GENERATE_RENDER_OPTIONS).toDataURL('image/png')
 }
 
 function isSolvable(arr) {
@@ -119,12 +132,83 @@ function normalizeX(v) {
   return String(v || '').trim().replace(/^@+/, '').toLowerCase()
 }
 
+function normalizeTweetLink(value) {
+  const raw = String(value || '').trim()
+  if (!raw) return ''
+
+  try {
+    const url = new URL(raw)
+    url.hostname = url.hostname.toLowerCase()
+
+    const parts = url.pathname.split('/').filter(Boolean)
+    const statusIndex = parts.findIndex((part) => part.toLowerCase() === 'status')
+    if (statusIndex >= 1) {
+      parts[statusIndex - 1] = String(parts[statusIndex - 1] || '').toLowerCase()
+    }
+
+    url.pathname = `/${parts.join('/')}`
+    return url.toString()
+  } catch {
+    return raw
+  }
+}
+
+function extractUsernameFromHtml(html) {
+  const match = String(html || '').match(/https:\/\/(?:x|twitter)\.com\/([A-Za-z0-9_]{1,15})\/status\/\d+/i)
+  return match?.[1] || ''
+}
+
+function usernamesMatch(linkUsername, submittedUsername) {
+  const normalizedLinkUsername = String(linkUsername || '').trim().replace(/^@+/, '').toLowerCase()
+  const normalizedSubmittedUsername = String(submittedUsername || '').trim().replace(/^@+/, '').toLowerCase()
+  if (!normalizedLinkUsername) return true
+  return normalizedLinkUsername === normalizedSubmittedUsername
+}
+
+async function verifyLiveTweetLink(tweetLink) {
+  const normalizedTweetLink = normalizeTweetLink(tweetLink)
+  const endpoint = `https://publish.x.com/oembed?omit_script=1&url=${encodeURIComponent(normalizedTweetLink)}`
+  const response = await fetch(endpoint)
+  const payload = await response.json().catch(() => null)
+
+  if (!response.ok || !payload) {
+    return {
+      ok: false,
+      error: String(payload?.error || `HTTP ${response.status}`),
+      authorUsername: '',
+    }
+  }
+
+  let authorUsername = ''
+  try {
+    if (typeof payload.author_url === 'string') {
+      const authorUrl = new URL(payload.author_url)
+      const candidate = authorUrl.pathname.split('/').filter(Boolean)[0] || ''
+      if (TWITTER_USERNAME_PATTERN.test(candidate)) {
+        authorUsername = candidate
+      }
+    }
+  } catch {
+    // Ignore malformed author URLs from the oEmbed payload.
+  }
+
+  if (!authorUsername && typeof payload.html === 'string') {
+    authorUsername = extractUsernameFromHtml(payload.html)
+  }
+
+  return { ok: true, authorUsername }
+}
+
 function getBrowserId() {
   const existing = localStorage.getItem(PUZZLE_BROWSER_ID_KEY)
   if (existing) return existing
   const next = `b${Math.random().toString(36).slice(2, 10)}`
   localStorage.setItem(PUZZLE_BROWSER_ID_KEY, next)
   return next
+}
+
+function createAnalyticsEventId(prefix) {
+  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`
 }
 
 function loadLeaderboard() {
@@ -177,13 +261,91 @@ function loadPlayerProfile() {
     const parsed = JSON.parse(localStorage.getItem(PUZZLE_PLAYER_PROFILE_KEY) || '{}')
     const xUsername = String(parsed?.xUsername || '').trim()
     const walletAddress = String(parsed?.walletAddress || '').trim()
+    const tweetLink = normalizeTweetLink(parsed?.tweetLink || '')
     return {
       xUsername,
       walletAddress,
+      tweetLink,
       ready: xUsername.length >= 2 && validateEvmAddress(walletAddress),
     }
   } catch {
-    return { xUsername: '', walletAddress: '', ready: false }
+    return { xUsername: '', walletAddress: '', tweetLink: '', ready: false }
+  }
+}
+
+function loadPuzzleSubmission() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(PUZZLE_SUBMISSION_KEY) || '{}')
+    const walletAddress = String(parsed?.walletAddress || '').trim()
+    const xUsername = String(parsed?.xUsername || '').trim()
+    const tweetLink = normalizeTweetLink(parsed?.tweetLink || '')
+    const duplicate = Boolean(parsed?.duplicate)
+    const score = Number(parsed?.score || parsed?.currentScore || 0)
+    const moves = Number(parsed?.moves || 0)
+    const time = Number(parsed?.time || parsed?.timeSec || 0)
+    const timestamp = Number(parsed?.timestamp || 0)
+
+    return {
+      exists: Boolean(walletAddress || xUsername || tweetLink || duplicate || score || timestamp),
+      walletAddress,
+      xUsername,
+      tweetLink,
+      duplicate,
+      score,
+      moves,
+      time,
+      timestamp,
+    }
+  } catch {
+    return {
+      exists: false,
+      walletAddress: '',
+      xUsername: '',
+      tweetLink: '',
+      duplicate: false,
+      score: 0,
+      moves: 0,
+      time: 0,
+      timestamp: 0,
+    }
+  }
+}
+
+function puzzleSubmissionMatchesProfile(submission, xUsername, walletAddress) {
+  const storedWallet = normalizeWallet(submission?.walletAddress)
+  const storedX = normalizeX(submission?.xUsername)
+  const incomingWallet = normalizeWallet(walletAddress)
+  const incomingX = normalizeX(xUsername)
+
+  if (storedWallet && incomingWallet && storedWallet === incomingWallet) return true
+  if (storedX && incomingX && storedX === incomingX) return true
+  return false
+}
+
+function buildLocalPuzzleProofStatus(profile, submission) {
+  const matches = puzzleSubmissionMatchesProfile(submission, profile?.xUsername, profile?.walletAddress)
+  const tweetLink = matches ? normalizeTweetLink(submission?.tweetLink || '') : ''
+  const timestamp = matches ? Number(submission?.timestamp || 0) : 0
+  const submitted = Boolean(tweetLink)
+
+  return {
+    ok: false,
+    source: 'local',
+    submissionExists: matches && Boolean(submission?.exists),
+    submitted,
+    proofState: submitted ? 'submitted' : 'unknown',
+    tweetLink,
+    tweetId: extractTweetMetaFromLink(tweetLink).tweetId,
+    xUsername: matches ? String(submission?.xUsername || profile?.xUsername || '') : String(profile?.xUsername || ''),
+    walletAddress: matches ? String(submission?.walletAddress || profile?.walletAddress || '') : String(profile?.walletAddress || ''),
+    currentScore: matches ? Number(submission?.score || 0) : 0,
+    moves: matches ? Number(submission?.moves || 0) : 0,
+    time: matches ? Number(submission?.time || 0) : 0,
+    qualifiedAt: timestamp,
+    submittedAt: timestamp,
+    proofDeadlineTs: timestamp > 0 ? timestamp + PUZZLE_PROOF_WINDOW_MS : 0,
+    msRemaining: 0,
+    expired: false,
   }
 }
 
@@ -198,6 +360,7 @@ function pruneLegacyPuzzleStorage() {
       JSON.stringify({
         walletAddress: String(parsed?.walletAddress || ''),
         xUsername: String(parsed?.xUsername || ''),
+        tweetLink: normalizeTweetLink(parsed?.tweetLink || ''),
         score: Number(parsed?.score || parsed?.currentScore || 0),
         moves: Number(parsed?.moves || 0),
         time: Number(parsed?.time || parsed?.timeSec || 0),
@@ -306,6 +469,104 @@ async function syncLeaderboardEntry(entry) {
   })
 }
 
+async function sendGameAnalyticsEvent(event) {
+  const payload = {
+    action: 'game_analytics_event',
+    sheetName: GAME_ANALYTICS_SHEET,
+    eventType: String(event?.eventType || ''),
+    browserId: String(event?.browserId || ''),
+    clientSessionId: String(event?.clientSessionId || ''),
+    runId: String(event?.runId || ''),
+    xUsername: String(event?.xUsername || ''),
+    walletAddress: String(event?.walletAddress || ''),
+    attemptNumber: Number(event?.attemptNumber || 0),
+    score: Number(event?.score || 0),
+    bestScore: Number(event?.bestScore || 0),
+    moves: Number(event?.moves || 0),
+    timeSec: Number(event?.timeSec || event?.time || 0),
+    qualified: Boolean(event?.qualified),
+    outcome: String(event?.outcome || ''),
+    isReturningProfile: Boolean(event?.isReturningProfile),
+    timestamp: Number(event?.timestamp || Date.now()),
+  }
+
+  try {
+    await fetch(GOOGLE_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(payload),
+    })
+  } catch {
+    // Analytics must never block gameplay.
+  }
+}
+
+async function fetchPuzzleProofStatus({ xUsername = '', walletAddress = '' }) {
+  const query = new URLSearchParams({
+    action: 'puzzle_proof_status',
+    puzzleSheetName: PUZZLE_SUBMISSIONS_SHEET,
+    analyticsSheetName: GAME_ANALYTICS_SHEET,
+    xUsername: String(xUsername || '').trim(),
+    walletAddress: String(walletAddress || '').trim(),
+  })
+
+  const response = await fetch(`${GOOGLE_SCRIPT_URL}?${query.toString()}`)
+  const payload = await response.json().catch(() => null)
+
+  if (!response.ok || payload?.ok === false || !payload || typeof payload.proofState !== 'string') {
+    return {
+      ok: false,
+      error: String(payload?.error || payload?.errorCode || 'proof_status_lookup_failed'),
+    }
+  }
+
+  return {
+    ok: true,
+    source: 'remote',
+    submissionExists: Boolean(payload.submissionExists),
+    submitted: Boolean(payload.submitted),
+    proofState: String(payload.proofState || 'unknown'),
+    tweetLink: normalizeTweetLink(payload.tweetLink || ''),
+    tweetId: String(payload.tweetId || ''),
+    xUsername: String(payload.xUsername || ''),
+    walletAddress: String(payload.walletAddress || ''),
+    currentScore: Number(payload.currentScore || 0),
+    moves: Number(payload.moves || 0),
+    time: Number(payload.time || 0),
+    qualifiedAt: Number(payload.qualifiedAt || 0),
+    submittedAt: Number(payload.submittedAt || payload.timestamp || 0),
+    proofDeadlineTs: Number(payload.proofDeadlineTs || 0),
+    msRemaining: Number(payload.msRemaining || 0),
+    expired: Boolean(payload.expired),
+  }
+}
+
+async function submitPuzzleProfileRecord({ xUsername, walletAddress, tweetLink, tweetId, verifiedTweetUsername }) {
+  const payload = {
+    sheetName: PUZZLE_PROFILES_SHEET,
+    eventType: 'puzzle_profile',
+    xUsername,
+    walletAddress,
+    tweetLink,
+    tweetId,
+    verifiedTweetUsername,
+    timestamp: Date.now(),
+  }
+
+  const response = await fetch(GOOGLE_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify(payload),
+  })
+  const responseData = await response.json().catch(() => null)
+
+  if (!response.ok || responseData?.ok === false) {
+    throw new Error(String(responseData?.error || 'Failed to save profile tweet'))
+  }
+
+  return responseData
+}
+
 function verifyIdentityAgainstRows(rows, xUsername, walletAddress) {
   const nx = normalizeX(xUsername)
   const nw = normalizeWallet(walletAddress)
@@ -328,6 +589,8 @@ function verifyIdentityAgainstRows(rows, xUsername, walletAddress) {
 
 function PlayToWL() {
   const initialProfile = loadPlayerProfile()
+  const initialSubmission = loadPuzzleSubmission()
+  const initialProofStatus = buildLocalPuzzleProofStatus(initialProfile, initialSubmission)
   const [browserId] = useState(() => getBrowserId())
   const [tiles, setTiles] = useState(() => shuffleTiles())
   const [slideMove, setSlideMove] = useState(null)
@@ -345,9 +608,15 @@ function PlayToWL() {
   const [qualifiedImage, setQualifiedImage] = useState('')
   const [xUsername, setXUsername] = useState(() => initialProfile.xUsername)
   const [walletAddress, setWalletAddress] = useState(() => initialProfile.walletAddress)
+  const [profileTweetLink, setProfileTweetLink] = useState(() => initialProfile.tweetLink || '')
   const [hasProfile, setHasProfile] = useState(() => initialProfile.ready)
+  const [isStartingGame, setIsStartingGame] = useState(false)
   const [isSubmittingProof, setIsSubmittingProof] = useState(false)
-  const [alreadySubmittedProof, setAlreadySubmittedProof] = useState(() => Boolean(localStorage.getItem(PUZZLE_SUBMISSION_KEY)))
+  const [submissionRecord, setSubmissionRecord] = useState(() => initialSubmission)
+  const [proofStatus, setProofStatus] = useState(() => initialProofStatus)
+  const [isLoadingProofStatus, setIsLoadingProofStatus] = useState(false)
+  const [victoryTweetLinkInput, setVictoryTweetLinkInput] = useState(() => initialSubmission.tweetLink)
+  const [victoryTweetError, setVictoryTweetError] = useState('')
   const [modal, setModal] = useState({ open: false, title: '', message: '', tone: 'info', actionLabel: '' })
   const [modalAction, setModalAction] = useState(null)
   const [qualifiedScore, setQualifiedScore] = useState(() => Number(localStorage.getItem('arcadeQualifiedScore') || 0))
@@ -361,6 +630,9 @@ function PlayToWL() {
   const [leaderboardPage, setLeaderboardPage] = useState(1)
   const [verifiedBestScore, setVerifiedBestScore] = useState(0)
   const [winConfetti, setWinConfetti] = useState([])
+  const clientSessionIdRef = useRef(createAnalyticsEventId('session'))
+  const attemptCounterRef = useRef(0)
+  const activeRunRef = useRef({ runId: '', attemptNumber: 0, finished: false })
 
   const solved = useMemo(() => tiles.every((v, idx) => v === idx), [tiles])
   const score = useMemo(() => computeScore(moves, timeSec, { includeBonuses: false }), [moves, timeSec])
@@ -405,6 +677,45 @@ function PlayToWL() {
     setWinConfetti(pieces)
     window.setTimeout(() => setWinConfetti([]), 2600)
   }
+
+  const trackGameEvent = useCallback((eventType, details = {}) => {
+    sendGameAnalyticsEvent({
+      eventType,
+      browserId,
+      clientSessionId: clientSessionIdRef.current,
+      xUsername,
+      walletAddress,
+      ...details,
+    })
+  }, [browserId, walletAddress, xUsername])
+
+  const beginTrackedRun = useCallback(() => {
+    if (activeRunRef.current.runId && !activeRunRef.current.finished) {
+      return activeRunRef.current
+    }
+
+    attemptCounterRef.current += 1
+    const nextRun = {
+      runId: createAnalyticsEventId('run'),
+      attemptNumber: attemptCounterRef.current,
+      finished: false,
+    }
+    activeRunRef.current = nextRun
+    trackGameEvent('run_started', nextRun)
+    return nextRun
+  }, [trackGameEvent])
+
+  const finishTrackedRun = useCallback((details = {}) => {
+    const currentRun = activeRunRef.current
+    if (!currentRun.runId || currentRun.finished) return
+    activeRunRef.current = { ...currentRun, finished: true }
+    trackGameEvent('run_completed', {
+      runId: currentRun.runId,
+      attemptNumber: currentRun.attemptNumber,
+      ...details,
+    })
+  }, [trackGameEvent])
+
   const scoreAlertLevel = useMemo(() => {
     const activeAttempt = hasStarted && gameState === 'playing'
     if (!activeAttempt) return 'none'
@@ -433,8 +744,22 @@ function PlayToWL() {
     () => Math.max(Number(bestScore || 0), Number(verifiedBestScore || 0)),
     [bestScore, verifiedBestScore]
   )
+  const proofState = String(proofStatus?.proofState || 'unknown')
+  const proofExpired = Boolean(proofStatus?.expired) || proofState === 'expired'
+  const alreadySubmittedProof = proofState === 'submitted'
+  const savedVictoryTweetLink = useMemo(() => {
+    if (!alreadySubmittedProof) return ''
+    return normalizeTweetLink(proofStatus?.tweetLink || submissionRecord?.tweetLink || '')
+  }, [alreadySubmittedProof, proofStatus?.tweetLink, submissionRecord?.tweetLink])
+  const needsVictoryTweet = hasProfile && bestReferenceScore >= PUZZLE_TARGET_SCORE && !savedVictoryTweetLink
   const projectedDeltaToBest = projectedFinalScore - bestReferenceScore
   const boardStatus = useMemo(() => {
+    if (proofExpired) {
+      return { label: 'Proof Expired', tone: 'warn' }
+    }
+    if (needsVictoryTweet) {
+      return { label: 'Proof Required', tone: 'warn' }
+    }
     if (gameState === 'won') {
       return qualified ? { label: 'Qualified', tone: 'ok' } : { label: 'Solved', tone: 'warn' }
     }
@@ -454,7 +779,7 @@ function PlayToWL() {
       return { label: 'Risk Zone', tone: 'warn' }
     }
     return { label: 'On Pace', tone: '' }
-  }, [gameState, qualified, hasStarted, projectedFinalScore, bestReferenceScore])
+  }, [bestReferenceScore, gameState, hasStarted, needsVictoryTweet, projectedFinalScore, proofExpired, qualified])
   const rivalSnapshot = useMemo(() => {
     if (!Array.isArray(leaderboard) || leaderboard.length === 0 || !userRank) return { above: null, below: null }
     return {
@@ -486,6 +811,12 @@ function PlayToWL() {
     }
   }, [leaderboardPage, totalLeaderboardPages])
 
+  useEffect(() => {
+    if (needsVictoryTweet && activeTab !== 'game') {
+      setActiveTab('game')
+    }
+  }, [activeTab, needsVictoryTweet])
+
   const openModal = (title, message, tone = 'info', action = null) => {
     setModal({
       open: true,
@@ -501,6 +832,72 @@ function PlayToWL() {
     setModal({ open: false, title: '', message: '', tone: 'info', actionLabel: '' })
     setModalAction(null)
   }
+
+  const persistPuzzleSubmission = useCallback((updates = {}) => {
+    setSubmissionRecord((prev) => {
+      const next = {
+        ...prev,
+        ...updates,
+        walletAddress: String(updates.walletAddress ?? prev.walletAddress ?? '').trim(),
+        xUsername: String(updates.xUsername ?? prev.xUsername ?? '').trim(),
+        tweetLink: normalizeTweetLink(updates.tweetLink ?? prev.tweetLink ?? ''),
+        duplicate: Boolean(updates.duplicate ?? prev.duplicate),
+        score: Number(updates.score ?? prev.score ?? 0),
+        moves: Number(updates.moves ?? prev.moves ?? 0),
+        time: Number(updates.time ?? prev.time ?? 0),
+        timestamp: Number(updates.timestamp ?? prev.timestamp ?? Date.now()),
+      }
+      next.exists = Boolean(next.walletAddress || next.xUsername || next.tweetLink || next.duplicate || next.score || next.timestamp)
+      try {
+        localStorage.setItem(PUZZLE_SUBMISSION_KEY, JSON.stringify(next))
+      } catch {
+        // Ignore local storage write failures and keep runtime state.
+      }
+      return next
+    })
+  }, [])
+
+  const syncProofStatus = useCallback(async () => {
+    if (!hasProfile || !xUsername || !validateEvmAddress(walletAddress)) {
+      const fallback = buildLocalPuzzleProofStatus({ xUsername, walletAddress }, loadPuzzleSubmission())
+      setProofStatus(fallback)
+      return fallback
+    }
+
+    setIsLoadingProofStatus(true)
+    try {
+      const remoteStatus = await fetchPuzzleProofStatus({ xUsername, walletAddress })
+      if (remoteStatus.ok) {
+        setProofStatus(remoteStatus)
+        if (remoteStatus.submissionExists || remoteStatus.submitted) {
+          const nextSubmission = {
+            exists: true,
+            walletAddress: remoteStatus.walletAddress || walletAddress,
+            xUsername: remoteStatus.xUsername || xUsername,
+            tweetLink: remoteStatus.tweetLink || '',
+            duplicate: false,
+            score: Number(remoteStatus.currentScore || 0),
+            moves: Number(remoteStatus.moves || 0),
+            time: Number(remoteStatus.time || 0),
+            timestamp: Number(remoteStatus.submittedAt || remoteStatus.qualifiedAt || Date.now()),
+          }
+          setSubmissionRecord(nextSubmission)
+          try {
+            localStorage.setItem(PUZZLE_SUBMISSION_KEY, JSON.stringify(nextSubmission))
+          } catch {
+            // Ignore local storage write failures and keep runtime state.
+          }
+        }
+        return remoteStatus
+      }
+
+      const fallback = buildLocalPuzzleProofStatus({ xUsername, walletAddress }, loadPuzzleSubmission())
+      setProofStatus(fallback)
+      return fallback
+    } finally {
+      setIsLoadingProofStatus(false)
+    }
+  }, [hasProfile, walletAddress, xUsername])
 
   const refreshLeaderboard = useCallback(async (silent = false) => {
     setIsLeaderboardLoading(true)
@@ -554,13 +951,21 @@ function PlayToWL() {
     if (!hasStarted) return
     if (gameState !== 'playing') return
     if (score >= PUZZLE_TARGET_SCORE) return
+    finishTrackedRun({
+      outcome: 'score_drop',
+      score,
+      bestScore,
+      moves,
+      timeSec,
+      qualified: false,
+    })
     setSlideMove(null)
     setGameState('lost')
     openModal('Score Dropped', `Score is below ${PUZZLE_TARGET_SCORE}. Click Try Again to restart.`, 'error', {
       label: 'Try Again',
       onClick: resetGame,
     })
-  }, [score, hasStarted, gameState])
+  }, [bestScore, finishTrackedRun, gameState, hasStarted, moves, score, timeSec])
 
   useEffect(() => {
     if (!solved || gameState === 'won' || gameState === 'lost') return
@@ -569,11 +974,20 @@ function PlayToWL() {
     const finalScore = computeScore(moves, timeSec, { includeBonuses: true })
     const nextBest = Math.max(bestScore, finalScore)
     const solvedImage = referenceImage || IMAGE_SRC
+    const runQualified = finalScore >= PUZZLE_TARGET_SCORE
 
     setGameState('won')
     setBestScore(nextBest)
     localStorage.setItem('arcadeBestScore', String(nextBest))
-    if (finalScore >= PUZZLE_TARGET_SCORE) {
+    finishTrackedRun({
+      outcome: runQualified ? 'qualified' : 'completed_unqualified',
+      score: finalScore,
+      bestScore: nextBest,
+      moves,
+      timeSec,
+      qualified: runQualified,
+    })
+    if (runQualified) {
       const previousHigh = Math.max(Number(bestScore || 0), Number(verifiedBestScore || 0))
       const hasPreviousHigh = previousHigh > 0
       const beatBest = finalScore > previousHigh
@@ -587,15 +1001,16 @@ function PlayToWL() {
       setQualifiedTime(timeSec)
       setQualifiedImage(solvedImage)
       window.setTimeout(() => {
-        syncRunToLeaderboard(finalScore, moves, timeSec)
-        submitQualifiedProof(finalScore, moves, timeSec)
+        if (savedVictoryTweetLink && !alreadySubmittedProof) {
+          submitQualifiedProof(finalScore, moves, timeSec, savedVictoryTweetLink)
+        }
         openModal(
           'Qualified',
           !hasPreviousHigh
-            ? `Final score ${finalScore}. Qualified for whitelist. Post your victory now.`
+            ? `Final score ${finalScore}. Qualified for whitelist. Post your victory now${savedVictoryTweetLink ? '.' : ' and paste the tweet link below.'}`
             : beatBest
-              ? `Final score ${finalScore}. New personal best (previous ${previousHigh}). Post your victory now.`
-              : `Final score ${finalScore}. Qualified for whitelist, but your best score remains ${previousHigh}. Post your victory now.`,
+              ? `Final score ${finalScore}. New personal best (previous ${previousHigh}). Post your victory now${savedVictoryTweetLink ? '.' : ' and paste the tweet link below.'}`
+              : `Final score ${finalScore}. Qualified for whitelist, but your best score remains ${previousHigh}. Post your victory now${savedVictoryTweetLink ? '.' : ' and paste the tweet link below.'}`,
           'success',
           {
             label: 'Tweet Victory',
@@ -618,7 +1033,7 @@ function PlayToWL() {
         }
       }, 0)
     }
-  }, [solved, gameState, moves, timeSec, bestScore, referenceImage, browserId, verifiedBestScore])
+  }, [alreadySubmittedProof, bestScore, browserId, finishTrackedRun, gameState, moves, referenceImage, savedVictoryTweetLink, solved, timeSec, verifiedBestScore])
   /* eslint-enable react-hooks/exhaustive-deps */
 
   useEffect(() => {
@@ -640,6 +1055,32 @@ function PlayToWL() {
       localStorage.setItem('arcadeQualifiedScore', String(bestReferenceScore))
     }
   }, [bestReferenceScore, qualified, qualifiedScore])
+
+  useEffect(() => {
+    let cancelled = false
+
+    const run = async () => {
+      const nextStatus = await syncProofStatus()
+      if (cancelled || !nextStatus) return
+    }
+
+    run()
+    return () => {
+      cancelled = true
+    }
+  }, [syncProofStatus])
+
+  useEffect(() => {
+    if (savedVictoryTweetLink) {
+      setVictoryTweetLinkInput(savedVictoryTweetLink)
+      setVictoryTweetError('')
+      return
+    }
+    if (hasProfile && !alreadySubmittedProof) {
+      setVictoryTweetLinkInput('')
+      setVictoryTweetError('')
+    }
+  }, [alreadySubmittedProof, hasProfile, savedVictoryTweetLink])
 
   useEffect(() => {
     let cancelled = false
@@ -728,6 +1169,10 @@ function PlayToWL() {
   }
 
   const handlePlayAgain = async () => {
+    if (needsVictoryTweet) {
+      openModal('Proof Required', 'Submit your victory tweet link before starting another run.', 'error')
+      return
+    }
     if (slideMove) return
     const nextReferenceImage = await buildPuzzleReferenceImage()
     setReferenceImage(nextReferenceImage)
@@ -746,11 +1191,23 @@ function PlayToWL() {
     setHasStarted(false)
     setMoves(0)
     setTimeSec(0)
+    finishTrackedRun({
+      outcome: 'run_reset',
+      score,
+      bestScore,
+      moves,
+      timeSec,
+      qualified: false,
+    })
     openModal('Run Reset', `${reason}. Start a new run now.`, 'info')
     solvedRunHandledRef.current = false
   }
 
   const handleShuffle = () => {
+    if (needsVictoryTweet) {
+      openModal('Proof Required', 'Submit your victory tweet link before starting another run.', 'error')
+      return
+    }
     if (gameState === 'playing' && (moves > 0 || timeSec > 0)) {
       failRun('Run not completed')
       return
@@ -790,6 +1247,54 @@ function PlayToWL() {
     openModal('Tweet Ready', 'Tweet text opened and image downloaded. Attach image if it did not auto-paste.', 'info')
   }
 
+  const handleVictoryTweetSubmit = async (event) => {
+    event.preventDefault()
+    if (isSubmittingProof) return
+
+    const normalizedTweetLink = normalizeTweetLink(victoryTweetLinkInput)
+    const { tweetId, username: linkUsername } = extractTweetMetaFromLink(normalizedTweetLink)
+    if (!tweetId) {
+      setVictoryTweetError('Enter a valid X status link for your victory tweet.')
+      return
+    }
+
+    const normalizedX = normalizeX(xUsername)
+    if (linkUsername && normalizedX && linkUsername.toLowerCase() !== normalizedX) {
+      setVictoryTweetError('This tweet link does not match your saved X username.')
+      return
+    }
+
+    setVictoryTweetError('')
+    setVictoryTweetLinkInput(normalizedTweetLink)
+
+    const submissionDetails = {
+      walletAddress: walletAddress.trim(),
+      xUsername: xUsername.trim(),
+      tweetLink: normalizedTweetLink,
+      score: Number(qualifiedScore || bestReferenceScore || score || 0),
+      moves: Number(qualifiedMoves || moves || 0),
+      time: Number(qualifiedTime || timeSec || 0),
+      timestamp: Date.now(),
+    }
+
+    if (alreadySubmittedProof) {
+      persistPuzzleSubmission(submissionDetails)
+      openModal('Victory Tweet Saved', 'Victory tweet saved on this device. We will not ask for it again here.', 'success')
+      return
+    }
+
+    const didSubmit = await submitQualifiedProof(
+      submissionDetails.score,
+      submissionDetails.moves,
+      submissionDetails.time,
+      normalizedTweetLink
+    )
+
+    if (didSubmit) {
+      openModal('Submission Complete', 'Victory tweet captured and puzzle proof submitted.', 'success')
+    }
+  }
+
   const handleProfileStart = async (event) => {
     event.preventDefault()
     const normalizedX = xUsername.trim().replace(/^@+/, '')
@@ -802,48 +1307,104 @@ function PlayToWL() {
       return
     }
 
-    let rows = leaderboard
+    setIsStartingGame(true)
     try {
-      const remoteRows = await fetchGoogleLeaderboard()
-      if (remoteRows.length > 0) {
-        rows = remoteRows
-        setLeaderboard(remoteRows)
-        saveLeaderboard(remoteRows)
-        setLastLeaderboardSync(Date.now())
+      let rows = leaderboard
+      try {
+        const remoteRows = await fetchGoogleLeaderboard()
+        if (remoteRows.length > 0) {
+          rows = remoteRows
+          setLeaderboard(remoteRows)
+          saveLeaderboard(remoteRows)
+          setLastLeaderboardSync(Date.now())
+        }
+      } catch {
+        // Use cached rows when remote check is unavailable.
       }
-    } catch {
-      // Use cached rows when remote check is unavailable.
-    }
 
-    const identity = verifyIdentityAgainstRows(rows, normalizedX, walletAddress)
-    if (identity.hasConflict) {
-      openModal(
-        'Already Existed',
-        'This wallet address or X username already exists with different details. Use the original matching wallet + X pair.',
-        'error'
-      )
-      return
-    }
+      const identity = verifyIdentityAgainstRows(rows, normalizedX, walletAddress)
+      if (identity.hasConflict) {
+        openModal(
+          'Already Existed',
+          'This wallet address or X username already exists with different details. Use the original matching wallet + X pair.',
+          'error'
+        )
+        return
+      }
 
-    const profile = {
-      xUsername: normalizedX.startsWith('@') ? normalizedX : `@${normalizedX}`,
-      walletAddress: walletAddress.trim(),
-    }
-    localStorage.setItem(PUZZLE_PLAYER_PROFILE_KEY, JSON.stringify(profile))
-    setXUsername(profile.xUsername)
-    setWalletAddress(profile.walletAddress)
-    setHasProfile(true)
-    setVerifiedBestScore(identity.bestScore)
-    setBestScore(identity.bestScore)
-    localStorage.setItem('arcadeBestScore', String(identity.bestScore))
-    if (identity.exactPair) {
-      openModal(
-        'Welcome Back',
-        `Welcome back. Your best verified score is ${identity.bestScore}. We will update it only when you beat this score.`,
-        'success'
-      )
-    } else {
-      openModal('Profile Saved', 'Details saved. You can now play the puzzle.', 'success')
+      const normalizedProfileTweetLink = normalizeTweetLink(profileTweetLink)
+      if (!identity.exactPair) {
+        const { tweetId, username: linkUsername } = extractTweetMetaFromLink(normalizedProfileTweetLink)
+        if (!tweetId) {
+          openModal('Tweet Link Required', 'New users must enter a valid X status link before the profile can be saved.', 'error')
+          return
+        }
+
+        if (linkUsername && !usernamesMatch(linkUsername, normalizedX)) {
+          openModal('Username Mismatch', 'The X username inside that tweet link does not match the username you entered.', 'error')
+          return
+        }
+
+        const liveTweet = await verifyLiveTweetLink(normalizedProfileTweetLink)
+        if (!liveTweet.ok) {
+          openModal('Tweet Check Failed', 'That X link could not be verified as a live post. Enter a working tweet link and try again.', 'error')
+          return
+        }
+
+        const resolvedTweetUsername = liveTweet.authorUsername || linkUsername
+        if (!resolvedTweetUsername) {
+          openModal('Tweet Check Failed', 'Could not confirm the username on that X link. Use a direct status link from your account and try again.', 'error')
+          return
+        }
+
+        if (!usernamesMatch(resolvedTweetUsername, normalizedX)) {
+          openModal('Username Mismatch', 'That live tweet belongs to a different X account. Use a tweet link from the same username you entered.', 'error')
+          return
+        }
+
+        try {
+          await submitPuzzleProfileRecord({
+            xUsername: normalizedX.startsWith('@') ? normalizedX : `@${normalizedX}`,
+            walletAddress: walletAddress.trim(),
+            tweetLink: normalizedProfileTweetLink,
+            tweetId,
+            verifiedTweetUsername: resolvedTweetUsername.startsWith('@') ? resolvedTweetUsername : `@${resolvedTweetUsername}`,
+          })
+        } catch (error) {
+          openModal('Profile Save Failed', String(error?.message || 'Could not save your tweet to the sheet. Try again.'), 'error')
+          return
+        }
+      }
+
+      const profile = {
+        xUsername: normalizedX.startsWith('@') ? normalizedX : `@${normalizedX}`,
+        walletAddress: walletAddress.trim(),
+        tweetLink: identity.exactPair ? normalizeTweetLink(initialProfile.tweetLink || profileTweetLink) : normalizedProfileTweetLink,
+      }
+      localStorage.setItem(PUZZLE_PLAYER_PROFILE_KEY, JSON.stringify(profile))
+      setXUsername(profile.xUsername)
+      setWalletAddress(profile.walletAddress)
+      setProfileTweetLink(profile.tweetLink)
+      setHasProfile(true)
+      setVerifiedBestScore(identity.bestScore)
+      setBestScore(identity.bestScore)
+      localStorage.setItem('arcadeBestScore', String(identity.bestScore))
+      trackGameEvent('profile_saved', {
+        outcome: identity.exactPair ? 'returning_profile' : 'new_profile',
+        bestScore: identity.bestScore,
+        isReturningProfile: identity.exactPair || identity.bestScore > 0,
+      })
+      if (identity.exactPair) {
+        openModal(
+          'Welcome Back',
+          `Welcome back. Your best verified score is ${identity.bestScore}. We will update it only when you beat this score.`,
+          'success'
+        )
+      } else {
+        openModal('Profile Saved', 'Details saved. You can now play the puzzle.', 'success')
+      }
+    } finally {
+      setIsStartingGame(false)
     }
   }
 
@@ -856,11 +1417,14 @@ function PlayToWL() {
     link.click()
   }
 
-  const submitQualifiedProof = async (finalScore, submittedMoves, submittedTime) => {
-    if (alreadySubmittedProof) return
+  const submitQualifiedProof = async (finalScore, submittedMoves, submittedTime, tweetLink) => {
+    if (alreadySubmittedProof) return false
     const normalizedX = xUsername.trim().replace(/^@+/, '')
-    if (!normalizedX || normalizedX.length < 2 || !validateEvmAddress(walletAddress)) return
+    if (!normalizedX || normalizedX.length < 2 || !validateEvmAddress(walletAddress)) return false
     const submittedScore = Number(finalScore || 0)
+    const normalizedTweetLink = normalizeTweetLink(tweetLink)
+    const { tweetId } = extractTweetMetaFromLink(normalizedTweetLink)
+    if (!tweetId) return false
     let rows = leaderboard
     try {
       const remoteRows = await fetchGoogleLeaderboard()
@@ -881,15 +1445,16 @@ function PlayToWL() {
         'This wallet address or X username already exists with different details. Submission is blocked.',
         'error'
       )
-      return
+      return false
     }
 
     const payload = {
-      sheetName: 'Puzzle Submissions',
+      sheetName: PUZZLE_SUBMISSIONS_SHEET,
       eventType: 'puzzle_submission',
       xUsername: normalizedX.startsWith('@') ? normalizedX : `@${normalizedX}`,
       walletAddress: walletAddress.trim(),
-      tweetLink: '',
+      tweetLink: normalizedTweetLink,
+      tweetId,
       requiredCaption: REQUIRED_TWEET_CAPTION,
       bestScore,
       currentScore: submittedScore,
@@ -916,30 +1481,41 @@ function PlayToWL() {
       }
 
       const apiError = String(responseData?.errorCode || responseData?.error || '').toLowerCase()
-        const duplicateWallet = apiError.includes('duplicate_wallet') || apiError.includes('wallet already submitted')
-        if (!response.ok || responseData?.ok === false) {
-          if (duplicateWallet) {
-            localStorage.setItem(PUZZLE_SUBMISSION_KEY, JSON.stringify({ walletAddress: payload.walletAddress, duplicate: true, timestamp: Date.now() }))
-            setAlreadySubmittedProof(true)
-            openModal('Wallet Already Submitted', 'This wallet has already submitted puzzle proof. One wallet can only submit once.', 'error')
-            return
-          }
-          throw new Error(String(responseData?.error || `HTTP ${response.status}`))
-        }
-
-        localStorage.setItem(
-          PUZZLE_SUBMISSION_KEY,
-          JSON.stringify({
+      const duplicateWallet = apiError.includes('duplicate_wallet') || apiError.includes('wallet already submitted')
+      if (!response.ok || responseData?.ok === false) {
+        if (duplicateWallet) {
+          persistPuzzleSubmission({
             walletAddress: payload.walletAddress,
             xUsername: payload.xUsername,
+            tweetLink: normalizedTweetLink,
+            duplicate: true,
             score: submittedScore,
             moves: Number(submittedMoves || 0),
             time: Number(submittedTime || 0),
-            timestamp: payload.timestamp,
+            timestamp: Date.now(),
           })
-        )
-        setAlreadySubmittedProof(true)
-        setVerifiedBestScore(Math.max(Number(identity.bestScore || 0), submittedScore))
+          const latestStatus = await syncProofStatus()
+          if (latestStatus?.submitted) {
+            openModal('Proof Recorded', 'A proof already existed for this wallet or your missing proof was attached to the existing record.', 'success')
+          } else {
+            openModal('Already Submitted', 'This wallet already has a submission on record, but the proof state is still unresolved. Refresh after redeploying the Apps Script update if needed.', 'error')
+          }
+          return false
+        }
+        throw new Error(String(responseData?.error || `HTTP ${response.status}`))
+      }
+
+      persistPuzzleSubmission({
+        walletAddress: payload.walletAddress,
+        xUsername: payload.xUsername,
+        tweetLink: normalizedTweetLink,
+        duplicate: false,
+        score: submittedScore,
+        moves: Number(submittedMoves || 0),
+        time: Number(submittedTime || 0),
+        timestamp: payload.timestamp,
+      })
+      setVerifiedBestScore(Math.max(Number(identity.bestScore || 0), submittedScore))
       const entry = {
         browserId,
         xUsername: payload.xUsername,
@@ -958,14 +1534,18 @@ function PlayToWL() {
       } catch {
         // Keep local ranking if remote sync/read fails.
       }
+      await syncProofStatus()
+      return true
     } catch {
       openModal('Save Failed', 'Could not save qualification right now. Try solving again or refresh and retry.', 'error')
+      return false
     } finally {
       setIsSubmittingProof(false)
     }
   }
 
   const handleTileSlide = (index) => {
+    if (needsVictoryTweet) return
     if (gameState !== 'playing') return
     if (slideMove || slideLockRef.current) return
     if (tiles[index] === EMPTY_TILE) return
@@ -984,6 +1564,7 @@ function PlayToWL() {
     slideLockRef.current = true
 
     if (instantMoveRef.current) {
+      if (!hasStarted) beginTrackedRun()
       setTiles((prev) => {
         const next = [...prev]
         const nowEmptyIndex = next.indexOf(EMPTY_TILE)
@@ -996,6 +1577,7 @@ function PlayToWL() {
       return
     }
 
+    if (!hasStarted) beginTrackedRun()
     setSlideMove({
       fromIndex: index,
       tileId: tiles[index],
@@ -1067,8 +1649,19 @@ function PlayToWL() {
                     value={walletAddress}
                     onChange={(e) => setWalletAddress(e.target.value)}
                   />
-                  <button className="puzzle-btn white" type="submit">
-                    Save & Start Game
+                  <label className="proof-label" htmlFor="pregame-tweet-link">X Tweet Link</label>
+                  <input
+                    id="pregame-tweet-link"
+                    type="url"
+                    placeholder="https://x.com/yourname/status/..."
+                    value={profileTweetLink}
+                    onChange={(e) => setProfileTweetLink(e.target.value)}
+                  />
+                  <p className="pregame-field-note">
+                    New users must add a live X status link. We will verify that the tweet username matches the X username entered above before saving the profile.
+                  </p>
+                  <button className="puzzle-btn white" type="submit" disabled={isStartingGame} aria-busy={isStartingGame}>
+                    {isStartingGame ? 'Starting Game...' : 'Save & Start Game'}
                   </button>
                 </form>
               </div>
@@ -1087,6 +1680,7 @@ function PlayToWL() {
           <button
             type="button"
             className={`puzzle-tab ${activeTab === 'leaderboard' ? 'active' : ''}`}
+            disabled={needsVictoryTweet}
             onClick={() => setActiveTab('leaderboard')}
           >
             Leaderboard
@@ -1103,6 +1697,47 @@ function PlayToWL() {
                 {boardStatus.label}
               </span>
             </div>
+            {needsVictoryTweet && (
+              <div className="victory-proof-card victory-proof-card-prominent">
+                <div className="section-head victory-proof-head">
+                  <h3>Submit Victory Proof</h3>
+                  <span className="status-chip warn">Required</span>
+                </div>
+                <p className="victory-proof-copy">
+                  {proofExpired
+                    ? 'Your proof window has expired. Submit your victory tweet link now so the proof can be reviewed.'
+                    : 'You already qualified. Submit your victory tweet link now before you can continue playing or open the leaderboard.'}
+                </p>
+                <div className="victory-proof-warning" role="alert">
+                  {proofExpired
+                    ? 'Your 24-hour proof window has passed. Your leaderboard rank is no longer safe until this proof is resolved.'
+                    : 'Your leaderboard rank is hanging on this proof. If you do not submit your victory proof within the next 24 hours, you will be removed from the leaderboard.'}
+                </div>
+                {isLoadingProofStatus && <p className="victory-proof-meta">Checking latest proof status...</p>}
+                <form className="proof-form victory-proof-form" onSubmit={handleVictoryTweetSubmit}>
+                  <label className="proof-label" htmlFor="victory-tweet-link">Victory Tweet Link</label>
+                  <input
+                    id="victory-tweet-link"
+                    type="url"
+                    placeholder="https://x.com/yourname/status/..."
+                    value={victoryTweetLinkInput}
+                    onChange={(event) => {
+                      setVictoryTweetLinkInput(event.target.value)
+                      setVictoryTweetError('')
+                    }}
+                  />
+                  {victoryTweetError && <p className="victory-proof-error">{victoryTweetError}</p>}
+                  <div className="victory-proof-actions">
+                    <button className="puzzle-btn white" type="button" onClick={() => handleComposeTweet()}>
+                      Tweet Victory
+                    </button>
+                    <button className="puzzle-btn" type="submit" disabled={isSubmittingProof} aria-busy={isSubmittingProof}>
+                      {isSubmittingProof ? 'Saving...' : alreadySubmittedProof ? 'Save Link' : 'Submit Proof'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
             <div className="puzzle-stats">
               <div className="stat-pill"><span>Moves</span><strong>{moves}</strong></div>
               <div className="stat-pill"><span>Time</span><strong>{formatElapsed(timeSec)}</strong></div>
@@ -1146,6 +1781,7 @@ function PlayToWL() {
                         className="puzzle-btn white"
                         type="button"
                         disabled={isSubmittingProof}
+                        aria-busy={isSubmittingProof}
                         onClick={() => {
                           handleComposeTweet()
                         }}
@@ -1154,7 +1790,7 @@ function PlayToWL() {
                       </button>
                     </>
                   ) : null}
-                  <button className="puzzle-btn" type="button" onClick={handlePlayAgain}>
+                  <button className="puzzle-btn" type="button" onClick={handlePlayAgain} disabled={needsVictoryTweet}>
                     Play Again
                   </button>
                 </div>
@@ -1167,7 +1803,7 @@ function PlayToWL() {
                   <p>Your live score fell below {PUZZLE_TARGET_SCORE} before the image was solved. Reset and make a cleaner run.</p>
                 </div>
                 <div className="victory-actions">
-                  <button className="puzzle-btn" type="button" onClick={handlePlayAgain}>
+                  <button className="puzzle-btn" type="button" onClick={handlePlayAgain} disabled={needsVictoryTweet}>
                     Play Again
                   </button>
                 </div>
@@ -1207,14 +1843,18 @@ function PlayToWL() {
 
             <p className="instruction">
               {gameState === 'won'
-                ? qualified ? 'Victory unlocked. Tweet your score and keep climbing the leaderboard.' : 'Run complete. Start another attempt to improve.'
+                ? qualified
+                  ? needsVictoryTweet
+                    ? 'Victory unlocked. Submit your victory proof to continue.'
+                    : 'Victory unlocked. Tweet your score and keep climbing the leaderboard.'
+                  : 'Run complete. Start another attempt to improve.'
                 : gameState === 'lost'
                   ? `Score dropped below ${PUZZLE_TARGET_SCORE}. Start another attempt to continue.`
                 : 'Slide tiles into the empty space to arrange the image.'}
             </p>
             <div className="puzzle-board-actions">
               {gameState === 'playing' && (
-                <button className="puzzle-btn shuffle-btn" onClick={handleShuffle}>Shuffle</button>
+                <button className="puzzle-btn shuffle-btn" onClick={handleShuffle} disabled={needsVictoryTweet}>Shuffle</button>
               )}
             </div>
           </section>
