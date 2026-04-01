@@ -224,6 +224,22 @@ function delayMs(ms) {
   })
 }
 
+async function withTimeout(promise, timeoutMs, timeoutMessage = 'request_timeout') {
+  let timeoutId = null
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = window.setTimeout(() => {
+      reject(new Error(timeoutMessage))
+    }, Math.max(1, Number(timeoutMs) || 1))
+  })
+  try {
+    return await Promise.race([promise, timeoutPromise])
+  } finally {
+    if (timeoutId) {
+      window.clearTimeout(timeoutId)
+    }
+  }
+}
+
 function usernamesMatch(linkUsername, submittedUsername) {
   const normalizedLinkUsername = String(linkUsername || '').trim().replace(/^@+/, '').toLowerCase()
   const normalizedSubmittedUsername = String(submittedUsername || '').trim().replace(/^@+/, '').toLowerCase()
@@ -592,8 +608,11 @@ function buildQualifiedSnapshotFromEntry(entry) {
   }
 }
 
-function upsertLeaderboardEntry(entry) {
-  const rows = loadLeaderboard()
+function upsertLeaderboardEntry(entry, options = {}) {
+  const baseRows = Array.isArray(options?.baseRows) ? options.baseRows : loadLeaderboard()
+  const maxRows = Math.max(1, Number(options?.maxRows) || LEADERBOARD_FETCH_LIMIT)
+  const shouldPersist = options?.persist !== false
+  const rows = baseRows.map(compactLeaderboardRow)
   const idx = rows.findIndex(
     (row) =>
       row.browserId === entry.browserId ||
@@ -628,9 +647,13 @@ function upsertLeaderboardEntry(entry) {
   }
 
   rows.sort(compareLeaderboardRows)
-  const trimmed = rows.slice(0, 100)
-  saveLeaderboard(trimmed)
-  return trimmed
+  const ranked = rows
+    .slice(0, maxRows)
+    .map((row, index) => ({ ...row, rank: index + 1 }))
+  if (shouldPersist) {
+    saveLeaderboard(ranked)
+  }
+  return ranked
 }
 
 function normalizeLeaderboardRows(rows, limit) {
@@ -654,6 +677,7 @@ function normalizeLeaderboardRows(rows, limit) {
     .filter((row) => row.score > 0)
     .sort(compareLeaderboardRows)
     .slice(0, maxRows)
+    .map((row, index) => ({ ...row, rank: index + 1 }))
 }
 
 function normalizeProofStatusPayload(payload) {
@@ -1015,18 +1039,33 @@ function PlayToWL() {
     if (score <= 550) return 'amber'
     return 'none'
   }, [hasStarted, gameState, score])
+  const leaderboardRankLookup = useMemo(() => {
+    const map = new Map()
+    if (!Array.isArray(leaderboard) || leaderboard.length === 0) return map
+    leaderboard.forEach((row, index) => {
+      const rank = index + 1
+      const browser = String(row.browserId || '').trim()
+      const wallet = normalizeWallet(row.walletAddress)
+      const username = normalizeX(row.xUsername)
+      if (browser && !map.has(`b:${browser}`)) map.set(`b:${browser}`, rank)
+      if (wallet && !map.has(`w:${wallet}`)) map.set(`w:${wallet}`, rank)
+      if (username && !map.has(`x:${username}`)) map.set(`x:${username}`, rank)
+    })
+    return map
+  }, [leaderboard])
+
   const userRank = useMemo(() => {
     if (!Array.isArray(leaderboard) || leaderboard.length === 0) return null
     const nx = normalizeX(xUsername)
     const nw = normalizeWallet(walletAddress)
-    const idx = leaderboard.findIndex((row) => {
-      const sameWallet = nw && normalizeWallet(row.walletAddress) === nw
-      const sameX = nx && normalizeX(row.xUsername) === nx
-      const sameBrowser = browserId && row.browserId === browserId
-      return sameWallet || sameX || sameBrowser
-    })
-    return idx >= 0 ? idx + 1 : null
-  }, [leaderboard, xUsername, walletAddress, browserId])
+    const browser = String(browserId || '').trim()
+    return (
+      (nw ? leaderboardRankLookup.get(`w:${nw}`) : null) ||
+      (nx ? leaderboardRankLookup.get(`x:${nx}`) : null) ||
+      (browser ? leaderboardRankLookup.get(`b:${browser}`) : null) ||
+      null
+    )
+  }, [browserId, leaderboard, leaderboardRankLookup, walletAddress, xUsername])
   const filteredLeaderboard = useMemo(() => {
     const query = String(leaderboardSearch || '').trim().toLowerCase().replace(/^@+/, '')
     if (!query) return leaderboard
@@ -1055,12 +1094,14 @@ function PlayToWL() {
   )
   const proofState = String(proofStatus?.proofState || 'unknown')
   const proofExpired = Boolean(proofStatus?.expired) || proofState === 'expired'
-  const remoteProofResolved = proofStatus?.source === 'remote'
-  const alreadySubmittedProof = proofState === 'submitted' && remoteProofResolved
-  const savedVictoryTweetLink = useMemo(() => {
-    if (!alreadySubmittedProof) return ''
-    return normalizeTweetLink(proofStatus?.tweetLink || submissionRecord?.tweetLink || '')
-  }, [alreadySubmittedProof, proofStatus?.tweetLink, submissionRecord?.tweetLink])
+  const normalizedStoredProofTweetLink = useMemo(
+    () => normalizeTweetLink(proofStatus?.tweetLink || submissionRecord?.tweetLink || ''),
+    [proofStatus?.tweetLink, submissionRecord?.tweetLink]
+  )
+  const hasLeaderboardProof = Boolean(bestLeaderboardEntry?.hasProof)
+  const hasSubmittedProofLocally = proofState === 'submitted' && Boolean(normalizedStoredProofTweetLink)
+  const alreadySubmittedProof = hasLeaderboardProof || hasSubmittedProofLocally
+  const savedVictoryTweetLink = alreadySubmittedProof ? normalizedStoredProofTweetLink : ''
   const bestQualifiedSnapshot = useMemo(() => {
     const candidates = [
       {
@@ -1135,11 +1176,23 @@ function PlayToWL() {
     setQualifiedMoves((prev) => (prev === nextMoves ? prev : nextMoves))
     setQualifiedTime((prev) => (prev === nextTime ? prev : nextTime))
   }, [])
-  const needsVictoryTweet = hasProfile && bestReferenceScore >= PUZZLE_TARGET_SCORE && (!remoteProofResolved || !savedVictoryTweetLink)
+  const needsVictoryTweet =
+    hasProfile &&
+    bestReferenceScore >= PUZZLE_TARGET_SCORE &&
+    !alreadySubmittedProof &&
+    !isLoadingProofStatus
   const projectedDeltaToBest = projectedFinalScore - bestReferenceScore
   const boardStatus = useMemo(() => {
     if (proofExpired) {
       return { label: 'Proof Expired', tone: 'warn' }
+    }
+    if (
+      hasProfile &&
+      bestReferenceScore >= PUZZLE_TARGET_SCORE &&
+      !alreadySubmittedProof &&
+      isLoadingProofStatus
+    ) {
+      return { label: 'Verifying Proof', tone: '' }
     }
     if (needsVictoryTweet) {
       return { label: 'Proof Required', tone: 'warn' }
@@ -1163,7 +1216,7 @@ function PlayToWL() {
       return { label: 'Risk Zone', tone: 'warn' }
     }
     return { label: 'On Pace', tone: '' }
-  }, [bestReferenceScore, gameState, hasStarted, needsVictoryTweet, projectedFinalScore, proofExpired, qualified])
+  }, [alreadySubmittedProof, bestReferenceScore, gameState, hasProfile, hasStarted, isLoadingProofStatus, needsVictoryTweet, projectedFinalScore, proofExpired, qualified])
   const rivalSnapshot = useMemo(() => {
     if (!Array.isArray(leaderboard) || leaderboard.length === 0 || !userRank) return { above: null, below: null }
     return {
@@ -1316,13 +1369,13 @@ function PlayToWL() {
     setIsLoadingProofStatus(true)
     try {
       try {
-        const bootstrap = await fetchPuzzleBootstrap({
+        const bootstrap = await withTimeout(fetchPuzzleBootstrap({
           xUsername,
           walletAddress,
           includeRows: false,
           includeProofStatus: true,
           includeIdentity: false,
-        })
+        }), 6500, 'proof_bootstrap_timeout')
         if (bootstrap.proofStatus) {
           const applied = applyRemoteProofStatus(bootstrap.proofStatus)
           if (applied) return applied
@@ -1331,7 +1384,11 @@ function PlayToWL() {
         // Fall back to legacy proof endpoint if bootstrap is unavailable.
       }
 
-      const remoteStatus = await fetchPuzzleProofStatus({ xUsername, walletAddress })
+      const remoteStatus = await withTimeout(
+        fetchPuzzleProofStatus({ xUsername, walletAddress }),
+        6500,
+        'proof_status_timeout'
+      )
       if (remoteStatus.ok) {
         const applied = applyRemoteProofStatus(remoteStatus)
         if (applied) return applied
@@ -1545,6 +1602,7 @@ function PlayToWL() {
       normalizeTweetLink(submissionRecord?.tweetLink || '') ||
       savedVictoryTweetLink
     )
+    const hasProof = isProofAttach || hadExistingProof
 
     if (isProofAttach && !tweetId) return false
 
@@ -1572,6 +1630,31 @@ function PlayToWL() {
       payload.turnstileAction = PROOF_TURNSTILE_ACTION
     }
 
+    const optimisticEntry = {
+      browserId,
+      xUsername: payload.xUsername,
+      walletAddress: payload.walletAddress,
+      score: Number(finalScore || 0),
+      moves: Number(finalMoves || 0),
+      timeSec: Number(finalTimeSec || 0),
+      updatedAt: timestamp,
+      hasProof,
+      proofDeadlineTs: hasProof ? null : (timestamp + PUZZLE_PROOF_WINDOW_MS),
+    }
+    const optimisticBaseRows =
+      fullLeaderboardCacheRef.current.length > 0
+        ? fullLeaderboardCacheRef.current
+        : (Array.isArray(leaderboard) ? leaderboard : [])
+    const optimisticRows = upsertLeaderboardEntry(optimisticEntry, {
+      baseRows: optimisticBaseRows,
+      maxRows: LEADERBOARD_FETCH_LIMIT,
+      persist: true,
+    })
+    fullLeaderboardCacheRef.current = optimisticRows
+    if (!String(leaderboardSearch || '').trim()) {
+      setLeaderboard(optimisticRows)
+    }
+
     try {
       const response = await fetch(GOOGLE_SCRIPT_URL, {
         method: 'POST',
@@ -1587,7 +1670,6 @@ function PlayToWL() {
         return false
       }
 
-      const hasProof = isProofAttach || hadExistingProof
       const nextTweetLink =
         normalizedTweetLink ||
         normalizeTweetLink(submissionRecord?.tweetLink || '') ||
@@ -1615,7 +1697,15 @@ function PlayToWL() {
         hasProof,
         proofDeadlineTs: hasProof ? null : (timestamp + PUZZLE_PROOF_WINDOW_MS),
       }
-      setLeaderboard(() => upsertLeaderboardEntry(entry))
+      const mergedRows = upsertLeaderboardEntry(entry, {
+        baseRows: fullLeaderboardCacheRef.current.length > 0 ? fullLeaderboardCacheRef.current : optimisticRows,
+        maxRows: LEADERBOARD_FETCH_LIMIT,
+        persist: true,
+      })
+      fullLeaderboardCacheRef.current = mergedRows
+      if (!String(leaderboardSearch || '').trim()) {
+        setLeaderboard(mergedRows)
+      }
 
       setProofStatus((prev) => {
         const nextSubmitted = hasProof || Boolean(prev?.submitted)
@@ -1672,6 +1762,8 @@ function PlayToWL() {
     applyFullLeaderboardCache,
     bestScore,
     browserId,
+    leaderboard,
+    leaderboardSearch,
     openModal,
     persistPuzzleSubmission,
     proofStatus?.submitted,
@@ -2764,9 +2856,14 @@ function PlayToWL() {
                   </div>
                   {paginatedLeaderboard.map((row, index) => {
                     const fallbackRank = (leaderboardPage - 1) * LEADERBOARD_PAGE_SIZE + index + 1
-                    const rank = Number.isFinite(Number(row.rank)) && Number(row.rank) > 0
-                      ? Number(row.rank)
-                      : fallbackRank
+                    const walletKey = normalizeWallet(row.walletAddress)
+                    const usernameKey = normalizeX(row.xUsername)
+                    const browserKey = String(row.browserId || '').trim()
+                    const rank =
+                      (walletKey ? leaderboardRankLookup.get(`w:${walletKey}`) : null) ||
+                      (usernameKey ? leaderboardRankLookup.get(`x:${usernameKey}`) : null) ||
+                      (browserKey ? leaderboardRankLookup.get(`b:${browserKey}`) : null) ||
+                      fallbackRank
                     const rankDisplay = rank === 1
                       ? '\u{1F947}'
                       : rank === 2
