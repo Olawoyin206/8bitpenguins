@@ -2,8 +2,24 @@ import { useState, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
+import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js'
 import SiteNav from './SiteNav.jsx'
+import {
+  addPenguinSceneLights,
+  alignObjectToGround,
+  configureRenderer,
+  createBackgroundFx,
+  createGroundMesh,
+  createPenguinOrthoCamera,
+  createVoxelPenguin,
+  disposeObject3D,
+  getSceneFog,
+  GROUND_LEVEL_Y,
+  ORTHO_FRUSTUM_SIZE,
+  PENGUIN_PIVOT_Y,
+  PENGUIN_RENDER_SCALE,
+  updatePenguinOrthoCamera,
+} from './threeSceneHelpers.js'
 import './App.css'
 
 const TRAITS = {
@@ -117,519 +133,42 @@ function randomItem(arr) {
   return arr[0]
 }
 
-function createVoxelPenguin(traits, THREE) {
-  const group = new THREE.Group()
-  
-  const body = traits.body.base
-  const bodyHighlight = traits.body.highlight
-  const bodyShadow = traits.body.shadow
-  const belly = traits.belly.base
-  const bellyHighlight = traits.belly.highlight
-  const beak = traits.beak.base
-  const beakHighlight = traits.beak.highlight
-  const beakShadow = traits.beak.shadow
-  
-  const cx = 20
-  const voxelSize = 0.55
-  const voxelScale = 0.15
-  let accessoryMode = false
-  const materialCache = new Map()
-  const geometryCache = new Map()
-  
-  const mat = (color) => {
-    if (!materialCache.has(color)) {
-      materialCache.set(
-        color,
-        new THREE.MeshStandardMaterial({
-          color,
-          roughness: 0.9,
-          metalness: 0.0,
-          flatShading: true,
-        })
-      )
-    }
-    return materialCache.get(color)
-  }
-
-  const geo = (depth) => {
-    if (!geometryCache.has(depth)) {
-      geometryCache.set(depth, new RoundedBoxGeometry(voxelSize, voxelSize, depth * voxelScale, 1, 0.05))
-    }
-    return geometryCache.get(depth)
-  }
-  
-  const voxel = (x, y, z, color, depth = 4, frontOffset = false, zNudge = 0, castsShadow = true) => {
-    const mesh = new THREE.Mesh(geo(depth), mat(color))
-    mesh.position.set(
-      (x - cx) * voxelSize * 0.5, 
-      (20 - y) * voxelSize * 0.5, 
-      (z - 1) * voxelSize * 0.4 + (frontOffset ? (depth * voxelScale * 0.5) + 0.22 : 0) + zNudge
-    )
-    mesh.castShadow = castsShadow
-    mesh.receiveShadow = false
-    return mesh
-  }
-
-  const rect = (x1, y1, x2, y2, color, depth = 4, z = 1) => {
-    for (let y = y1; y <= y2; y++) {
-      for (let x = x1; x <= x2; x++) {
-        group.add(voxel(x, y, z, color, depth, false, accessoryMode ? 0.2 : 0, !accessoryMode))
-      }
-    }
-  }
-
-  const rectFront = (x1, y1, x2, y2, color, depth = 4, z = 1) => {
-    for (let y = y1; y <= y2; y++) {
-      for (let x = x1; x <= x2; x++) {
-        group.add(voxel(x, y, z, color, depth, true, accessoryMode ? 0.2 : 0, !accessoryMode))
-      }
-    }
-  }
-  
-  // BODY - thick on both sides
-  rect(10, 25, 29, 38, body, 12)
-  rect(9, 26, 30, 37, body, 12)
-  rect(8, 27, 31, 36, body, 12)
-  rect(8, 28, 31, 35, body, 12)
-  rect(9, 29, 30, 34, body, 12)
-  rect(10, 30, 29, 33, body, 12)
-  rect(11, 31, 28, 32, body, 12)
-  
-  rect(12, 26, 27, 27, bodyHighlight, 12)
-  rect(11, 28, 28, 28, bodyHighlight, 12)
-  rect(12, 30, 27, 30, bodyHighlight, 12)
-  rect(13, 32, 26, 32, bodyHighlight, 12)
-  
-  rect(10, 38, 29, 38, bodyShadow, 12)
-  rect(9, 37, 30, 37, bodyShadow, 12)
-  rect(8, 36, 31, 36, bodyShadow, 12)
-  
-  rect(14, 27, 14, 27, bodyShadow, 12)
-  rect(26, 27, 26, 27, bodyShadow, 12)
-  rect(12, 29, 12, 29, bodyShadow, 12)
-  rect(28, 29, 28, 29, bodyShadow, 12)
-  rect(8, 31, 8, 31, bodyShadow, 12)
-  rect(32, 31, 32, 31, bodyShadow, 12)
-  
-  // BELLY - front only, reduced depth
-  rectFront(12, 26, 27, 36, belly, 6)
-  rectFront(11, 27, 28, 35, belly, 6)
-  rectFront(11, 28, 28, 34, belly, 6)
-  rectFront(12, 29, 27, 33, belly, 6)
-  rectFront(13, 30, 26, 32, belly, 6)
-  rectFront(14, 31, 25, 32, belly, 6)
-  rectFront(15, 32, 24, 33, belly, 6)
-  
-  rectFront(14, 27, 25, 28, bellyHighlight, 6)
-  rectFront(14, 29, 25, 30, bellyHighlight, 6)
-  rectFront(15, 31, 24, 32, bellyHighlight, 6)
-  
-  rectFront(15, 33, 15, 33, bellyHighlight, 6)
-  rectFront(24, 33, 24, 33, bellyHighlight, 6)
-  rectFront(16, 34, 16, 34, bellyHighlight, 6)
-  rectFront(23, 34, 23, 34, bellyHighlight, 6)
-  
-  // HEAD - thick like body
-  rect(10, 8, 29, 26, body, 20)
-  rect(9, 9, 30, 25, body, 20)
-  rect(8, 10, 31, 24, body, 20)
-  rect(8, 11, 31, 23, body, 20)
-  rect(9, 12, 30, 22, body, 20)
-  rect(10, 13, 29, 21, body, 20)
-  rect(11, 14, 28, 20, body, 20)
-  rect(12, 15, 27, 19, body, 20)
-  rect(13, 16, 26, 18, body, 20)
-  rect(14, 17, 25, 18, body, 20)
-  
-  rect(12, 9, 27, 10, bodyHighlight, 20)
-  rect(11, 11, 28, 12, bodyHighlight, 20)
-  rect(12, 13, 27, 14, bodyHighlight, 20)
-  rect(13, 15, 26, 16, bodyHighlight, 20)
-  rect(14, 17, 25, 17, bodyHighlight, 20)
-  
-  rect(10, 26, 29, 26, bodyShadow, 20)
-  rect(9, 25, 30, 25, bodyShadow, 20)
-  rect(8, 24, 31, 24, bodyShadow, 20)
-  
-  rect(11, 10, 11, 10, bodyShadow, 11)
-  rect(28, 10, 28, 10, bodyShadow, 11)
-  rect(10, 12, 10, 12, bodyShadow, 11)
-  rect(29, 12, 29, 12, bodyShadow, 11)
-  rect(10, 14, 10, 14, bodyShadow, 11)
-  rect(29, 14, 29, 14, bodyShadow, 11)
-  
-  // FACE - front only
-  rectFront(12, 14, 27, 24, belly, 11)
-  rectFront(11, 15, 28, 23, belly, 11)
-  rectFront(12, 16, 27, 22, belly, 11)
-  rectFront(13, 17, 26, 21, belly, 11)
-  rectFront(14, 18, 25, 20, belly, 11)
-  rectFront(15, 19, 24, 20, belly, 11)
-  
-  rectFront(14, 15, 25, 16, bellyHighlight, 11)
-  rectFront(14, 17, 25, 18, bellyHighlight, 11)
-  rectFront(15, 19, 24, 20, bellyHighlight, 11)
-  
-  // EYES - front only
-  const eyeY = 17
-  
-  if (traits.eyes.type === 'round') {
-    rectFront(cx - 4, eyeY, cx - 3, eyeY + 1, '#0A0A0A', 12)
-    rectFront(cx - 5, eyeY + 1, cx - 2, eyeY + 1, '#0A0A0A', 12)
-    rectFront(cx + 3, eyeY, cx + 4, eyeY + 1, '#0A0A0A', 12)
-    rectFront(cx + 2, eyeY + 1, cx + 5, eyeY + 1, '#0A0A0A', 12)
-  } else if (traits.eyes.type === 'happy') {
-    rectFront(cx - 5, eyeY, cx - 2, eyeY + 1, '#0A0A0A', 12)
-    rectFront(cx - 4, eyeY + 1, cx - 3, eyeY + 1, '#0A0A0A', 12)
-    rectFront(cx + 2, eyeY, cx + 5, eyeY + 1, '#0A0A0A', 12)
-    rectFront(cx + 3, eyeY + 1, cx + 4, eyeY + 1, '#0A0A0A', 12)
-  } else if (traits.eyes.type === 'sad') {
-    rectFront(cx - 4, eyeY + 1, cx - 3, eyeY + 1, '#0A0A0A', 12)
-    rectFront(cx - 3, eyeY + 1, cx - 3, eyeY + 1, '#0A0A0A', 12)
-    rectFront(cx + 3, eyeY + 1, cx + 4, eyeY + 1, '#0A0A0A', 12)
-    rectFront(cx + 4, eyeY + 1, cx + 4, eyeY + 1, '#0A0A0A', 12)
-  } else if (traits.eyes.type === 'sleepy') {
-    rectFront(cx - 4, eyeY + 1, cx - 3, eyeY + 1, '#0A0A0A', 12)
-    rectFront(cx - 5, eyeY + 1, cx - 2, eyeY + 1, '#0A0A0A', 12)
-    rectFront(cx - 4, eyeY + 2, cx - 3, eyeY + 2, '#0A0A0A', 12)
-    rectFront(cx + 3, eyeY + 1, cx + 4, eyeY + 1, '#0A0A0A', 12)
-    rectFront(cx + 2, eyeY + 1, cx + 5, eyeY + 1, '#0A0A0A', 12)
-    rectFront(cx + 3, eyeY + 2, cx + 4, eyeY + 2, '#0A0A0A', 12)
-  } else if (traits.eyes.type === 'surprised') {
-    rectFront(cx - 4, eyeY, cx - 3, eyeY + 1, '#0A0A0A', 12)
-    rectFront(cx - 5, eyeY, cx - 2, eyeY + 1, '#0A0A0A', 12)
-    rectFront(cx + 3, eyeY, cx + 4, eyeY + 1, '#0A0A0A', 12)
-    rectFront(cx + 2, eyeY, cx + 5, eyeY + 1, '#0A0A0A', 12)
-  } else if (traits.eyes.type === 'wink') {
-    rectFront(cx - 4, eyeY, cx - 3, eyeY + 1, '#0A0A0A', 12)
-    rectFront(cx - 5, eyeY + 1, cx - 2, eyeY + 1, '#0A0A0A', 12)
-    rectFront(cx + 3, eyeY + 1, cx + 4, eyeY + 1, '#0A0A0A', 12)
-  } else if (traits.eyes.type === 'sideeye') {
-    rectFront(cx - 4, eyeY, cx - 3, eyeY + 1, '#0A0A0A', 12)
-    rectFront(cx - 5, eyeY + 1, cx - 4, eyeY + 1, '#0A0A0A', 12)
-    rectFront(cx + 3, eyeY, cx + 4, eyeY + 1, '#0A0A0A', 12)
-    rectFront(cx + 4, eyeY + 1, cx + 5, eyeY + 1, '#0A0A0A', 12)
-  } else if (traits.eyes.type === 'closed') {
-    rectFront(cx - 5, eyeY + 1, cx - 2, eyeY + 1, '#0A0A0A', 12)
-    rectFront(cx + 2, eyeY + 1, cx + 5, eyeY + 1, '#0A0A0A', 12)
-  } else if (traits.eyes.type === 'sparkle') {
-    rectFront(cx - 4, eyeY, cx - 3, eyeY + 1, '#0A0A0A', 12)
-    rectFront(cx - 5, eyeY + 1, cx - 2, eyeY + 1, '#0A0A0A', 12)
-    rectFront(cx + 3, eyeY, cx + 4, eyeY + 1, '#0A0A0A', 12)
-    rectFront(cx + 2, eyeY + 1, cx + 5, eyeY + 1, '#0A0A0A', 12)
-  } else if (traits.eyes.type === 'angry') {
-    rectFront(cx - 4, eyeY, cx - 3, eyeY, '#0A0A0A', 12)
-    rectFront(cx - 5, eyeY + 1, cx - 2, eyeY + 1, '#0A0A0A', 12)
-    rectFront(cx - 3, eyeY, cx - 3, eyeY, '#FF0000', 12)
-    rectFront(cx + 3, eyeY, cx + 4, eyeY, '#0A0A0A', 12)
-    rectFront(cx + 2, eyeY + 1, cx + 5, eyeY + 1, '#0A0A0A', 12)
-    rectFront(cx + 4, eyeY, cx + 4, eyeY, '#FF0000', 12)
-  }
-  
-  // Eyebrows - all penguins have eyebrows (darker than body)
-  rectFront(cx - 7, 14, cx - 3, 14, bodyShadow, 11, 1.1)
-  rectFront(cx + 3, 14, cx + 7, 14, bodyShadow, 11, 1.1)
-  rectFront(cx - 8, 13, cx - 4, 13, bodyShadow, 11, 1.1)
-  rectFront(cx + 4, 13, cx + 8, 13, bodyShadow, 11, 1.1)
-  
-  // BEAK - front only
-  if (traits.beak.type === 'small') {
-    rectFront(cx - 2, 21, cx + 1, 23, beak, 14)
-    rectFront(cx - 1, 20, cx, 22, beak, 14)
-    rectFront(cx - 1, 22, cx, 22, beakShadow, 14)
-  } else if (traits.beak.type === 'large') {
-    rectFront(cx - 3, 20, cx + 2, 23, beak, 14)
-    rectFront(cx - 2, 19, cx + 1, 22, beak, 14)
-    rectFront(cx - 1, 18, cx, 20, beak, 14)
-    rectFront(cx - 2, 23, cx + 1, 23, beakShadow, 14)
-  } else if (traits.beak.type === 'wide') {
-    rectFront(cx - 4, 21, cx + 3, 23, beak, 14)
-    rectFront(cx - 3, 20, cx + 2, 24, beak, 14)
-    rectFront(cx - 2, 20, cx + 1, 20, beak, 14)
-    rectFront(cx - 2, 24, cx + 1, 24, beakShadow, 14)
-  } else if (traits.beak.type === 'pointy') {
-    rectFront(cx - 2, 21, cx + 1, 23, beak, 14)
-    rectFront(cx - 1, 19, cx, 22, beak, 14)
-    rectFront(cx, 18, cx, 20, beak, 14)
-    rectFront(cx - 1, 23, cx, 23, beakShadow, 14)
-  } else if (traits.beak.type === 'round') {
-    rectFront(cx - 3, 21, cx + 2, 23, beak, 14)
-    rectFront(cx - 2, 20, cx + 1, 24, beak, 14)
-    rectFront(cx - 1, 20, cx, 20, beak, 14)
-    rectFront(cx - 2, 24, cx + 1, 24, beakShadow, 14)
-  } else if (traits.beak.type === 'puffy') {
-    rectFront(cx - 3, 20, cx + 2, 22, beak, 14)
-    rectFront(cx - 2, 19, cx + 1, 21, beakHighlight, 14)
-    rectFront(cx - 1, 18, cx, 20, beakHighlight, 14)
-    rectFront(cx - 2, 22, cx + 1, 22, beakShadow, 14)
-    rectFront(cx + 1, 21, cx + 2, 21, beakShadow, 14)
-  } else {
-    rectFront(cx - 3, 21, cx + 2, 23, beak, 14)
-    rectFront(cx - 2, 20, cx + 1, 22, beak, 14)
-    rectFront(cx - 1, 20, cx, 21, beak, 14)
-    rectFront(cx - 2, 22, cx + 1, 22, beakShadow, 14)
-    rectFront(cx - 3, 21, cx - 3, 22, beakShadow, 14)
-  }
-  
-  // CHEEKS - front only
-  rectFront(cx - 9, 19, cx - 7, 21, '#FFB6C1', 11, 1.1)
-  rectFront(cx + 7, 19, cx + 9, 21, '#FFB6C1', 11, 1.1)
-  rectFront(cx - 8, 20, cx - 7, 20, '#FFC5CD', 11, 1.1)
-  rectFront(cx + 7, 20, cx + 8, 20, '#FFC5CD', 11, 1.1)
-  
-  // HEAD ACCESSORIES
-  const headColor = traits.head.color || '#404040'
-  const parseHex = (hex) => {
-    const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex || '')
-    if (!m) return null
-    return { r: parseInt(m[1], 16), g: parseInt(m[2], 16), b: parseInt(m[3], 16) }
-  }
-  const mixHex = (a, b, t) => {
-    const ca = parseHex(a)
-    const cb = parseHex(b)
-    if (!ca || !cb) return a
-    const mix = (x, y) => Math.round(x + (y - x) * t)
-    const toHex = (n) => n.toString(16).padStart(2, '0')
-    return `#${toHex(mix(ca.r, cb.r))}${toHex(mix(ca.g, cb.g))}${toHex(mix(ca.b, cb.b))}`
-  }
-  const headHighlight = traits.head.highlight || mixHex(headColor, '#FFFFFF', 0.28)
-  const headShadow = traits.head.shadow || mixHex(headColor, '#000000', 0.38)
-  const headSpec = mixHex(headHighlight, '#FFFFFF', 0.42)
-  const headMid = mixHex(headColor, headShadow, 0.45)
-  const headDeep = mixHex(headShadow, '#000000', 0.35)
-  const clothFold = mixHex(headColor, headShadow, 0.25)
-  accessoryMode = true
-  if (traits.head.type === 'crown') {
-    const crownStyle = traits.head.style || 'imperial'
-    if (crownStyle === 'elegant') {
-      rect(cx - 9, 7, cx + 9, 9, '#CDA349', 20)
-      rect(cx - 8, 6, cx + 8, 7, '#F6D98A', 20)
-      rect(cx - 9, 9, cx + 9, 9, '#775314', 20)
-      rect(cx - 7, 4, cx - 5, 7, '#E8C86E', 20)
-      rect(cx - 3, 3, cx - 1, 7, '#F1D786', 20)
-      rect(cx + 1, 3, cx + 3, 7, '#F1D786', 20)
-      rect(cx + 5, 4, cx + 7, 7, '#E8C86E', 20)
-      rect(cx - 6, 2, cx - 5, 3, '#FFF5C8', 20)
-      rect(cx - 1, 1, cx, 2, '#FFF5C8', 20)
-      rect(cx + 5, 2, cx + 6, 3, '#FFF5C8', 20)
-      rect(cx - 8, 7, cx - 8, 8, '#8A651F', 20)
-      rect(cx + 8, 7, cx + 8, 8, '#8A651F', 20)
-      rect(cx - 4, 6, cx - 4, 8, '#8A651F', 20)
-      rect(cx + 4, 6, cx + 4, 8, '#8A651F', 20)
-      rect(cx - 8, 6, cx + 8, 6, '#FFE4A0', 20)
-      rect(cx - 6, 7, cx - 5, 8, '#B80F2E', 20)
-      rect(cx - 1, 7, cx, 8, '#0E7EEA', 20)
-      rect(cx + 4, 7, cx + 5, 8, '#23A455', 20)
-      rect(cx - 2, 5, cx + 1, 6, '#B78A2C', 20)
-    } else {
-      rect(cx - 10, 7, cx + 10, 9, '#C69214', 20)
-      rect(cx - 9, 6, cx + 9, 7, '#F2C94C', 20)
-      rect(cx - 10, 9, cx + 10, 9, '#7A5200', 20)
-      rect(cx - 8, 3, cx - 6, 7, '#E5B93A', 20)
-      rect(cx - 5, 4, cx - 3, 7, '#DCAA2D', 20)
-      rect(cx - 1, 1, cx + 1, 7, '#F7D55C', 20)
-      rect(cx + 3, 4, cx + 5, 7, '#DCAA2D', 20)
-      rect(cx + 6, 3, cx + 8, 7, '#E5B93A', 20)
-      rect(cx - 7, 2, cx - 6, 3, '#FFF3B0', 20)
-      rect(cx, 0, cx, 2, '#FFF3B0', 20)
-      rect(cx + 6, 2, cx + 7, 3, '#FFF3B0', 20)
-      rect(cx - 9, 6, cx - 9, 8, '#8A6108', 20)
-      rect(cx + 9, 6, cx + 9, 8, '#8A6108', 20)
-      rect(cx - 4, 6, cx - 4, 7, '#8A6108', 20)
-      rect(cx + 4, 6, cx + 4, 7, '#8A6108', 20)
-      rect(cx - 8, 6, cx + 8, 6, '#FFD76A', 20)
-      rect(cx - 7, 7, cx - 6, 8, '#B80F2E', 20)
-      rect(cx - 1, 7, cx, 8, '#0E7EEA', 20)
-      rect(cx + 5, 7, cx + 6, 8, '#23A455', 20)
-      rect(cx - 2, 5, cx + 2, 6, '#BF8F1A', 20)
-    }
-  } else if (traits.head.type === 'tophat') {
-    rect(cx - 11, 8, cx + 11, 9, '#111111', 20)
-    rect(cx - 10, 6, cx + 10, 8, '#1B1B1B', 20)
-    rect(cx - 9, 5, cx + 9, 6, '#2E2E2E', 20)
-    rect(cx - 5, 1, cx + 4, 6, '#1A1A1A', 20)
-    rect(cx - 4, 1, cx + 3, 2, '#3B3B3B', 20)
-    rect(cx - 5, 7, cx + 4, 7, '#8B0000', 20)
-    rect(cx - 2, 2, cx - 1, 4, '#7A7A7A', 20)
-    rect(cx - 5, 5, cx - 5, 6, '#2F2F2F', 20)
-    rect(cx, 2, cx + 1, 5, '#101010', 20)
-    rect(cx + 3, 2, cx + 4, 5, '#0B0B0B', 20)
-    rect(cx - 9, 9, cx + 9, 9, '#050505', 20)
-    rect(cx - 8, 6, cx - 7, 8, '#353535', 20)
-    rect(cx + 5, 2, cx + 5, 6, '#080808', 20)
-    rect(cx - 3, 1, cx - 1, 1, '#4A4A4A', 20)
-    rect(cx - 4, 8, cx + 4, 8, '#2A0000', 20)
-    rect(cx + 7, 7, cx + 9, 8, '#080808', 20)
-  } else if (traits.head.type === 'beanie') {
-    rect(cx - 10, 7, cx + 9, 10, headColor, 20)
-    rect(cx - 9, 5, cx + 8, 7, headHighlight, 20)
-    rect(cx - 7, 3, cx + 6, 6, headColor, 20)
-    rect(cx - 4, 2, cx + 3, 3, headSpec, 20)
-    rect(cx - 10, 10, cx + 9, 10, headShadow, 20)
-    rect(cx - 9, 9, cx + 8, 9, clothFold, 20)
-    rect(cx - 8, 8, cx + 7, 8, headMid, 20)
-    rect(cx - 6, 4, cx - 6, 10, headMid, 20)
-    rect(cx - 3, 4, cx - 3, 10, headShadow, 20)
-    rect(cx, 4, cx, 10, headMid, 20)
-    rect(cx + 3, 4, cx + 3, 10, headShadow, 20)
-    rect(cx + 6, 4, cx + 6, 10, headMid, 20)
-    rect(cx - 5, 6, cx - 5, 8, headSpec, 20)
-    rect(cx + 1, 6, cx + 1, 8, headSpec, 20)
-    rect(cx - 2, 10, cx + 1, 10, headDeep, 20)
-    rect(cx - 7, 3, cx - 6, 3, headSpec, 20)
-    rect(cx + 4, 3, cx + 5, 3, headSpec, 20)
-  } else if (traits.head.type === 'bow') {
-    rect(cx - 10, 7, cx - 7, 9, '#E754A6', 20)
-    rect(cx + 7, 7, cx + 10, 9, '#E754A6', 20)
-    rect(cx - 6, 7, cx + 6, 9, '#D81B78', 20)
-    rect(cx - 8, 6, cx - 6, 8, '#FFC1DC', 20)
-    rect(cx + 6, 6, cx + 8, 8, '#FFC1DC', 20)
-    rect(cx - 2, 7, cx + 1, 9, '#B3135F', 20)
-    rect(cx - 1, 8, cx, 8, '#8A0D48', 20)
-    rect(cx - 9, 9, cx - 8, 9, '#9C0F50', 20)
-    rect(cx + 8, 9, cx + 9, 9, '#9C0F50', 20)
-    rect(cx - 10, 8, cx - 9, 8, '#B3135F', 20)
-    rect(cx + 9, 8, cx + 10, 8, '#B3135F', 20)
-    rect(cx - 7, 8, cx - 6, 9, '#8A0D48', 20)
-    rect(cx + 6, 8, cx + 7, 9, '#8A0D48', 20)
-    rect(cx - 4, 7, cx - 3, 8, '#F77FBC', 20)
-    rect(cx + 3, 7, cx + 4, 8, '#F77FBC', 20)
-  } else if (traits.head.type === 'cap') {
-    rect(cx - 11, 7, cx + 9, 9, headColor, 20)
-    rect(cx - 10, 6, cx + 8, 7, headHighlight, 20)
-    rect(cx - 8, 5, cx + 5, 6, headSpec, 20)
-    rect(cx - 10, 8, cx + 8, 8, headMid, 20)
-    rect(cx - 10, 9, cx + 8, 9, headShadow, 20)
-    rect(cx - 3, 8, cx + 6, 8, headDeep, 20)
-    rect(cx - 1, 7, cx + 3, 7, headHighlight, 20)
-    rect(cx + 8, 8, cx + 12, 11, headShadow, 20)
-    rect(cx + 9, 9, cx + 12, 10, headColor, 20)
-    rect(cx + 10, 10, cx + 12, 11, headDeep, 20)
-    rect(cx - 12, 8, cx - 8, 9, headShadow, 20)
-    rect(cx - 11, 9, cx - 9, 10, headDeep, 20)
-    rect(cx + 9, 11, cx + 11, 11, '#111111', 20)
-    rect(cx - 9, 9, cx + 4, 9, headDeep, 20)
-    rect(cx - 7, 6, cx - 6, 7, headSpec, 20)
-    rect(cx + 4, 6, cx + 5, 7, headMid, 20)
-    rect(cx + 8, 10, cx + 10, 11, '#121212', 20)
-  } else if (traits.head.type === 'scarf') {
-    rect(cx - 10, 25, cx + 10, 28, traits.head.color, 20)
-    rect(cx - 9, 24, cx + 9, 26, traits.head.highlight, 20)
-    rect(cx + 8, 25, cx + 11, 33, traits.head.color, 20)
-    rect(cx + 9, 26, cx + 10, 32, traits.head.highlight, 20)
-    rect(cx - 3, 26, cx + 2, 27, traits.head.shadow, 20)
-    rect(cx - 2, 27, cx + 1, 28, traits.head.shadow, 20)
-  } else if (traits.head.type === 'halo') {
-    rect(cx - 4, 3, cx + 3, 4, '#E8BF2F', 20)
-    rect(cx - 5, 4, cx + 4, 5, '#D1A91E', 20)
-    rect(cx - 3, 2, cx + 2, 3, '#FFE27A', 20)
-    rect(cx - 5, 5, cx + 4, 5, '#AD8614', 20)
-    rect(cx - 2, 2, cx - 1, 2, '#FFF1A3', 20)
-    rect(cx + 1, 2, cx + 2, 2, '#FFF1A3', 20)
-  } else if (traits.head.type === 'headband') {
-    rect(cx - 11, 6, cx + 10, 9, headColor, 20)
-    rect(cx - 10, 5, cx + 9, 6, headSpec, 20)
-    rect(cx - 11, 9, cx + 10, 9, headShadow, 20)
-    rect(cx - 10, 8, cx + 9, 8, headMid, 20)
-    rect(cx - 9, 7, cx + 8, 7, clothFold, 20)
-    rect(cx - 8, 6, cx - 7, 8, headHighlight, 20)
-    rect(cx - 4, 6, cx - 3, 8, headHighlight, 20)
-    rect(cx, 6, cx + 1, 8, headHighlight, 20)
-    rect(cx + 4, 6, cx + 5, 8, headHighlight, 20)
-    rect(cx + 8, 6, cx + 9, 8, headHighlight, 20)
-    rect(cx - 2, 5, cx + 1, 6, headSpec, 20)
-    rect(cx + 2, 6, cx + 3, 8, headDeep, 20)
-    rect(cx - 6, 8, cx - 5, 9, headDeep, 20)
-    rect(cx + 6, 8, cx + 7, 9, headDeep, 20)
-    rect(cx - 10, 9, cx - 9, 9, headDeep, 20)
-    rect(cx + 8, 9, cx + 10, 9, headDeep, 20)
-    rect(cx - 2, 9, cx + 1, 9, headDeep, 20)
-    rect(cx + 9, 7, cx + 10, 8, headDeep, 20)
-    rect(cx - 11, 7, cx - 10, 8, headDeep, 20)
-  }
-  accessoryMode = false
-  
-  // FLIPPERS - reduced depth
-  rect(2, 26, 5, 32, body, 4)
-  rect(1, 27, 6, 31, body, 4)
-  rect(2, 28, 5, 30, bodyHighlight, 4)
-  rect(3, 29, 5, 29, bodyHighlight, 4)
-  rect(2, 30, 4, 31, bodyShadow, 4)
-  rect(1, 31, 3, 32, bodyShadow, 4)
-  rect(1, 30, 3, 33, body, 4)
-  rect(2, 31, 3, 32, bodyHighlight, 4)
-  rect(5, 31, 7, 33, body, 4)
-  rect(6, 32, 7, 33, bodyHighlight, 4)
-  
-  rect(34, 26, 37, 32, body, 4)
-  rect(33, 27, 38, 31, body, 4)
-  rect(34, 28, 37, 30, bodyHighlight, 4)
-  rect(34, 29, 36, 29, bodyHighlight, 4)
-  rect(35, 30, 37, 31, bodyShadow, 4)
-  rect(36, 31, 38, 32, bodyShadow, 4)
-  rect(36, 30, 38, 33, body, 4)
-  rect(36, 31, 37, 32, bodyHighlight, 4)
-  rect(32, 31, 34, 33, body, 4)
-  rect(32, 32, 33, 33, bodyHighlight, 4)
-  
-  // FEET - symmetric webbed penguin feet (fixed orange color)
-  const footBase = '#FF9F43'
-  const footHighlight = '#FFBE76'
-  const footShadow = '#E67E22'
-  
-  // Left foot - webbed with 3 distinct toes
-  // Main foot pad
-  rect(10, 37, 15, 38, footBase, 14)
-  rect(9, 38, 16, 38, footBase, 14)
-  rect(11, 36, 13, 37, footHighlight, 14)
-  rect(10, 38, 15, 38, footHighlight, 14)
-  rect(10, 37, 15, 37, footShadow, 14)
-  
-  // Toes - positioned forward with gaps
-  // Toe 1 (left)
-  rect(7, 38, 9, 39, footBase, 14)
-  rect(7, 38, 9, 38, footHighlight, 14)
-  rect(7, 39, 9, 39, footShadow, 14)
-  rect(7, 38, 8, 38, footHighlight, 14)
-  // Toe 2 (center)
-  rect(11, 38, 13, 39, footBase, 14)
-  rect(11, 38, 13, 38, footHighlight, 14)
-  rect(11, 39, 13, 39, footShadow, 14)
-  rect(12, 38, 12, 38, footHighlight, 14)
-  // Toe 3 (right)
-  rect(15, 38, 17, 39, footBase, 14)
-  rect(15, 38, 17, 38, footHighlight, 14)
-  rect(15, 39, 17, 39, footShadow, 14)
-  rect(16, 38, 16, 38, footHighlight, 14)
-  
-  // Right foot - mirror of left foot
-  // Main foot pad
-  rect(25, 37, 30, 38, footBase, 14)
-  rect(24, 38, 31, 38, footBase, 14)
-  rect(26, 36, 28, 37, footHighlight, 14)
-  rect(25, 38, 30, 38, footHighlight, 14)
-  rect(25, 37, 30, 37, footShadow, 14)
-  
-  // Toes - positioned forward with gaps
-  // Toe 1 (left)
-  rect(23, 38, 25, 39, footBase, 14)
-  rect(23, 38, 25, 38, footHighlight, 14)
-  rect(23, 39, 25, 39, footShadow, 14)
-  rect(23, 38, 24, 38, footHighlight, 14)
-  // Toe 2 (center)
-  rect(27, 38, 29, 39, footBase, 14)
-  rect(27, 38, 29, 38, footHighlight, 14)
-  rect(27, 39, 29, 39, footShadow, 14)
-  rect(28, 38, 28, 38, footHighlight, 14)
-  // Toe 3 (right)
-  rect(31, 38, 33, 39, footBase, 14)
-  rect(31, 38, 33, 38, footHighlight, 14)
-  rect(31, 39, 33, 39, footShadow, 14)
-  rect(32, 38, 32, 38, footHighlight, 14)
-  
-  return group
+function slugifyFilePart(value) {
+  return (value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
 }
- 
+
+function buildExportFileName({ fromTokenId, traits, extension }) {
+  const fileParts = ['8bit-penguin']
+  if (fromTokenId) fileParts.push(String(fromTokenId))
+  const headTrait = slugifyFilePart(traits.head?.name)
+  if (headTrait) fileParts.push(headTrait)
+  return `${fileParts.join('-')}.${extension}`
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
+function decodeDataUri(dataUri) {
+  const [, base64 = ''] = dataUri.split(',', 2)
+  const binary = window.atob(base64)
+  const bytes = new Uint8Array(binary.length)
+
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i)
+  }
+
+  return bytes
+}
+
 function ThreeGenerator() {
   const location = useLocation()
   const prefillTraits = location.state?.prefillTraits
@@ -659,7 +198,8 @@ function ThreeGenerator() {
   const penguinRef = useRef(null)
   const cameraRef = useRef(null)
   const controlsRef = useRef(null)
-  const generateTimeoutRef = useRef(null)
+  const backgroundFxRef = useRef(null)
+  const groundRef = useRef(null)
   const isDragging = useRef(false)
   const lastMouseX = useRef(0)
   
@@ -670,36 +210,37 @@ function ThreeGenerator() {
     setSceneReady(false)
     
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-    const canvasSize = isMobile ? 320 : 420
-    const pixelRatio = isMobile ? 1 : Math.min(window.devicePixelRatio, 1.75)
-    const shadowMapSize = isMobile ? 1024 : 1536
+    const pixelRatio = Math.min(window.devicePixelRatio || 1, isMobile ? 2 : 2.5)
+    const shadowMapSize = isMobile ? 2048 : 4096
+    const getCanvasSize = () => {
+      const width = Math.max(container.clientWidth || 420, 320)
+      const height = Math.max(container.clientHeight || width, 320)
+      const size = Math.min(width, height)
+      return { width: size, height: size }
+    }
     
     const scene = new THREE.Scene()
     scene.background = new THREE.Color(traits.background.color)
-    scene.fog = new THREE.Fog(traits.background.color, 15, 60)
+    scene.fog = getSceneFog(traits.background.color)
     sceneRef.current = scene
     
-    // Camera - orthographic view
+    // Camera - orthographic preview framing
     const aspect = 1
-    const frustumSize = 13
-    const camera = new THREE.OrthographicCamera(
-      -frustumSize * aspect / 2,
-      frustumSize * aspect / 2,
-      frustumSize / 2,
-      -frustumSize / 2,
-      0.1,
-      1000
-    )
-    camera.position.set(8, 6, 12)
-    camera.lookAt(0, 0, 0)
+    const camera = createPenguinOrthoCamera(THREE, aspect)
     cameraRef.current = camera
     
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
-    renderer.setSize(canvasSize, canvasSize)
-    renderer.setPixelRatio(pixelRatio)
-    renderer.outputColorSpace = THREE.SRGBColorSpace
-    renderer.shadowMap.enabled = true
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      alpha: true,
+      powerPreference: 'high-performance',
+    })
+    const initialSize = getCanvasSize()
+    renderer.setSize(initialSize.width, initialSize.height, false)
+    configureRenderer(renderer, pixelRatio)
     renderer.shadowMap.type = isMobile ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap
+    renderer.sortObjects = true
+    renderer.domElement.style.width = '100%'
+    renderer.domElement.style.height = '100%'
     container.appendChild(renderer.domElement)
     rendererRef.current = renderer
     
@@ -743,55 +284,35 @@ function ThreeGenerator() {
     renderer.domElement.addEventListener('touchmove', onPointerMove, { passive: true })
     renderer.domElement.addEventListener('touchend', onPointerUp)
     
-    // Ambient
-    const ambient = new THREE.AmbientLight(0xffffff, 0.8)
-    scene.add(ambient)
-    
-    // Hemisphere light for better ambient
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x888888, 0.4)
-    scene.add(hemiLight)
-    
-    // Key light - with shadow
-    const keyLight = new THREE.DirectionalLight(0xffffff, 1.2)
-    keyLight.position.set(5, 10, 15)
-    keyLight.castShadow = true
-    keyLight.shadow.mapSize.width = shadowMapSize
-    keyLight.shadow.mapSize.height = shadowMapSize
-    keyLight.shadow.camera.near = 1
-    keyLight.shadow.camera.far = 60
-    keyLight.shadow.camera.left = -15
-    keyLight.shadow.camera.right = 15
-    keyLight.shadow.camera.top = 15
-    keyLight.shadow.camera.bottom = -15
-    keyLight.shadow.radius = 1.5
-    keyLight.shadow.bias = -0.0005
-    keyLight.shadow.normalBias = 0.04
-    scene.add(keyLight)
-    
-    // Fill light - soften shadows
-    const fillLight = new THREE.DirectionalLight(0xffffff, 0.2)
-    fillLight.position.set(8, 8, 5)
-    scene.add(fillLight)
-    
-    // Rim light - add depth
-    const rimLight = new THREE.DirectionalLight(0xffffff, 0.3)
-    rimLight.position.set(0, 5, -15)
-    scene.add(rimLight)
+    addPenguinSceneLights(scene, THREE, {
+      profile: 'preview',
+      shadowMapSize,
+    })
     
     // Add penguin pivot for rotation; model is added in traits effect
     const penguinPivot = new THREE.Group()
-    penguinPivot.position.set(0, 0.5, 0)
+    penguinPivot.position.set(0, PENGUIN_PIVOT_Y, 0)
     scene.add(penguinPivot)
     penguinRef.current = penguinPivot
     
-    // Ground plane receives dynamic shadow
-    const groundGeo = new THREE.PlaneGeometry(60, 60)
-    const groundMat = new THREE.ShadowMaterial({ opacity: 0.35 })
-    const ground = new THREE.Mesh(groundGeo, groundMat)
-    ground.rotation.x = -Math.PI / 2
-    ground.position.y = -5
-    ground.receiveShadow = true
+    const ground = createGroundMesh(traits.background, THREE)
     scene.add(ground)
+    groundRef.current = ground
+
+    const backgroundFx = createBackgroundFx(traits.background, THREE)
+    scene.add(backgroundFx)
+    backgroundFxRef.current = backgroundFx
+
+    const handleResize = () => {
+      const nextSize = getCanvasSize()
+      renderer.setSize(nextSize.width, nextSize.height, false)
+      const frustumAspect = nextSize.width / nextSize.height
+      updatePenguinOrthoCamera(camera, frustumAspect)
+      renderer.render(scene, camera)
+    }
+
+    handleResize()
+    window.addEventListener('resize', handleResize)
     
     const animate = () => {
       frameRef.current = requestAnimationFrame(animate)
@@ -811,22 +332,57 @@ function ThreeGenerator() {
       renderer.domElement.removeEventListener('touchstart', onPointerDown)
       renderer.domElement.removeEventListener('touchmove', onPointerMove)
       renderer.domElement.removeEventListener('touchend', onPointerUp)
+      window.removeEventListener('resize', handleResize)
       if (controlsRef.current) controlsRef.current.dispose()
+      if (backgroundFxRef.current) {
+        disposeObject3D(backgroundFxRef.current)
+      }
+      if (groundRef.current) {
+        disposeObject3D(groundRef.current)
+      }
+      while (penguinRef.current?.children?.length > 0) {
+        const child = penguinRef.current.children[0]
+        penguinRef.current.remove(child)
+        disposeObject3D(child)
+      }
       if (rendererRef.current && container.contains(rendererRef.current.domElement)) {
         container.removeChild(rendererRef.current.domElement)
       }
+      renderer.dispose()
     }
-  }, [hasGenerated])
+  }, [hasGenerated, traits.background])
 
   useEffect(() => {
     if (!hasGenerated || !sceneRef.current || !penguinRef.current) return
     while (penguinRef.current.children.length > 0) {
-      penguinRef.current.remove(penguinRef.current.children[0])
+      const child = penguinRef.current.children[0]
+      penguinRef.current.remove(child)
+      disposeObject3D(child)
     }
     const newPenguin = createVoxelPenguin(traits, THREE)
+    newPenguin.scale.setScalar(PENGUIN_RENDER_SCALE)
+    alignObjectToGround(newPenguin, GROUND_LEVEL_Y - PENGUIN_PIVOT_Y)
     penguinRef.current.add(newPenguin)
     sceneRef.current.background = new THREE.Color(traits.background.color)
-    sceneRef.current.fog = new THREE.Fog(traits.background.color, 15, 60)
+    sceneRef.current.fog = getSceneFog(traits.background.color)
+
+    if (groundRef.current) {
+      sceneRef.current.remove(groundRef.current)
+      groundRef.current.geometry?.dispose?.()
+      groundRef.current.material?.dispose?.()
+    }
+    const nextGround = createGroundMesh(traits.background, THREE)
+    sceneRef.current.add(nextGround)
+    groundRef.current = nextGround
+
+    if (backgroundFxRef.current) {
+      sceneRef.current.remove(backgroundFxRef.current)
+      disposeObject3D(backgroundFxRef.current)
+    }
+    const nextBackgroundFx = createBackgroundFx(traits.background, THREE)
+    sceneRef.current.add(nextBackgroundFx)
+    backgroundFxRef.current = nextBackgroundFx
+
     requestAnimationFrame(() => setIsGenerating(false))
   }, [traits, hasGenerated])
 
@@ -835,10 +391,6 @@ function ThreeGenerator() {
   }, [sceneReady, isGenerating])
   
   const generate = () => {
-    if (generateTimeoutRef.current) {
-      clearTimeout(generateTimeoutRef.current)
-      generateTimeoutRef.current = null
-    }
     setIsGenerating(true)
     const t = {
       body: randomItem(TRAITS.body),
@@ -880,22 +432,32 @@ function ThreeGenerator() {
     
     setTraits(t)
     if (!hasGenerated) setHasGenerated(true)
-    generateTimeoutRef.current = setTimeout(() => {
-      setIsGenerating(false)
-      generateTimeoutRef.current = null
-    }, 1500)
   }
   
   const saveImage = () => {
     if (!rendererRef.current || !sceneRef.current || !cameraRef.current) return
     
-    // Create high-res renderer for saving (4K quality)
-    const saveRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
-    saveRenderer.setSize(4096, 4096)
-    saveRenderer.setPixelRatio(1)
-    saveRenderer.shadowMap.enabled = true
+    const exportSize = 4096
+    const saveRenderer = new THREE.WebGLRenderer({
+      antialias: true,
+      alpha: true,
+      powerPreference: 'high-performance',
+      preserveDrawingBuffer: true,
+    })
+    saveRenderer.setSize(exportSize, exportSize, false)
+    configureRenderer(saveRenderer, 1)
     saveRenderer.shadowMap.type = THREE.PCFSoftShadowMap
-    saveRenderer.render(sceneRef.current, cameraRef.current)
+    saveRenderer.sortObjects = true
+
+    const exportCamera = cameraRef.current.clone()
+    if (exportCamera.isOrthographicCamera) {
+      exportCamera.left = -ORTHO_FRUSTUM_SIZE / 2
+      exportCamera.right = ORTHO_FRUSTUM_SIZE / 2
+      exportCamera.top = ORTHO_FRUSTUM_SIZE / 2
+      exportCamera.bottom = -ORTHO_FRUSTUM_SIZE / 2
+    }
+    exportCamera.updateProjectionMatrix()
+    saveRenderer.render(sceneRef.current, exportCamera)
     
     const link = document.createElement('a')
     link.download = '8bit-penguin.png'
@@ -905,11 +467,62 @@ function ThreeGenerator() {
     saveRenderer.dispose()
   }
 
-  useEffect(() => {
-    return () => {
-      if (generateTimeoutRef.current) clearTimeout(generateTimeoutRef.current)
-    }
-  }, [])
+  const saveGlb = () => {
+    const penguinModel = penguinRef.current?.children?.[0]
+    if (!penguinModel) return
+
+    const exportRoot = penguinModel.clone(true)
+    exportRoot.updateMatrixWorld(true)
+
+    const exporter = new GLTFExporter()
+    exporter.parse(
+      exportRoot,
+      (result) => {
+        if (!(result instanceof ArrayBuffer)) return
+
+        const blob = new Blob([result], { type: 'model/gltf-binary' })
+        downloadBlob(blob, buildExportFileName({ fromTokenId, traits, extension: 'glb' }))
+      },
+      (error) => {
+        console.error('GLB export failed', error)
+      },
+      { binary: true, onlyVisible: true }
+    )
+  }
+
+  const saveGltf = () => {
+    const penguinModel = penguinRef.current?.children?.[0]
+    if (!penguinModel) return
+
+    const exportRoot = penguinModel.clone(true)
+    exportRoot.updateMatrixWorld(true)
+
+    const exporter = new GLTFExporter()
+    exporter.parse(
+      exportRoot,
+      (result) => {
+        if (result instanceof ArrayBuffer) return
+
+        const gltf = structuredClone(result)
+        const gltfFileName = buildExportFileName({ fromTokenId, traits, extension: 'gltf' })
+        const binFileName = buildExportFileName({ fromTokenId, traits, extension: 'bin' })
+        const bufferUri = gltf.buffers?.[0]?.uri
+
+        if (typeof bufferUri === 'string' && bufferUri.startsWith('data:')) {
+          const bytes = decodeDataUri(bufferUri)
+          gltf.buffers[0].uri = binFileName
+          downloadBlob(new Blob([bytes], { type: 'application/octet-stream' }), binFileName)
+        }
+
+        const blob = new Blob([JSON.stringify(gltf, null, 2)], { type: 'model/gltf+json' })
+        downloadBlob(blob, gltfFileName)
+      },
+      (error) => {
+        console.error('GLTF export failed', error)
+      },
+      { binary: false, onlyVisible: true }
+    )
+  }
 
   useEffect(() => {
     if (!prefillTraits) return
@@ -955,8 +568,9 @@ function ThreeGenerator() {
               className="btn white" 
               onClick={generate}
               disabled={isGenerating}
+              aria-busy={isGenerating}
             >
-              {isGenerating ? 'Generating...' : 'Generate 3D'}
+              {isGenerating ? 'Generating' : 'Generate 3D'}
             </button>
             <button 
               className="btn white" 
@@ -964,6 +578,20 @@ function ThreeGenerator() {
               disabled={!hasGenerated}
             >
               Save Image
+            </button>
+            <button
+              className="btn white"
+              onClick={saveGlb}
+              disabled={!hasGenerated}
+            >
+              Save GLB
+            </button>
+            <button
+              className="btn white"
+              onClick={saveGltf}
+              disabled={!hasGenerated}
+            >
+              Save glTF
             </button>
           </div>
         </div>

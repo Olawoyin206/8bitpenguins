@@ -838,6 +838,17 @@
   color: #c9d1d9;
 }
 
+.leaderboard-proof-note {
+  margin: 0 0 10px;
+  padding: 7px 9px;
+  border: 1px solid rgba(240, 183, 79, 0.42);
+  border-radius: 6px;
+  background: rgba(240, 183, 79, 0.1);
+  color: #f6d89b;
+  font-size: 0.58rem;
+  line-height: 1.45;
+}
+
 .leaderboard-meta {
   display: flex;
   flex-wrap: wrap;
@@ -927,7 +938,7 @@
 
 .leader-row {
   display: grid;
-  grid-template-columns: 34px minmax(96px, 1.15fr) minmax(84px, 0.95fr) 64px 52px 60px;
+  grid-template-columns: 34px minmax(100px, 1.2fr) 34px minmax(82px, 0.95fr) 62px 52px 62px;
   align-items: center;
   gap: 5px;
   border: 1px solid #30363d;
@@ -994,6 +1005,32 @@
   text-align: right;
   justify-self: end;
   min-width: 0;
+}
+
+.leader-verify {
+  font-size: 0.72rem;
+  line-height: 1;
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+}
+
+.leader-verify.verified {
+  color: #39ff14;
+}
+
+.leader-verify.pending {
+  color: #f0b74f;
+}
+
+.leader-header .leader-verify {
+  color: #c9d1d9;
+  font-size: 0.56rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .leader-row.rank-1 {
@@ -1687,9 +1724,15 @@
   }
 
   .leader-row {
-    grid-template-columns: 24px minmax(0, 1fr) minmax(0, 0.8fr) 44px 34px 44px;
+    grid-template-columns: 24px minmax(0, 1.1fr) 24px minmax(56px, 0.95fr) 48px 38px 52px;
     gap: 3px;
     padding: 6px 5px;
+  }
+
+  .leaderboard-proof-note {
+    margin-bottom: 8px;
+    padding: 6px 7px;
+    font-size: 0.54rem;
   }
 
   .leaderboard-meta {
@@ -1715,19 +1758,28 @@
   }
 
   .leader-name {
-    font-size: 0.58rem;
+    font-size: 0.56rem;
   }
 
   .leader-wallet {
-    font-size: 0.54rem;
+    font-size: 0.52rem;
   }
 
   .leader-score {
-    font-size: 0.62rem;
+    font-size: 0.58rem;
   }
 
   .leader-time {
-    font-size: 0.52rem;
+    font-size: 0.5rem;
+  }
+
+  .leader-verify {
+    font-size: 0.56rem;
+  }
+
+  .leader-header .leader-verify {
+    font-size: 0.46rem;
+    letter-spacing: 0.02em;
   }
 
   .proof-form input {

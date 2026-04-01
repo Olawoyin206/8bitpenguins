@@ -23,15 +23,15 @@ const PUZZLE_PROFILES_SHEET = 'Puzzle Profiles'
 const REQUIRED_TWEET_CAPTION = 'Just Solved The @8bitspenguins_ puzzle'
 const REQUIRED_TWEET_CTA = 'Solve The Puzzle And Secure Whitelist: https://8bitpenguins.xyz/play-to-wl'
 const VICTORY_QUOTE_TWEET_LINK = 'https://x.com/8bitspenguins_/status/2038544907640373749'
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzA6M5MblCTNx8b68Pyi4QonpCQ01gjUqbEcHr9XLyOMAhwrePp2n259epeViK0saRu/exec'
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzxCDeOQUzCXPVopMXaFeMBHGKWJvuQ-5dpyP3edRahGodmn5NUhKvuj0RJ-0_4R_KI/exec'
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || ''
 const PROFILE_TURNSTILE_ACTION = 'puzzle_profile_start'
 const PROOF_TURNSTILE_ACTION = 'puzzle_proof_submit'
-const LEADERBOARD_SHEET = 'Leaderboard'
 const GAME_ANALYTICS_SHEET = 'Game Analytics'
 const PUZZLE_PROOF_WINDOW_MS = 24 * 60 * 60 * 1000
 const LEADERBOARD_PAGE_SIZE = 100
 const LEADERBOARD_FETCH_LIMIT = 1000
+const LEADERBOARD_SEARCH_FETCH_LIMIT = 5000
 const TWITTER_USERNAME_PATTERN = /^[A-Za-z0-9_]{1,15}$/
 const GENERATE_RENDER_OPTIONS = {
   logicalSize: 40,
@@ -227,6 +227,7 @@ function loadLeaderboard() {
 
 function compactLeaderboardRow(row) {
   return {
+    rank: Number(row?.rank || 0) || null,
     browserId: String(row?.browserId || row?.browser_id || ''),
     xUsername: String(row?.xUsername || row?.x_username || row?.xHandle || ''),
     walletAddress: String(row?.walletAddress || row?.wallet_address || ''),
@@ -241,6 +242,8 @@ function compactLeaderboardRow(row) {
         ? Number(row?.timeSec || row?.time_sec || row?.time)
         : null,
     updatedAt: Number(row?.updatedAt || row?.updated_at || row?.timestamp || Date.now()),
+    hasProof: row?.hasProof === true || row?.hasProof === 'true' || row?.hasProof === 1 || row?.hasProof === '1',
+    proofDeadlineTs: Number(row?.proofDeadlineTs || 0) || null,
   }
 }
 
@@ -332,13 +335,15 @@ function buildLocalPuzzleProofStatus(profile, submission) {
   const tweetLink = matches ? normalizeTweetLink(submission?.tweetLink || '') : ''
   const timestamp = matches ? Number(submission?.timestamp || 0) : 0
   const submitted = Boolean(tweetLink)
+  const proofDeadlineTs = timestamp > 0 ? timestamp + PUZZLE_PROOF_WINDOW_MS : 0
+  const expired = !submitted && proofDeadlineTs > 0 && Date.now() > proofDeadlineTs
 
   return {
     ok: false,
     source: 'local',
     submissionExists: matches && Boolean(submission?.exists),
     submitted,
-    proofState: submitted ? 'submitted' : 'unknown',
+    proofState: submitted ? 'submitted' : timestamp > 0 ? (expired ? 'expired' : 'missing') : 'unknown',
     tweetLink,
     tweetId: extractTweetMetaFromLink(tweetLink).tweetId,
     xUsername: matches ? String(submission?.xUsername || profile?.xUsername || '') : String(profile?.xUsername || ''),
@@ -347,10 +352,10 @@ function buildLocalPuzzleProofStatus(profile, submission) {
     moves: matches ? Number(submission?.moves || 0) : 0,
     time: matches ? Number(submission?.time || 0) : 0,
     qualifiedAt: timestamp,
-    submittedAt: timestamp,
-    proofDeadlineTs: timestamp > 0 ? timestamp + PUZZLE_PROOF_WINDOW_MS : 0,
-    msRemaining: 0,
-    expired: false,
+    submittedAt: submitted ? timestamp : 0,
+    proofDeadlineTs,
+    msRemaining: !submitted && proofDeadlineTs > 0 ? Math.max(0, proofDeadlineTs - Date.now()) : 0,
+    expired,
   }
 }
 
@@ -384,6 +389,14 @@ function compareLeaderboardRows(a, b) {
   const bMoves = Number.isFinite(Number(b.moves)) && Number(b.moves) > 0 ? Number(b.moves) : Number.MAX_SAFE_INTEGER
   const moveDiff = aMoves - bMoves
   if (moveDiff !== 0) return moveDiff
+  const aTime = Number.isFinite(Number(a.timeSec ?? a.time)) && Number(a.timeSec ?? a.time) > 0
+    ? Number(a.timeSec ?? a.time)
+    : Number.MAX_SAFE_INTEGER
+  const bTime = Number.isFinite(Number(b.timeSec ?? b.time)) && Number(b.timeSec ?? b.time) > 0
+    ? Number(b.timeSec ?? b.time)
+    : Number.MAX_SAFE_INTEGER
+  const timeDiff = aTime - bTime
+  if (timeDiff !== 0) return timeDiff
   return Number(a.updatedAt || 0) - Number(b.updatedAt || 0)
 }
 
@@ -440,10 +453,24 @@ function upsertLeaderboardEntry(entry) {
     if (shouldUpdate) {
       rows[idx] = { ...rows[idx], ...entry, updatedAt: Date.now() }
     } else {
-      rows[idx] = { ...rows[idx], xUsername: entry.xUsername || rows[idx].xUsername, walletAddress: entry.walletAddress || rows[idx].walletAddress, updatedAt: Date.now() }
+      rows[idx] = {
+        ...rows[idx],
+        xUsername: entry.xUsername || rows[idx].xUsername,
+        walletAddress: entry.walletAddress || rows[idx].walletAddress,
+        updatedAt: Date.now(),
+        hasProof: Boolean(entry.hasProof || rows[idx].hasProof),
+        proofDeadlineTs: entry.hasProof
+          ? null
+          : (rows[idx].proofDeadlineTs || entry.proofDeadlineTs || null),
+      }
     }
   } else {
-    rows.push({ ...entry, updatedAt: Date.now() })
+    rows.push({
+      ...entry,
+      updatedAt: Date.now(),
+      hasProof: Boolean(entry.hasProof),
+      proofDeadlineTs: entry.hasProof ? null : (entry.proofDeadlineTs || null),
+    })
   }
 
   rows.sort(compareLeaderboardRows)
@@ -452,12 +479,15 @@ function upsertLeaderboardEntry(entry) {
   return trimmed
 }
 
-async function fetchGoogleLeaderboard() {
+async function fetchGoogleLeaderboard(options = {}) {
+  const rawQuery = String(options?.query || '').trim()
+  const searchQuery = rawQuery.replace(/^@+/, '')
+  const fetchLimit = searchQuery ? LEADERBOARD_SEARCH_FETCH_LIMIT : LEADERBOARD_FETCH_LIMIT
   const query = new URLSearchParams({
     action: 'leaderboard',
-    sheetName: LEADERBOARD_SHEET,
-    limit: String(LEADERBOARD_FETCH_LIMIT),
+    limit: String(fetchLimit),
   })
+  if (searchQuery) query.set('query', searchQuery)
 
   const res = await fetch(`${GOOGLE_SCRIPT_URL}?${query.toString()}`)
   const data = await res.json()
@@ -469,6 +499,7 @@ async function fetchGoogleLeaderboard() {
 
   return rows
     .map((row) => ({
+      rank: Number(row.rank || 0) || null,
       browserId: row.browserId || row.browser_id || '',
       xUsername: row.xUsername || row.x_username || row.xHandle || '',
       walletAddress: row.walletAddress || row.wallet_address || '',
@@ -479,32 +510,12 @@ async function fetchGoogleLeaderboard() {
           ? Number(row.timeSec || row.time_sec || row.time)
           : null,
       updatedAt: Number(row.updatedAt || row.updated_at || row.timestamp || Date.now()),
+      hasProof: row.hasProof === true || row.hasProof === 'true' || row.hasProof === 1 || row.hasProof === '1',
+      proofDeadlineTs: Number(row.proofDeadlineTs || 0) || null,
     }))
     .filter((row) => row.score > 0)
     .sort(compareLeaderboardRows)
-    .slice(0, LEADERBOARD_FETCH_LIMIT)
-}
-
-async function syncLeaderboardEntry(entry) {
-  const payload = {
-    action: 'upsert_leaderboard',
-    sheetName: LEADERBOARD_SHEET,
-    eventType: 'leaderboard_entry',
-    browserId: entry.browserId,
-    xUsername: entry.xUsername,
-    walletAddress: entry.walletAddress,
-    score: Number(entry.score || 0),
-    moves: Number(entry.moves || 0),
-    timeSec: Number(entry.timeSec || 0),
-    time: Number(entry.timeSec || 0),
-    timestamp: Date.now(),
-  }
-
-  await fetch(GOOGLE_SCRIPT_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify(payload),
-  })
+    .slice(0, fetchLimit)
 }
 
 async function sendGameAnalyticsEvent(event) {
@@ -660,7 +671,7 @@ function PlayToWL() {
   const [profileCaptchaResetKey, setProfileCaptchaResetKey] = useState(0)
   const [submissionRecord, setSubmissionRecord] = useState(() => initialSubmission)
   const [proofStatus, setProofStatus] = useState(() => initialProofStatus)
-  const [isLoadingProofStatus, setIsLoadingProofStatus] = useState(false)
+  const [isLoadingProofStatus, setIsLoadingProofStatus] = useState(() => initialProfile.ready)
   const [victoryTweetLinkInput, setVictoryTweetLinkInput] = useState(() => initialSubmission.tweetLink)
   const [victoryTweetError, setVictoryTweetError] = useState('')
   const [proofCaptchaToken, setProofCaptchaToken] = useState('')
@@ -683,6 +694,8 @@ function PlayToWL() {
   const clientSessionIdRef = useRef(createAnalyticsEventId('session'))
   const attemptCounterRef = useRef(0)
   const activeRunRef = useRef({ runId: '', attemptNumber: 0, finished: false })
+  const fullLeaderboardCacheRef = useRef(loadLeaderboard())
+  const leaderboardRequestSeqRef = useRef(0)
 
   const solved = useMemo(() => tiles.every((v, idx) => v === idx), [tiles])
   const score = useMemo(() => computeScore(moves, timeSec, { includeBonuses: false }), [moves, timeSec])
@@ -786,9 +799,13 @@ function PlayToWL() {
     return idx >= 0 ? idx + 1 : null
   }, [leaderboard, xUsername, walletAddress, browserId])
   const filteredLeaderboard = useMemo(() => {
-    const query = normalizeX(leaderboardSearch)
+    const query = String(leaderboardSearch || '').trim().toLowerCase().replace(/^@+/, '')
     if (!query) return leaderboard
-    return leaderboard.filter((row) => normalizeX(row.xUsername).includes(query))
+    return leaderboard.filter((row) => {
+      const matchesUsername = normalizeX(row.xUsername).includes(query)
+      const matchesWallet = normalizeWallet(row.walletAddress).includes(query)
+      return matchesUsername || matchesWallet
+    })
   }, [leaderboard, leaderboardSearch])
   const bestLeaderboardEntry = useMemo(() => {
     if (!Array.isArray(leaderboard) || leaderboard.length === 0) return null
@@ -809,7 +826,8 @@ function PlayToWL() {
   )
   const proofState = String(proofStatus?.proofState || 'unknown')
   const proofExpired = Boolean(proofStatus?.expired) || proofState === 'expired'
-  const alreadySubmittedProof = proofState === 'submitted'
+  const remoteProofResolved = proofStatus?.source === 'remote'
+  const alreadySubmittedProof = proofState === 'submitted' && remoteProofResolved
   const savedVictoryTweetLink = useMemo(() => {
     if (!alreadySubmittedProof) return ''
     return normalizeTweetLink(proofStatus?.tweetLink || submissionRecord?.tweetLink || '')
@@ -888,7 +906,7 @@ function PlayToWL() {
     setQualifiedMoves((prev) => (prev === nextMoves ? prev : nextMoves))
     setQualifiedTime((prev) => (prev === nextTime ? prev : nextTime))
   }, [])
-  const needsVictoryTweet = hasProfile && bestReferenceScore >= PUZZLE_TARGET_SCORE && !savedVictoryTweetLink
+  const needsVictoryTweet = hasProfile && bestReferenceScore >= PUZZLE_TARGET_SCORE && (!remoteProofResolved || !savedVictoryTweetLink)
   const projectedDeltaToBest = projectedFinalScore - bestReferenceScore
   const boardStatus = useMemo(() => {
     if (proofExpired) {
@@ -952,12 +970,6 @@ function PlayToWL() {
     }
   }, [leaderboardPage, totalLeaderboardPages])
 
-  useEffect(() => {
-    if (needsVictoryTweet && activeTab !== 'game') {
-      setActiveTab('game')
-    }
-  }, [activeTab, needsVictoryTweet])
-
   const openModal = (title, message, tone = 'info', action = null) => {
     setModal({
       open: true,
@@ -978,8 +990,8 @@ function PlayToWL() {
     <>
       <div className="victory-proof-warning" role="alert">
         {proofExpired
-          ? 'Proof overdue. Submit your victory tweet now for review. Your rank is not safe until this is resolved.'
-          : 'Proof required. Submit your victory tweet now to keep your rank. No proof in 24 hours means removal from the leaderboard.'}
+          ? 'Proof is overdue. Submit your victory tweet now so your leaderboard entry can be restored.'
+          : 'Proof required. Submit your victory tweet now. Your leaderboard entry stays hidden until proof is submitted.'}
       </div>
       {isLoadingProofStatus && <p className="victory-proof-meta">Checking latest proof status...</p>}
       <form className="proof-form victory-proof-form" onSubmit={handleVictoryTweetSubmit}>
@@ -1088,45 +1100,217 @@ function PlayToWL() {
     }
   }, [hasProfile, walletAddress, xUsername])
 
-  const refreshLeaderboard = useCallback(async (silent = false) => {
+  const applyFullLeaderboardCache = useCallback((rows, options = {}) => {
+    const normalizedRows = Array.isArray(rows) ? rows : []
+    fullLeaderboardCacheRef.current = normalizedRows
+    if (options.updateVisible !== false) {
+      setLeaderboard(normalizedRows)
+    }
+    saveLeaderboard(normalizedRows)
+    if (options.updateSyncTs !== false) {
+      setLastLeaderboardSync(Date.now())
+    }
+  }, [])
+
+  const refreshLeaderboard = useCallback(async (silent = false, searchQuery = '') => {
+    const normalizedSearch = String(searchQuery || '').trim()
+    const requestId = ++leaderboardRequestSeqRef.current
+    if (!normalizedSearch && fullLeaderboardCacheRef.current.length > 0) {
+      setLeaderboard(fullLeaderboardCacheRef.current)
+    }
     setIsLeaderboardLoading(true)
     try {
-      const rows = await fetchGoogleLeaderboard()
-      setLeaderboard(rows)
-      saveLeaderboard(rows)
-      setLastLeaderboardSync(Date.now())
+      const rows = await fetchGoogleLeaderboard({ query: searchQuery })
+      if (requestId !== leaderboardRequestSeqRef.current) return
+      if (normalizedSearch) {
+        setLeaderboard(rows)
+        setLastLeaderboardSync(Date.now())
+      } else {
+        applyFullLeaderboardCache(rows)
+      }
     } catch {
+      if (requestId !== leaderboardRequestSeqRef.current) return
       if (!silent) {
         openModal('Leaderboard Unavailable', 'Could not refresh global ranks right now.', 'error')
       }
     } finally {
-      setIsLeaderboardLoading(false)
+      if (requestId === leaderboardRequestSeqRef.current) {
+        setIsLeaderboardLoading(false)
+      }
+    }
+  }, [applyFullLeaderboardCache, openModal])
+
+  const handleLeaderboardSearchChange = useCallback((value) => {
+    const nextSearch = String(value || '')
+    setLeaderboardSearch(nextSearch)
+    if (!nextSearch.trim()) {
+      const fallbackRows = fullLeaderboardCacheRef.current.length > 0
+        ? fullLeaderboardCacheRef.current
+        : loadLeaderboard()
+      fullLeaderboardCacheRef.current = fallbackRows
+      setLeaderboard(fallbackRows)
     }
   }, [])
 
-  const syncRunToLeaderboard = async (finalScore, finalMoves, finalTimeSec) => {
-    const entry = {
-      browserId,
-      xUsername: xUsername || `Anon-${browserId.slice(-4)}`,
-      walletAddress: walletAddress || '',
-      score: Number(finalScore || 0),
+  const handleLeaderboardSearchClear = useCallback(() => {
+    handleLeaderboardSearchChange('')
+  }, [handleLeaderboardSearchChange])
+
+  const syncQualifiedSubmission = useCallback(async (
+    finalScore,
+    finalMoves,
+    finalTimeSec,
+    options = {}
+  ) => {
+    const normalizedX = xUsername.trim().replace(/^@+/, '')
+    if (!normalizedX || normalizedX.length < 2 || !validateEvmAddress(walletAddress)) return false
+
+    const timestamp = Date.now()
+    const normalizedTweetLink = normalizeTweetLink(options.tweetLink || '')
+    const { tweetId } = extractTweetMetaFromLink(normalizedTweetLink)
+    const isProofAttach = Boolean(normalizedTweetLink)
+    const hadExistingProof = Boolean(
+      proofStatus?.submitted ||
+      normalizeTweetLink(submissionRecord?.tweetLink || '') ||
+      savedVictoryTweetLink
+    )
+
+    if (isProofAttach && !tweetId) return false
+
+    const payload = {
+      sheetName: PUZZLE_SUBMISSIONS_SHEET,
+      eventType: 'puzzle_submission',
+      xUsername: normalizedX.startsWith('@') ? normalizedX : `@${normalizedX}`,
+      walletAddress: walletAddress.trim(),
+      tweetLink: normalizedTweetLink,
+      tweetId,
+      requiredCaption: REQUIRED_TWEET_CAPTION,
+      bestScore,
+      currentScore: Number(finalScore || 0),
       moves: Number(finalMoves || 0),
-      timeSec: Number(finalTimeSec || 0),
+      time: Number(finalTimeSec || 0),
+      attemptNumber: 0,
+      sessionID: browserId,
+      qualified: true,
+      qualifiedAt: timestamp,
+      timestamp,
     }
 
-    setLeaderboard(() => upsertLeaderboardEntry(entry))
-    try {
-      await syncLeaderboardEntry(entry)
-      const remoteRows = await fetchGoogleLeaderboard()
-      if (remoteRows.length > 0) {
-        setLeaderboard(remoteRows)
-        saveLeaderboard(remoteRows)
-        setLastLeaderboardSync(Date.now())
-      }
-    } catch {
-      // Keep local leaderboard if remote sync fails.
+    if (isProofAttach) {
+      payload.turnstileToken = String(options.captchaToken || '').trim()
+      payload.turnstileAction = PROOF_TURNSTILE_ACTION
     }
-  }
+
+    try {
+      const response = await fetch(GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload)
+      })
+      const responseData = await response.json().catch(() => null)
+      if (!response.ok || responseData?.ok === false) {
+        const apiMessage = String(responseData?.error || responseData?.errorCode || `HTTP ${response.status}`)
+        if (!options.silentError) {
+          openModal('Save Failed', `Could not save qualification. ${apiMessage}`, 'error')
+        }
+        return false
+      }
+
+      const hasProof = isProofAttach || hadExistingProof
+      const nextTweetLink =
+        normalizedTweetLink ||
+        normalizeTweetLink(submissionRecord?.tweetLink || '') ||
+        normalizeTweetLink(proofStatus?.tweetLink || '') ||
+        savedVictoryTweetLink
+      persistPuzzleSubmission({
+        walletAddress: payload.walletAddress,
+        xUsername: payload.xUsername,
+        tweetLink: nextTweetLink,
+        duplicate: false,
+        score: Number(finalScore || 0),
+        moves: Number(finalMoves || 0),
+        time: Number(finalTimeSec || 0),
+        timestamp,
+      })
+
+      const entry = {
+        browserId,
+        xUsername: payload.xUsername,
+        walletAddress: payload.walletAddress,
+        score: Number(finalScore || 0),
+        moves: Number(finalMoves || 0),
+        timeSec: Number(finalTimeSec || 0),
+        updatedAt: timestamp,
+        hasProof,
+        proofDeadlineTs: hasProof ? null : (timestamp + PUZZLE_PROOF_WINDOW_MS),
+      }
+      setLeaderboard(() => upsertLeaderboardEntry(entry))
+
+      setProofStatus((prev) => {
+        const nextSubmitted = hasProof || Boolean(prev?.submitted)
+        const qualifiedAt = nextSubmitted
+          ? Number(prev?.qualifiedAt || timestamp)
+          : timestamp
+        const proofDeadlineTs = nextSubmitted ? Number(prev?.proofDeadlineTs || 0) : (timestamp + PUZZLE_PROOF_WINDOW_MS)
+        return {
+          ...prev,
+          source: 'remote',
+          submissionExists: true,
+          submitted: nextSubmitted,
+          proofState: nextSubmitted ? 'submitted' : 'missing',
+          tweetLink: nextSubmitted ? (normalizedTweetLink || prev?.tweetLink || '') : '',
+          tweetId: nextSubmitted ? (tweetId || prev?.tweetId || '') : '',
+          xUsername: payload.xUsername,
+          walletAddress: payload.walletAddress,
+          currentScore: Number(finalScore || 0),
+          moves: Number(finalMoves || 0),
+          time: Number(finalTimeSec || 0),
+          qualifiedAt,
+          submittedAt: nextSubmitted ? Number(prev?.submittedAt || timestamp) : 0,
+          proofDeadlineTs,
+          msRemaining: nextSubmitted || proofDeadlineTs <= 0 ? 0 : Math.max(0, proofDeadlineTs - Date.now()),
+          expired: false,
+        }
+      })
+
+      void (async () => {
+        try {
+          const remoteRows = await fetchGoogleLeaderboard()
+          if (remoteRows.length > 0) {
+            applyFullLeaderboardCache(remoteRows)
+          }
+        } catch {
+          // Keep the optimistic leaderboard row when refresh fails.
+        }
+
+        try {
+          await syncProofStatus()
+        } catch {
+          // Keep the optimistic proof status when refresh fails.
+        }
+      })()
+
+      return true
+    } catch (err) {
+      if (!options.silentError) {
+        openModal('Save Failed', `Could not save qualification. ${err?.message ? err.message : 'Try again.'}`, 'error')
+      }
+      return false
+    }
+  }, [
+    applyFullLeaderboardCache,
+    bestScore,
+    browserId,
+    openModal,
+    persistPuzzleSubmission,
+    proofStatus?.submitted,
+    proofStatus?.tweetLink,
+    savedVictoryTweetLink,
+    submissionRecord?.tweetLink,
+    syncProofStatus,
+    walletAddress,
+    xUsername,
+  ])
 
   useEffect(() => {
     if (gameState !== 'playing') return undefined
@@ -1182,7 +1366,6 @@ function PlayToWL() {
       const beatBest = finalScore > previousHigh
       const nextQualifiedRun = { score: finalScore, moves, timeSec }
       const shouldPromoteQualifiedRun = isBetterQualifiedRun(nextQualifiedRun, bestQualifiedSnapshot)
-      const shouldSyncQualifiedRun = alreadySubmittedProof && shouldPromoteQualifiedRun
       localStorage.setItem('arcadeQualified', 'true')
       setQualified(true)
       if (shouldPromoteQualifiedRun) {
@@ -1193,10 +1376,8 @@ function PlayToWL() {
         setQualifiedMoves(moves)
         setQualifiedTime(timeSec)
       }
-      if (shouldSyncQualifiedRun) {
-        setVerifiedBestScore((prev) => Math.max(Number(prev || 0), finalScore))
-        void syncRunToLeaderboard(finalScore, moves, timeSec)
-      }
+      setVerifiedBestScore((prev) => Math.max(Number(prev || 0), finalScore))
+      void syncQualifiedSubmission(finalScore, moves, timeSec, { silentError: true })
       setQualifiedImage(solvedImage)
       window.setTimeout(() => {
         if (!alreadySubmittedProof) {
@@ -1232,7 +1413,7 @@ function PlayToWL() {
         }
       }, 0)
     }
-  }, [alreadySubmittedProof, bestQualifiedSnapshot, bestScore, browserId, finishTrackedRun, gameState, moves, referenceImage, savedVictoryTweetLink, solved, syncRunToLeaderboard, timeSec, verifiedBestScore])
+  }, [alreadySubmittedProof, bestQualifiedSnapshot, bestScore, browserId, finishTrackedRun, gameState, moves, referenceImage, savedVictoryTweetLink, solved, syncQualifiedSubmission, timeSec, verifiedBestScore])
   /* eslint-enable react-hooks/exhaustive-deps */
 
   useEffect(() => {
@@ -1311,12 +1492,12 @@ function PlayToWL() {
   }, [])
 
   useEffect(() => {
-    refreshLeaderboard(true)
+    refreshLeaderboard(true, leaderboardSearch)
     const id = setInterval(() => {
-      refreshLeaderboard(true)
+      refreshLeaderboard(true, leaderboardSearch)
     }, 20000)
     return () => clearInterval(id)
-  }, [refreshLeaderboard])
+  }, [leaderboardSearch, refreshLeaderboard])
 
   useEffect(() => {
     return () => {
@@ -1374,10 +1555,6 @@ function PlayToWL() {
   }
 
   const handlePlayAgain = async () => {
-    if (needsVictoryTweet) {
-      openModal('Proof Required', 'Submit your victory tweet link before starting another run.', 'error')
-      return
-    }
     if (slideMove) return
     const nextReferenceImage = await buildPuzzleReferenceImage()
     setReferenceImage(nextReferenceImage)
@@ -1409,10 +1586,6 @@ function PlayToWL() {
   }
 
   const handleShuffle = () => {
-    if (needsVictoryTweet) {
-      openModal('Proof Required', 'Submit your victory tweet link before starting another run.', 'error')
-      return
-    }
     if (gameState === 'playing' && (moves > 0 || timeSec > 0)) {
       failRun('Run not completed')
       return
@@ -1561,13 +1734,6 @@ function PlayToWL() {
         timestamp: Date.now(),
       }
 
-      if (alreadySubmittedProof) {
-        setShowProofPrompt(false)
-        persistPuzzleSubmission(submissionDetails)
-        openModal('Victory Tweet Saved', 'Victory tweet saved on this device. We will not ask for it again here.', 'success')
-        return
-      }
-
       const didSubmit = await submitQualifiedProof(
         submissionDetails.score,
         submissionDetails.moves,
@@ -1578,7 +1744,11 @@ function PlayToWL() {
 
       if (didSubmit) {
         setShowProofPrompt(false)
-        openModal('Submission Complete', 'Victory tweet captured and puzzle proof submitted.', 'success')
+        openModal(
+          alreadySubmittedProof ? 'Victory Tweet Updated' : 'Submission Complete',
+          alreadySubmittedProof ? 'Victory tweet updated and kept on your submission.' : 'Victory tweet captured and puzzle proof submitted.',
+          'success'
+        )
       }
     } finally {
       setIsSubmittingProof(false)
@@ -1615,9 +1785,7 @@ function PlayToWL() {
         const remoteRows = await fetchGoogleLeaderboard()
         if (remoteRows.length > 0) {
           rows = remoteRows
-          setLeaderboard(remoteRows)
-          saveLeaderboard(remoteRows)
-          setLastLeaderboardSync(Date.now())
+          applyFullLeaderboardCache(remoteRows)
         }
       } catch {
         // Use cached rows when remote check is unavailable.
@@ -1678,159 +1846,29 @@ function PlayToWL() {
   }
 
   const submitQualifiedProof = async (finalScore, submittedMoves, submittedTime, tweetLink, captchaToken) => {
-    if (alreadySubmittedProof) return false
     const normalizedX = xUsername.trim().replace(/^@+/, '')
     if (!normalizedX || normalizedX.length < 2 || !validateEvmAddress(walletAddress)) return false
-    const submittedScore = Number(finalScore || 0)
     const normalizedTweetLink = normalizeTweetLink(tweetLink)
-    const { tweetId } = extractTweetMetaFromLink(normalizedTweetLink)
-    if (!tweetId) return false
-    let rows = leaderboard
-    try {
-      const remoteRows = await fetchGoogleLeaderboard()
-      if (remoteRows.length > 0) {
-        rows = remoteRows
-        setLeaderboard(remoteRows)
-        saveLeaderboard(remoteRows)
-        setLastLeaderboardSync(Date.now())
-      }
-    } catch {
-      // Continue with cached rows if live check fails.
-    }
-
-    const identity = verifyIdentityAgainstRows(rows, normalizedX, walletAddress)
-    if (identity.hasConflict) {
-      openModal(
-        'Already Existed',
-        'This wallet address or X username already exists with different details. Submission is blocked.',
-        'error'
-      )
-      return false
-    }
-
-    const payload = {
-      sheetName: PUZZLE_SUBMISSIONS_SHEET,
-      eventType: 'puzzle_submission',
-      xUsername: normalizedX.startsWith('@') ? normalizedX : `@${normalizedX}`,
-      walletAddress: walletAddress.trim(),
-      tweetLink: normalizedTweetLink,
-      tweetId,
-      requiredCaption: REQUIRED_TWEET_CAPTION,
-      bestScore,
-      currentScore: submittedScore,
-      moves: Number(submittedMoves || 0),
-      time: Number(submittedTime || 0),
-      attemptNumber: 0,
-      sessionID: browserId,
-      qualified: true,
-      timestamp: Date.now(),
-      turnstileToken: String(captchaToken || '').trim(),
-      turnstileAction: PROOF_TURNSTILE_ACTION,
-    }
-
-    try {
-      const response = await fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify(payload)
-      })
-      let responseData = null
-      try {
-        responseData = await response.json()
-      } catch {
-        responseData = null
-      }
-
-      const apiError = String(responseData?.errorCode || responseData?.error || '').toLowerCase()
-      const duplicateWallet = apiError.includes('duplicate_wallet') || apiError.includes('wallet already submitted')
-      if (!response.ok || responseData?.ok === false) {
-        if (duplicateWallet) {
-          persistPuzzleSubmission({
-            walletAddress: payload.walletAddress,
-            xUsername: payload.xUsername,
-            tweetLink: normalizedTweetLink,
-            duplicate: true,
-            score: submittedScore,
-            moves: Number(submittedMoves || 0),
-            time: Number(submittedTime || 0),
-            timestamp: Date.now(),
-          })
-          const latestStatus = await syncProofStatus()
-          if (latestStatus?.submitted) {
-            openModal('Proof Recorded', 'A proof already existed for this wallet or your missing proof was attached to the existing record.', 'success')
-          } else {
-            openModal('Already Submitted', 'This wallet already has a submission on record, but the proof state is still unresolved. Refresh after redeploying the Apps Script update if needed.', 'error')
-          }
-          return false
-        }
-        throw new Error(String(responseData?.error || `HTTP ${response.status}`))
-      }
-
-      persistPuzzleSubmission({
-        walletAddress: payload.walletAddress,
-        xUsername: payload.xUsername,
+    const submittedScore = Number(finalScore || 0)
+    const didSubmit = await syncQualifiedSubmission(
+      submittedScore,
+      Number(submittedMoves || 0),
+      Number(submittedTime || 0),
+      {
         tweetLink: normalizedTweetLink,
-        duplicate: false,
-        score: submittedScore,
-        moves: Number(submittedMoves || 0),
-        time: Number(submittedTime || 0),
-        timestamp: payload.timestamp,
-      })
-      setVerifiedBestScore(Math.max(Number(identity.bestScore || 0), submittedScore))
+        captchaToken,
+      }
+    )
+
+    if (didSubmit) {
+      setVerifiedBestScore((prev) => Math.max(Number(prev || 0), submittedScore))
       setBestScore((prev) => Math.max(Number(prev || 0), submittedScore))
-      const entry = {
-        browserId,
-        xUsername: payload.xUsername,
-        walletAddress: payload.walletAddress,
-        score: Number(submittedScore || 0),
-        moves: Number(submittedMoves || 0),
-        timeSec: Number(submittedTime || 0),
-      }
-      setLeaderboard(upsertLeaderboardEntry(entry))
-      setProofStatus((prev) => ({
-        ...prev,
-        submitted: true,
-        proofState: 'submitted',
-        tweetLink: normalizedTweetLink,
-        tweetId,
-        xUsername: payload.xUsername,
-        walletAddress: payload.walletAddress,
-        currentScore: Number(submittedScore || 0),
-        moves: Number(submittedMoves || 0),
-        time: Number(submittedTime || 0),
-        submittedAt: payload.timestamp,
-        qualifiedAt: Number(prev?.qualifiedAt || payload.timestamp || 0),
-        proofDeadlineTs: Number(prev?.proofDeadlineTs || 0),
-        msRemaining: 0,
-        expired: false,
-      }))
-      void (async () => {
-        try {
-          await syncLeaderboardEntry(entry)
-          const remoteRows = await fetchGoogleLeaderboard()
-          if (remoteRows.length > 0) {
-            setLeaderboard(remoteRows)
-            saveLeaderboard(remoteRows)
-          }
-        } catch {
-          // Keep optimistic local leaderboard if background sync fails.
-        }
-
-        try {
-          await syncProofStatus()
-        } catch {
-          // Keep optimistic local proof state if background sync fails.
-        }
-      })()
-      return true
-    } catch {
-      openModal('Save Failed', 'Could not save qualification right now. Try solving again or refresh and retry.', 'error')
-      return false
     }
+
+    return didSubmit
   }
 
   const handleTileSlide = (index) => {
-    if (needsVictoryTweet) return
     if (gameState !== 'playing') return
     if (slideMove || slideLockRef.current) return
     if (tiles[index] === EMPTY_TILE) return
@@ -1969,7 +2007,6 @@ function PlayToWL() {
           <button
             type="button"
             className={`puzzle-tab ${activeTab === 'leaderboard' ? 'active' : ''}`}
-            disabled={needsVictoryTweet}
             onClick={() => setActiveTab('leaderboard')}
           >
             Leaderboard
@@ -1986,7 +2023,7 @@ function PlayToWL() {
                 {boardStatus.label}
               </span>
             </div>
-            {needsVictoryTweet && (
+            {!isLoadingProofStatus && needsVictoryTweet && (
               <div className="victory-proof-card victory-proof-card-prominent">
                 <div className="section-head victory-proof-head">
                   <h3>Submit Victory Proof</h3>
@@ -2047,7 +2084,7 @@ function PlayToWL() {
                       </button>
                     </>
                   ) : null}
-                  <button className="puzzle-btn" type="button" onClick={handlePlayAgain} disabled={needsVictoryTweet}>
+                  <button className="puzzle-btn" type="button" onClick={handlePlayAgain}>
                     Play Again
                   </button>
                 </div>
@@ -2060,7 +2097,7 @@ function PlayToWL() {
                   <p>Your live score fell below {PUZZLE_TARGET_SCORE} before the image was solved. Reset and make a cleaner run.</p>
                 </div>
                 <div className="victory-actions">
-                  <button className="puzzle-btn" type="button" onClick={handlePlayAgain} disabled={needsVictoryTweet}>
+                  <button className="puzzle-btn" type="button" onClick={handlePlayAgain}>
                     Play Again
                   </button>
                 </div>
@@ -2102,7 +2139,7 @@ function PlayToWL() {
               {gameState === 'won'
                 ? qualified
                   ? needsVictoryTweet
-                    ? 'Victory unlocked. Submit your victory proof to continue.'
+                    ? 'Victory unlocked. Submit your victory proof to show your leaderboard spot.'
                     : 'Victory unlocked. Tweet your score and keep climbing the leaderboard.'
                   : 'Run complete. Start another attempt to improve.'
                 : gameState === 'lost'
@@ -2111,7 +2148,7 @@ function PlayToWL() {
             </p>
             <div className="puzzle-board-actions">
               {gameState === 'playing' && (
-                <button className="puzzle-btn shuffle-btn" onClick={handleShuffle} disabled={needsVictoryTweet}>Shuffle</button>
+                <button className="puzzle-btn shuffle-btn" onClick={handleShuffle}>Shuffle</button>
               )}
             </div>
           </section>
@@ -2224,6 +2261,9 @@ function PlayToWL() {
                 <span className="status-chip">Global</span>
               </div>
               <p className="leaderboard-subtitle">Global rankings sorted by solved score, then lower moves.</p>
+              <p className="leaderboard-proof-note">
+                Only proof-submitted entries are visible. Pending-proof entries stay hidden until proof is submitted.
+              </p>
               <div className="leaderboard-meta">
                 <span className="leaderboard-pill">Auto-sync: every 20s</span>
                 <span className="leaderboard-pill">
@@ -2235,25 +2275,24 @@ function PlayToWL() {
               </div>
               <div className="leaderboard-search-row">
                 <label className="leaderboard-search-field" htmlFor="leaderboard-search">
-                  <span className="leaderboard-search-label">Search X Handle</span>
+                  <span className="leaderboard-search-label">Search X Or Wallet</span>
                   <input
                     id="leaderboard-search"
                     type="text"
                     className="leaderboard-search-input"
-                    placeholder="@yourhandle"
+                    placeholder="@yourhandle or 0x..."
                     value={leaderboardSearch}
-                    onChange={(e) => setLeaderboardSearch(e.target.value)}
+                    onChange={(e) => handleLeaderboardSearchChange(e.target.value)}
                   />
                 </label>
-                {leaderboardSearch.trim() && (
-                  <button
-                    type="button"
-                    className="puzzle-btn white leaderboard-search-clear"
-                    onClick={() => setLeaderboardSearch('')}
-                  >
-                    Clear
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className="puzzle-btn white leaderboard-search-clear"
+                  disabled={!leaderboardSearch.trim()}
+                  onClick={handleLeaderboardSearchClear}
+                >
+                  Clear
+                </button>
               </div>
               {leaderboard.length === 0 ? (
                 <p>No entries yet.</p>
@@ -2263,21 +2302,32 @@ function PlayToWL() {
                 </p>
               ) : (
                 <>
-                <div className="leaderboard-list">
+                  <div className="leaderboard-list">
                   <div className="leader-row leader-header" aria-hidden="true">
                     <span className="leader-rank">Rank</span>
                     <span className="leader-name">Username</span>
+                    <span className="leader-verify">Proof</span>
                     <span className="leader-wallet">Wallet</span>
                     <span className="leader-score">Score</span>
                     <span className="leader-time">Moves</span>
                     <span className="leader-time">Time</span>
                   </div>
                   {paginatedLeaderboard.map((row, index) => {
-                    const rank = (leaderboardPage - 1) * LEADERBOARD_PAGE_SIZE + index + 1
+                    const fallbackRank = (leaderboardPage - 1) * LEADERBOARD_PAGE_SIZE + index + 1
+                    const rank = Number.isFinite(Number(row.rank)) && Number(row.rank) > 0
+                      ? Number(row.rank)
+                      : fallbackRank
                     return (
                       <div key={`${row.browserId}-${rank}`} className={`leader-row rank-${rank}`}>
                         <span className="leader-rank">#{rank}</span>
                         <span className="leader-name">{row.xUsername || `Anon-${String(row.browserId || '').slice(-4)}`}</span>
+                        <span
+                          className={`leader-verify ${row.hasProof ? 'verified' : 'pending'}`}
+                          title={row.hasProof ? 'Proof submitted' : 'Proof pending'}
+                          aria-label={row.hasProof ? 'Proof submitted' : 'Proof pending'}
+                        >
+                          {row.hasProof ? '✓' : '⏳'}
+                        </span>
                         <span className="leader-wallet">{shortWallet(row.walletAddress)}</span>
                         <strong className="leader-score">{row.score}</strong>
                         <span className="leader-time">{Number.isFinite(Number(row.moves)) && Number(row.moves) > 0 ? row.moves : '-'}</span>
@@ -2367,7 +2417,7 @@ function PlayToWL() {
           </div>
         </div>
       )}
-      {showProofPrompt && needsVictoryTweet && (
+      {showProofPrompt && !isLoadingProofStatus && needsVictoryTweet && (
         <div className="puzzle-modal-overlay" onClick={() => setShowProofPrompt(false)}>
           <div className="puzzle-modal success proof-prompt-modal" onClick={(e) => e.stopPropagation()}>
             <div className="puzzle-modal-head">

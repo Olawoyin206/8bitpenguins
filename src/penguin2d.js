@@ -127,6 +127,18 @@ export function convertToPenguinStyle(imageSrc, canvas, strength = 'high') {
         b: Math.min(255, Math.max(0, c.b + a)),
         hex: `#${Math.min(255, Math.max(0, c.r + a)).toString(16).padStart(2,'0')}${Math.min(255, Math.max(0, c.g + a)).toString(16).padStart(2,'0')}${Math.min(255, Math.max(0, c.b + a)).toString(16).padStart(2,'0')}`
       })
+      const mix = (a, b, ratio = 0.5) => {
+        const clamp = Math.max(0, Math.min(1, ratio))
+        const r = Math.round(a.r * (1 - clamp) + b.r * clamp)
+        const g = Math.round(a.g * (1 - clamp) + b.g * clamp)
+        const bValue = Math.round(a.b * (1 - clamp) + b.b * clamp)
+        return {
+          r,
+          g,
+          b: bValue,
+          hex: `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${bValue.toString(16).padStart(2,'0')}`,
+        }
+      }
 
       const diff = (c1, c2) => Math.abs(c1.r - c2.r) + Math.abs(c1.g - c2.g) + Math.abs(c1.b - c2.b)
       const brightness = (c) => c.r + c.g + c.b
@@ -275,28 +287,37 @@ export function convertToPenguinStyle(imageSrc, canvas, strength = 'high') {
         )
       }
 
-      const faceColors = collectRelativeRegion(0.22, 0.12, 0.78, 0.52)
-      const shirtColors = collectRelativeRegion(0.14, 0.5, 0.86, 0.98)
-      const lowerBodyColors = collectRelativeRegion(0.18, 0.58, 0.82, 1)
+      const faceColors = collectRelativeRegion(0.24, 0.1, 0.76, 0.44)
+      const foreheadColors = collectRelativeRegion(0.32, 0.06, 0.68, 0.26)
+      const midFaceColors = collectRelativeRegion(0.3, 0.18, 0.7, 0.44)
+      const shirtColors = collectRelativeRegion(0.12, 0.46, 0.88, 0.98)
+      const lowerBodyColors = collectRelativeRegion(0.16, 0.58, 0.84, 1)
       const centerColors = collectRelativeRegion(0.28, 0.28, 0.72, 0.88)
+      const bellyCoreColors = collectRelativeRegion(0.34, 0.48, 0.66, 0.82)
+      const torsoOuterColors = subjectPixels.filter((pixel) => {
+        const relX = (pixel.x - minX) / subjectWidth
+        const relY = (pixel.y - minY) / subjectHeight
+        return relY >= 0.42 && relY <= 1 && (relX <= 0.3 || relX >= 0.7 || relY >= 0.8)
+      })
 
       const refinedBg = bgSeedPool.filter((pixel) => diff(pixel, bg) <= styleProfile.bgTolerance)
       if (refinedBg.length) bg = dominantColor(refinedBg, bg)
 
       let face = pickClusterColor(
-        faceColors,
-        dominantColor(faceColors, dominantColor(centerColors, avgColor(subjectPixels))),
+        [...foreheadColors, ...midFaceColors, ...faceColors],
+        dominantColor(foreheadColors, dominantColor(midFaceColors, dominantColor(faceColors, dominantColor(centerColors, avgColor(subjectPixels))))),
         (cluster) => (
-          cluster.count * 14 +
-          Math.min(diff(cluster.color, bg), 180) * 0.18 +
-          brightness(cluster.color) * 0.04
+          cluster.count * 18 +
+          Math.min(diff(cluster.color, bg), 190) * 0.2 +
+          brightness(cluster.color) * 0.05 +
+          saturation(cluster.color) * 0.02
         ),
         24
       )
 
       let shirt = pickClusterColor(
-        [...shirtColors, ...lowerBodyColors],
-        dominantColor(shirtColors, dominantColor(lowerBodyColors, avgColor(subjectPixels))),
+        torsoOuterColors.length ? torsoOuterColors : [...shirtColors, ...lowerBodyColors],
+        dominantColor(torsoOuterColors, dominantColor(shirtColors, dominantColor(lowerBodyColors, avgColor(subjectPixels)))),
         (cluster) => {
           const bgDistance = diff(cluster.color, bg)
           const faceDistance = diff(cluster.color, face)
@@ -313,7 +334,7 @@ export function convertToPenguinStyle(imageSrc, canvas, strength = 'high') {
       )
 
       if (diff(bg, shirt) < (55 + styleProfile.sep)) {
-        const shirtAlternates = lowerBodyColors
+        const shirtAlternates = [...torsoOuterColors, ...lowerBodyColors]
           .filter((pixel) => diff(pixel, bg) > (styleProfile.bgPick + 10))
           .filter((pixel) => diff(pixel, face) > 14)
         if (shirtAlternates.length) {
@@ -335,15 +356,64 @@ export function convertToPenguinStyle(imageSrc, canvas, strength = 'high') {
         shirt = adj(face, brightness(face) > brightness(shirt) ? -styleProfile.tune : styleProfile.tune)
       }
 
+      let belly = pickClusterColor(
+        [...bellyCoreColors, ...centerColors],
+        dominantColor(bellyCoreColors, dominantColor(centerColors, face)),
+        (cluster) => {
+          const bgDistance = diff(cluster.color, bg)
+          const bodyDistance = diff(cluster.color, shirt)
+          const faceSimilarity = Math.max(0, 200 - diff(cluster.color, face))
+          const lighterThanBody = Math.max(0, brightness(cluster.color) - brightness(shirt))
+          return (
+            cluster.count * 18 +
+            Math.min(bgDistance, 200) * 0.16 +
+            Math.min(bodyDistance, 180) * 0.24 +
+            faceSimilarity * 0.08 +
+            lighterThanBody * 0.08
+          )
+        },
+        22
+      )
+
+      if (diff(belly, shirt) < (28 + styleProfile.sep)) {
+        const bellyAlternates = bellyCoreColors
+          .filter((pixel) => diff(pixel, shirt) > (28 + styleProfile.sep))
+          .filter((pixel) => diff(pixel, bg) > styleProfile.bgPick)
+        if (bellyAlternates.length) {
+          belly = pickClusterColor(
+            bellyAlternates,
+            belly,
+            (cluster) => (
+              cluster.count * 18 +
+              Math.min(diff(cluster.color, shirt), 200) * 0.26 +
+              Math.max(0, 200 - diff(cluster.color, face)) * 0.08 +
+              Math.max(0, brightness(cluster.color) - brightness(shirt)) * 0.08
+            ),
+            20
+          )
+        }
+      }
+
+      if (diff(belly, shirt) < (26 + styleProfile.sep)) {
+        const liftedBelly = adj(shirt, Math.round(styleProfile.tune * 0.8))
+        belly = diff(face, liftedBelly) < diff(face, belly) ? mix(face, liftedBelly, 0.4) : liftedBelly
+      }
+
+      if (diff(face, belly) > 120) {
+        belly = mix(belly, face, 0.3)
+      }
+
       const faceHighlight = adj(face, Math.round(styleProfile.tune * 0.75))
       const faceShadow = adj(face, -Math.round(styleProfile.tune * 0.75))
+      const bellyHighlight = adj(belly, Math.round(styleProfile.tune * 0.75))
+      const bellyShadow = adj(belly, -Math.round(styleProfile.tune * 0.75))
       const shirtHighlight = adj(shirt, styleProfile.tune)
       const shirtShadow = adj(shirt, -styleProfile.tune)
 
       const traits = {
         background: { name: 'Custom', color: bg.hex },
         body: { name: 'Custom', base: shirt.hex, highlight: shirtHighlight.hex, shadow: shirtShadow.hex },
-        belly: { name: 'Custom', base: face.hex, highlight: faceHighlight.hex, shadow: faceShadow.hex },
+        belly: { name: 'Custom', base: belly.hex, highlight: bellyHighlight.hex, shadow: bellyShadow.hex },
         beak: { name: 'Small', type: 'small', base: '#FF9F43', highlight: '#FFBE76', shadow: '#E67E22' },
         eyes: { name: 'Round', type: 'round', color: '#0A0A0A' },
         head: { name: 'None', type: 'none', color: '#323232' },
