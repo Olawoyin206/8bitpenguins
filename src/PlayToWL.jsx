@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { generateRandomPenguinTraits, renderPenguin4k } from './penguin2d.js'
+import { drawAgent, generateRandomPenguinTraits } from './penguin2d.js'
 import SiteNav from './SiteNav.jsx'
 import TurnstileWidget from './TurnstileWidget.jsx'
 import { extractTweetMetaFromLink } from './taskConfig.js'
@@ -23,7 +23,7 @@ const PUZZLE_PROFILES_SHEET = 'Puzzle Profiles'
 const REQUIRED_TWEET_CAPTION = 'Just Solved The @8bitspenguins_ puzzle'
 const REQUIRED_TWEET_CTA = 'Solve The Puzzle And Secure Whitelist: https://8bitpenguins.xyz/play-to-wl'
 const VICTORY_QUOTE_TWEET_LINK = 'https://x.com/8bitspenguins_/status/2038544907640373749'
-const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzxCDeOQUzCXPVopMXaFeMBHGKWJvuQ-5dpyP3edRahGodmn5NUhKvuj0RJ-0_4R_KI/exec'
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbynuH2YHuISalvDki_yirdcTa5z3Zr40SDNn9oKHEnyR9bmP_WjbMo7uLZjwcI1ybNn/exec'
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY || ''
 const PROFILE_TURNSTILE_ACTION = 'puzzle_profile_start'
 const PROOF_TURNSTILE_ACTION = 'puzzle_proof_submit'
@@ -32,6 +32,10 @@ const PUZZLE_PROOF_WINDOW_MS = 24 * 60 * 60 * 1000
 const LEADERBOARD_PAGE_SIZE = 100
 const LEADERBOARD_FETCH_LIMIT = 1000
 const LEADERBOARD_SEARCH_FETCH_LIMIT = 5000
+const LEADERBOARD_SYNC_INTERVAL_MS = 45 * 1000
+const LEADERBOARD_SEARCH_DEBOUNCE_MS = 280
+const LEADERBOARD_FRESH_CACHE_WINDOW_MS = 30 * 1000
+const PUZZLE_REFERENCE_IMAGE_SIZE = 1024
 const TWITTER_USERNAME_PATTERN = /^[A-Za-z0-9_]{1,15}$/
 const GENERATE_RENDER_OPTIONS = {
   logicalSize: 40,
@@ -42,6 +46,7 @@ const GENERATE_RENDER_OPTIONS = {
   innerOutline: true,
   outerOutline: false,
 }
+let puzzleFontReadyPromise = null
 
 function isTouchDevice() {
   if (typeof window === 'undefined') return false
@@ -53,14 +58,17 @@ function isTouchDevice() {
 }
 
 async function buildPuzzleReferenceImage() {
-  try {
-    await document.fonts?.load?.('700 32px "Press Start 2P"')
-  } catch {
-    // Continue with fallback font if font API is unavailable.
+  if (!puzzleFontReadyPromise) {
+    puzzleFontReadyPromise = Promise
+      .resolve(document.fonts?.load?.('700 32px "Press Start 2P"'))
+      .catch(() => undefined)
   }
+  await puzzleFontReadyPromise
 
   const traits = generateRandomPenguinTraits()
-  return renderPenguin4k(traits, GENERATE_RENDER_OPTIONS).toDataURL('image/png')
+  const canvas = document.createElement('canvas')
+  drawAgent(traits, canvas, PUZZLE_REFERENCE_IMAGE_SIZE, GENERATE_RENDER_OPTIONS)
+  return canvas.toDataURL('image/png')
 }
 
 function isSolvable(arr) {
@@ -137,6 +145,11 @@ function normalizeX(v) {
   return String(v || '').trim().replace(/^@+/, '').toLowerCase()
 }
 
+function isAbortError(error) {
+  if (!error) return false
+  return String(error.name || '') === 'AbortError' || /aborted/i.test(String(error.message || ''))
+}
+
 function normalizeTweetLink(value) {
   const raw = String(value || '').trim()
   if (!raw) return ''
@@ -163,6 +176,54 @@ function extractUsernameFromHtml(html) {
   return match?.[1] || ''
 }
 
+function extractStatusIdsFromHtml(html) {
+  const text = String(html || '')
+  const ids = new Set()
+  const re = /https:\/\/(?:x|twitter)\.com\/(?:i\/web\/)?[A-Za-z0-9_]{1,15}\/status\/(\d+)/gi
+  let match = re.exec(text)
+  while (match) {
+    const id = String(match[1] || '').trim()
+    if (/^\d+$/.test(id)) ids.add(id)
+    match = re.exec(text)
+  }
+  return Array.from(ids)
+}
+
+function normalizeTweetIdValue(value) {
+  const candidate = String(value || '').trim()
+  return /^\d+$/.test(candidate) ? candidate : ''
+}
+
+function collectValidTweetIds(values) {
+  const ids = new Set()
+  ;(Array.isArray(values) ? values : []).forEach((value) => {
+    const id = normalizeTweetIdValue(value)
+    if (id) ids.add(id)
+  })
+  return Array.from(ids)
+}
+
+function extractQuotedTweetIdsFromSyndication(payload) {
+  if (!payload || typeof payload !== 'object') return []
+  return collectValidTweetIds([
+    payload?.quoted_tweet?.id_str,
+    payload?.quoted_tweet?.rest_id,
+    payload?.quoted_tweet?.id,
+    payload?.quoted_status_id_str,
+    payload?.quoted_status_id,
+    payload?.legacy?.quoted_status_id_str,
+    payload?.legacy?.quoted_status_id,
+    payload?.retweeted_status_result?.result?.quoted_status_result?.result?.rest_id,
+    payload?.retweeted_status_result?.result?.legacy?.quoted_status_id_str,
+  ])
+}
+
+function delayMs(ms) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, Math.max(0, Number(ms) || 0))
+  })
+}
+
 function usernamesMatch(linkUsername, submittedUsername) {
   const normalizedLinkUsername = String(linkUsername || '').trim().replace(/^@+/, '').toLowerCase()
   const normalizedSubmittedUsername = String(submittedUsername || '').trim().replace(/^@+/, '').toLowerCase()
@@ -170,8 +231,82 @@ function usernamesMatch(linkUsername, submittedUsername) {
   return normalizedLinkUsername === normalizedSubmittedUsername
 }
 
-async function verifyLiveTweetLink(tweetLink) {
+async function verifyLiveTweetLink(tweetLink, options = {}) {
   const normalizedTweetLink = normalizeTweetLink(tweetLink)
+  const submittedTweetId = normalizeTweetIdValue(extractTweetMetaFromLink(normalizedTweetLink).tweetId)
+  const requiredQuoteTweetId =
+    normalizeTweetIdValue(options?.requiredQuoteTweetId) ||
+    normalizeTweetIdValue(extractTweetMetaFromLink(options?.requiredQuoteTweetLink || '').tweetId)
+  if (!submittedTweetId) {
+    return {
+      ok: false,
+      error: 'invalid_tweet_id',
+      authorUsername: '',
+      submittedTweetId: '',
+      quotedTweetIds: [],
+      hasRequiredQuote: false,
+      quoteVerification: requiredQuoteTweetId ? 'fail' : 'pass',
+    }
+  }
+
+  let authorUsername = ''
+  let quotedTweetIds = []
+  let hasRequiredQuote = !requiredQuoteTweetId
+  let quoteVerification = hasRequiredQuote ? 'pass' : 'unknown'
+
+  const applyQuoteIds = (ids) => {
+    const normalizedIds = collectValidTweetIds(ids).filter((id) => id !== submittedTweetId)
+    if (normalizedIds.length === 0) return false
+    quotedTweetIds = normalizedIds
+    if (!requiredQuoteTweetId) {
+      hasRequiredQuote = true
+      quoteVerification = 'pass'
+      return true
+    }
+    if (normalizedIds.includes(requiredQuoteTweetId)) {
+      hasRequiredQuote = true
+      quoteVerification = 'pass'
+      return true
+    }
+    hasRequiredQuote = false
+    quoteVerification = 'fail'
+    return true
+  }
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const syndicationEndpoint = `https://cdn.syndication.twimg.com/tweet-result?id=${encodeURIComponent(submittedTweetId)}&lang=en&t=${Date.now()}`
+      const syndicationResponse = await fetch(syndicationEndpoint, { cache: 'no-store' })
+      const syndicationPayload = await syndicationResponse.json().catch(() => null)
+      if (syndicationResponse.ok && syndicationPayload && typeof syndicationPayload === 'object') {
+        const candidateAuthor = String(syndicationPayload?.user?.screen_name || '').trim()
+        if (TWITTER_USERNAME_PATTERN.test(candidateAuthor)) {
+          authorUsername = candidateAuthor
+        }
+
+        if (applyQuoteIds(extractQuotedTweetIdsFromSyndication(syndicationPayload))) {
+          return {
+            ok: true,
+            authorUsername,
+            submittedTweetId,
+            quotedTweetIds,
+            hasRequiredQuote,
+            quoteVerification,
+          }
+        }
+      }
+    } catch {
+      // Fall back to oEmbed when syndication lookup is unavailable.
+    }
+
+    if (!requiredQuoteTweetId) {
+      break
+    }
+    if (attempt < 2) {
+      await delayMs(900)
+    }
+  }
+
   const endpoint = `https://publish.x.com/oembed?omit_script=1&url=${encodeURIComponent(normalizedTweetLink)}`
   const response = await fetch(endpoint)
   const payload = await response.json().catch(() => null)
@@ -181,10 +316,13 @@ async function verifyLiveTweetLink(tweetLink) {
       ok: false,
       error: String(payload?.error || `HTTP ${response.status}`),
       authorUsername: '',
+      submittedTweetId,
+      quotedTweetIds: [],
+      hasRequiredQuote: false,
+      quoteVerification: requiredQuoteTweetId ? 'unknown' : 'pass',
     }
   }
 
-  let authorUsername = ''
   try {
     if (typeof payload.author_url === 'string') {
       const authorUrl = new URL(payload.author_url)
@@ -201,7 +339,23 @@ async function verifyLiveTweetLink(tweetLink) {
     authorUsername = extractUsernameFromHtml(payload.html)
   }
 
-  return { ok: true, authorUsername }
+  if (typeof payload.html === 'string') {
+    const oembedStatusIds = extractStatusIdsFromHtml(payload.html)
+    const decided = applyQuoteIds(oembedStatusIds)
+    if (!decided && requiredQuoteTweetId) {
+      quoteVerification = 'unknown'
+      hasRequiredQuote = false
+    }
+  }
+
+  return {
+    ok: true,
+    authorUsername,
+    submittedTweetId,
+    quotedTweetIds,
+    hasRequiredQuote,
+    quoteVerification,
+  }
 }
 
 function getBrowserId() {
@@ -479,25 +633,9 @@ function upsertLeaderboardEntry(entry) {
   return trimmed
 }
 
-async function fetchGoogleLeaderboard(options = {}) {
-  const rawQuery = String(options?.query || '').trim()
-  const searchQuery = rawQuery.replace(/^@+/, '')
-  const fetchLimit = searchQuery ? LEADERBOARD_SEARCH_FETCH_LIMIT : LEADERBOARD_FETCH_LIMIT
-  const query = new URLSearchParams({
-    action: 'leaderboard',
-    limit: String(fetchLimit),
-  })
-  if (searchQuery) query.set('query', searchQuery)
-
-  const res = await fetch(`${GOOGLE_SCRIPT_URL}?${query.toString()}`)
-  const data = await res.json()
-  const rows = Array.isArray(data)
-    ? data
-    : Array.isArray(data?.rows)
-      ? data.rows
-      : []
-
-  return rows
+function normalizeLeaderboardRows(rows, limit) {
+  const maxRows = Math.max(1, Number(limit) || LEADERBOARD_FETCH_LIMIT)
+  return (Array.isArray(rows) ? rows : [])
     .map((row) => ({
       rank: Number(row.rank || 0) || null,
       browserId: row.browserId || row.browser_id || '',
@@ -515,7 +653,113 @@ async function fetchGoogleLeaderboard(options = {}) {
     }))
     .filter((row) => row.score > 0)
     .sort(compareLeaderboardRows)
-    .slice(0, fetchLimit)
+    .slice(0, maxRows)
+}
+
+function normalizeProofStatusPayload(payload) {
+  if (!payload || typeof payload.proofState !== 'string') return null
+  return {
+    ok: true,
+    source: 'remote',
+    submissionExists: Boolean(payload.submissionExists),
+    submitted: Boolean(payload.submitted),
+    proofState: String(payload.proofState || 'unknown'),
+    tweetLink: normalizeTweetLink(payload.tweetLink || ''),
+    tweetId: String(payload.tweetId || ''),
+    xUsername: String(payload.xUsername || ''),
+    walletAddress: String(payload.walletAddress || ''),
+    currentScore: Number(payload.currentScore || 0),
+    moves: Number(payload.moves || 0),
+    time: Number(payload.time || 0),
+    qualifiedAt: Number(payload.qualifiedAt || 0),
+    submittedAt: Number(payload.submittedAt || payload.timestamp || 0),
+    proofDeadlineTs: Number(payload.proofDeadlineTs || 0),
+    msRemaining: Number(payload.msRemaining || 0),
+    expired: Boolean(payload.expired),
+  }
+}
+
+function normalizeBootstrapIdentity(payload) {
+  if (!payload || typeof payload !== 'object') return null
+  return {
+    hasConflict: Boolean(payload.hasConflict),
+    exactPair: Boolean(payload.exactPair),
+    exactPairVisible: Boolean(payload.exactPairVisible),
+    bestScore: Number(payload.bestScore || 0),
+    rank: Number.isFinite(Number(payload.rank)) && Number(payload.rank) > 0 ? Number(payload.rank) : null,
+    totalVisibleRows: Number(payload.totalVisibleRows || 0),
+    matchedBy: String(payload.matchedBy || ''),
+  }
+}
+
+async function fetchGoogleLeaderboard(options = {}) {
+  const rawQuery = String(options?.query || '').trim()
+  const searchQuery = rawQuery.replace(/^@+/, '')
+  const fetchLimit = searchQuery ? LEADERBOARD_SEARCH_FETCH_LIMIT : LEADERBOARD_FETCH_LIMIT
+  const signal = options?.signal
+  const query = new URLSearchParams({
+    action: 'leaderboard',
+    limit: String(fetchLimit),
+  })
+  if (searchQuery) query.set('query', searchQuery)
+
+  const res = await fetch(`${GOOGLE_SCRIPT_URL}?${query.toString()}`, {
+    signal,
+    cache: 'no-store',
+  })
+  const data = await res.json()
+  const rows = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.rows)
+      ? data.rows
+      : []
+
+  return normalizeLeaderboardRows(rows, fetchLimit)
+}
+
+async function fetchPuzzleBootstrap(options = {}) {
+  const rawQuery = String(options?.query || '').trim()
+  const searchQuery = rawQuery.replace(/^@+/, '')
+  const fetchLimit = Number(options?.limit) || (searchQuery ? LEADERBOARD_SEARCH_FETCH_LIMIT : LEADERBOARD_FETCH_LIMIT)
+  const includeRows = options?.includeRows !== false
+  const includeProofStatus = options?.includeProofStatus !== false
+  const includeIdentity = options?.includeIdentity !== false
+  const includeAnalyticsProof = options?.includeAnalyticsProof === true
+  const signal = options?.signal
+  const query = new URLSearchParams({
+    action: 'puzzle_player_bootstrap',
+    puzzleSheetName: PUZZLE_SUBMISSIONS_SHEET,
+    analyticsSheetName: GAME_ANALYTICS_SHEET,
+    limit: String(fetchLimit),
+    includeRows: includeRows ? '1' : '0',
+    includeProofStatus: includeProofStatus ? '1' : '0',
+    includeIdentity: includeIdentity ? '1' : '0',
+    includeAnalyticsProof: includeAnalyticsProof ? '1' : '0',
+  })
+  if (searchQuery) query.set('query', searchQuery)
+  if (String(options?.xUsername || '').trim()) {
+    query.set('xUsername', String(options.xUsername).trim())
+  }
+  if (String(options?.walletAddress || '').trim()) {
+    query.set('walletAddress', String(options.walletAddress).trim())
+  }
+
+  const response = await fetch(`${GOOGLE_SCRIPT_URL}?${query.toString()}`, {
+    signal,
+    cache: 'no-store',
+  })
+  const payload = await response.json().catch(() => null)
+  if (!response.ok || payload?.ok === false || !payload) {
+    throw new Error(String(payload?.error || payload?.errorCode || `HTTP ${response.status}`))
+  }
+
+  const rows = normalizeLeaderboardRows(payload.rows, fetchLimit)
+  return {
+    rows,
+    proofStatus: normalizeProofStatusPayload(payload.proofStatus),
+    identity: normalizeBootstrapIdentity(payload.identity),
+    serverTs: Number(payload.serverTs || 0) || null,
+  }
 }
 
 async function sendGameAnalyticsEvent(event) {
@@ -562,32 +806,15 @@ async function fetchPuzzleProofStatus({ xUsername = '', walletAddress = '' }) {
   const response = await fetch(`${GOOGLE_SCRIPT_URL}?${query.toString()}`)
   const payload = await response.json().catch(() => null)
 
-  if (!response.ok || payload?.ok === false || !payload || typeof payload.proofState !== 'string') {
+  const normalizedPayload = normalizeProofStatusPayload(payload)
+  if (!response.ok || payload?.ok === false || !normalizedPayload) {
     return {
       ok: false,
       error: String(payload?.error || payload?.errorCode || 'proof_status_lookup_failed'),
     }
   }
 
-  return {
-    ok: true,
-    source: 'remote',
-    submissionExists: Boolean(payload.submissionExists),
-    submitted: Boolean(payload.submitted),
-    proofState: String(payload.proofState || 'unknown'),
-    tweetLink: normalizeTweetLink(payload.tweetLink || ''),
-    tweetId: String(payload.tweetId || ''),
-    xUsername: String(payload.xUsername || ''),
-    walletAddress: String(payload.walletAddress || ''),
-    currentScore: Number(payload.currentScore || 0),
-    moves: Number(payload.moves || 0),
-    time: Number(payload.time || 0),
-    qualifiedAt: Number(payload.qualifiedAt || 0),
-    submittedAt: Number(payload.submittedAt || payload.timestamp || 0),
-    proofDeadlineTs: Number(payload.proofDeadlineTs || 0),
-    msRemaining: Number(payload.msRemaining || 0),
-    expired: Boolean(payload.expired),
-  }
+  return normalizedPayload
 }
 
 async function submitPuzzleProfileRecord({ browserId, xUsername, walletAddress, tweetLink, tweetId, verifiedTweetUsername }) {
@@ -696,6 +923,8 @@ function PlayToWL() {
   const activeRunRef = useRef({ runId: '', attemptNumber: 0, finished: false })
   const fullLeaderboardCacheRef = useRef(loadLeaderboard())
   const leaderboardRequestSeqRef = useRef(0)
+  const leaderboardAbortRef = useRef(null)
+  const leaderboardSearchDebounceRef = useRef(null)
 
   const solved = useMemo(() => tiles.every((v, idx) => v === idx), [tiles])
   const score = useMemo(() => computeScore(moves, timeSec, { includeBonuses: false }), [moves, timeSec])
@@ -1058,6 +1287,25 @@ function PlayToWL() {
     })
   }, [])
 
+  const applyRemoteProofStatus = useCallback((remoteStatus) => {
+    if (!remoteStatus || remoteStatus.ok !== true) return null
+    setProofStatus(remoteStatus)
+    if (remoteStatus.submissionExists || remoteStatus.submitted) {
+      persistPuzzleSubmission({
+        exists: true,
+        walletAddress: remoteStatus.walletAddress || walletAddress,
+        xUsername: remoteStatus.xUsername || xUsername,
+        tweetLink: remoteStatus.tweetLink || '',
+        duplicate: false,
+        score: Number(remoteStatus.currentScore || 0),
+        moves: Number(remoteStatus.moves || 0),
+        time: Number(remoteStatus.time || 0),
+        timestamp: Number(remoteStatus.submittedAt || remoteStatus.qualifiedAt || Date.now()),
+      })
+    }
+    return remoteStatus
+  }, [persistPuzzleSubmission, walletAddress, xUsername])
+
   const syncProofStatus = useCallback(async () => {
     if (!hasProfile || !xUsername || !validateEvmAddress(walletAddress)) {
       const fallback = buildLocalPuzzleProofStatus({ xUsername, walletAddress }, loadPuzzleSubmission())
@@ -1067,29 +1315,26 @@ function PlayToWL() {
 
     setIsLoadingProofStatus(true)
     try {
+      try {
+        const bootstrap = await fetchPuzzleBootstrap({
+          xUsername,
+          walletAddress,
+          includeRows: false,
+          includeProofStatus: true,
+          includeIdentity: false,
+        })
+        if (bootstrap.proofStatus) {
+          const applied = applyRemoteProofStatus(bootstrap.proofStatus)
+          if (applied) return applied
+        }
+      } catch {
+        // Fall back to legacy proof endpoint if bootstrap is unavailable.
+      }
+
       const remoteStatus = await fetchPuzzleProofStatus({ xUsername, walletAddress })
       if (remoteStatus.ok) {
-        setProofStatus(remoteStatus)
-        if (remoteStatus.submissionExists || remoteStatus.submitted) {
-          const nextSubmission = {
-            exists: true,
-            walletAddress: remoteStatus.walletAddress || walletAddress,
-            xUsername: remoteStatus.xUsername || xUsername,
-            tweetLink: remoteStatus.tweetLink || '',
-            duplicate: false,
-            score: Number(remoteStatus.currentScore || 0),
-            moves: Number(remoteStatus.moves || 0),
-            time: Number(remoteStatus.time || 0),
-            timestamp: Number(remoteStatus.submittedAt || remoteStatus.qualifiedAt || Date.now()),
-          }
-          setSubmissionRecord(nextSubmission)
-          try {
-            localStorage.setItem(PUZZLE_SUBMISSION_KEY, JSON.stringify(nextSubmission))
-          } catch {
-            // Ignore local storage write failures and keep runtime state.
-          }
-        }
-        return remoteStatus
+        const applied = applyRemoteProofStatus(remoteStatus)
+        if (applied) return applied
       }
 
       const fallback = buildLocalPuzzleProofStatus({ xUsername, walletAddress }, loadPuzzleSubmission())
@@ -1098,7 +1343,7 @@ function PlayToWL() {
     } finally {
       setIsLoadingProofStatus(false)
     }
-  }, [hasProfile, walletAddress, xUsername])
+  }, [applyRemoteProofStatus, hasProfile, walletAddress, xUsername])
 
   const applyFullLeaderboardCache = useCallback((rows, options = {}) => {
     const normalizedRows = Array.isArray(rows) ? rows : []
@@ -1115,34 +1360,160 @@ function PlayToWL() {
   const refreshLeaderboard = useCallback(async (silent = false, searchQuery = '') => {
     const normalizedSearch = String(searchQuery || '').trim()
     const requestId = ++leaderboardRequestSeqRef.current
+    if (leaderboardAbortRef.current) {
+      leaderboardAbortRef.current.abort()
+    }
+    const controller = new AbortController()
+    leaderboardAbortRef.current = controller
     if (!normalizedSearch && fullLeaderboardCacheRef.current.length > 0) {
       setLeaderboard(fullLeaderboardCacheRef.current)
     }
     setIsLeaderboardLoading(true)
     try {
-      const rows = await fetchGoogleLeaderboard({ query: searchQuery })
+      let rows = []
+      let bootstrapProofStatus = null
+      let bootstrapIdentity = null
+      const canUseBootstrap =
+        !normalizedSearch &&
+        hasProfile &&
+        String(xUsername || '').trim() &&
+        validateEvmAddress(walletAddress)
+
+      if (canUseBootstrap) {
+        try {
+          const bootstrap = await fetchPuzzleBootstrap({
+            xUsername,
+            walletAddress,
+            query: '',
+            limit: LEADERBOARD_FETCH_LIMIT,
+            includeRows: true,
+            includeProofStatus: true,
+            includeIdentity: true,
+            signal: controller.signal,
+          })
+          rows = bootstrap.rows
+          bootstrapProofStatus = bootstrap.proofStatus
+          bootstrapIdentity = bootstrap.identity
+        } catch (bootstrapError) {
+          if (isAbortError(bootstrapError)) throw bootstrapError
+          rows = await fetchGoogleLeaderboard({
+            query: searchQuery,
+            signal: controller.signal,
+          })
+        }
+      } else {
+        rows = await fetchGoogleLeaderboard({
+          query: searchQuery,
+          signal: controller.signal,
+        })
+      }
+
       if (requestId !== leaderboardRequestSeqRef.current) return
       if (normalizedSearch) {
         setLeaderboard(rows)
-        setLastLeaderboardSync(Date.now())
       } else {
         applyFullLeaderboardCache(rows)
+        if (bootstrapProofStatus) {
+          applyRemoteProofStatus(bootstrapProofStatus)
+        }
+        if (
+          bootstrapIdentity &&
+          !bootstrapIdentity.hasConflict &&
+          bootstrapIdentity.exactPair
+        ) {
+          const nextBestScore = Number(bootstrapIdentity.bestScore || 0)
+          setVerifiedBestScore((prev) => Math.max(Number(prev || 0), nextBestScore))
+          setBestScore((prev) => Math.max(Number(prev || 0), nextBestScore))
+          localStorage.setItem('arcadeBestScore', String(nextBestScore))
+        }
       }
-    } catch {
+    } catch (error) {
       if (requestId !== leaderboardRequestSeqRef.current) return
+      if (isAbortError(error)) return
       if (!silent) {
         openModal('Leaderboard Unavailable', 'Could not refresh global ranks right now.', 'error')
       }
     } finally {
       if (requestId === leaderboardRequestSeqRef.current) {
+        if (leaderboardAbortRef.current === controller) {
+          leaderboardAbortRef.current = null
+        }
         setIsLeaderboardLoading(false)
       }
     }
-  }, [applyFullLeaderboardCache, openModal])
+  }, [applyFullLeaderboardCache, applyRemoteProofStatus, hasProfile, openModal, walletAddress, xUsername])
+
+  const getPreferredLeaderboardRows = useCallback(() => {
+    if (fullLeaderboardCacheRef.current.length > 0) return fullLeaderboardCacheRef.current
+    if (Array.isArray(leaderboard) && leaderboard.length > 0) return leaderboard
+    return loadLeaderboard()
+  }, [leaderboard])
+
+  const ensureFreshLeaderboardRows = useCallback(async (options = {}) => {
+    const forceRemote = Boolean(options.forceRemote)
+    const maxAgeMs = Number(options.maxAgeMs || LEADERBOARD_FRESH_CACHE_WINDOW_MS)
+    const hasFullCache = fullLeaderboardCacheRef.current.length > 0
+    let rows = hasFullCache ? fullLeaderboardCacheRef.current : getPreferredLeaderboardRows()
+    const cacheAgeMs = lastLeaderboardSync
+      ? Math.max(0, Date.now() - Number(lastLeaderboardSync))
+      : Number.POSITIVE_INFINITY
+    const shouldFetchRemote = forceRemote || !hasFullCache || cacheAgeMs > maxAgeMs
+
+    if (!shouldFetchRemote) return rows
+
+    const canUseBootstrap =
+      hasProfile &&
+      String(xUsername || '').trim() &&
+      validateEvmAddress(walletAddress)
+
+    if (canUseBootstrap) {
+      try {
+        const bootstrap = await fetchPuzzleBootstrap({
+          xUsername,
+          walletAddress,
+          limit: LEADERBOARD_FETCH_LIMIT,
+          includeRows: true,
+          includeProofStatus: true,
+          includeIdentity: true,
+        })
+        if (bootstrap.rows.length > 0) {
+          applyFullLeaderboardCache(bootstrap.rows)
+          rows = bootstrap.rows
+        }
+        if (bootstrap.proofStatus) {
+          applyRemoteProofStatus(bootstrap.proofStatus)
+        }
+        if (
+          bootstrap.identity &&
+          !bootstrap.identity.hasConflict &&
+          bootstrap.identity.exactPair
+        ) {
+          const nextBestScore = Number(bootstrap.identity.bestScore || 0)
+          setVerifiedBestScore((prev) => Math.max(Number(prev || 0), nextBestScore))
+          setBestScore((prev) => Math.max(Number(prev || 0), nextBestScore))
+          localStorage.setItem('arcadeBestScore', String(nextBestScore))
+        }
+        return rows
+      } catch {
+        // Fall back to leaderboard-only fetch if bootstrap fails.
+      }
+    }
+
+    const remoteRows = await fetchGoogleLeaderboard()
+    if (remoteRows.length > 0) {
+      applyFullLeaderboardCache(remoteRows)
+      rows = remoteRows
+    }
+    return rows
+  }, [applyFullLeaderboardCache, applyRemoteProofStatus, getPreferredLeaderboardRows, hasProfile, lastLeaderboardSync, walletAddress, xUsername])
 
   const handleLeaderboardSearchChange = useCallback((value) => {
     const nextSearch = String(value || '')
     setLeaderboardSearch(nextSearch)
+    if (leaderboardSearchDebounceRef.current) {
+      window.clearTimeout(leaderboardSearchDebounceRef.current)
+      leaderboardSearchDebounceRef.current = null
+    }
     if (!nextSearch.trim()) {
       const fallbackRows = fullLeaderboardCacheRef.current.length > 0
         ? fullLeaderboardCacheRef.current
@@ -1469,17 +1840,33 @@ function PlayToWL() {
   }, [alreadySubmittedProof, needsVictoryTweet])
 
   useEffect(() => {
+    if (!hasProfile) return undefined
+    if (referenceImage && referenceImage !== IMAGE_SRC) return undefined
     let cancelled = false
+    let cleanupIdle = null
     const buildReference = async () => {
       const dataUrl = await buildPuzzleReferenceImage()
       if (cancelled) return
       setReferenceImage(dataUrl)
     }
-    buildReference()
+
+    if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
+      const idleId = window.requestIdleCallback(() => {
+        void buildReference()
+      }, { timeout: 1200 })
+      cleanupIdle = () => window.cancelIdleCallback(idleId)
+    } else {
+      const timeoutId = window.setTimeout(() => {
+        void buildReference()
+      }, 0)
+      cleanupIdle = () => window.clearTimeout(timeoutId)
+    }
+
     return () => {
       cancelled = true
+      if (cleanupIdle) cleanupIdle()
     }
-  }, [])
+  }, [hasProfile, referenceImage])
 
   useEffect(() => {
     setTiles((prev) => {
@@ -1492,15 +1879,48 @@ function PlayToWL() {
   }, [])
 
   useEffect(() => {
-    refreshLeaderboard(true, leaderboardSearch)
+    if (leaderboardSearchDebounceRef.current) {
+      window.clearTimeout(leaderboardSearchDebounceRef.current)
+      leaderboardSearchDebounceRef.current = null
+    }
+
+    const normalizedSearch = String(leaderboardSearch || '').trim()
+    if (!normalizedSearch) {
+      refreshLeaderboard(true, '')
+      return undefined
+    }
+
+    leaderboardSearchDebounceRef.current = window.setTimeout(() => {
+      void refreshLeaderboard(true, normalizedSearch)
+      leaderboardSearchDebounceRef.current = null
+    }, LEADERBOARD_SEARCH_DEBOUNCE_MS)
+
+    return () => {
+      if (leaderboardSearchDebounceRef.current) {
+        window.clearTimeout(leaderboardSearchDebounceRef.current)
+        leaderboardSearchDebounceRef.current = null
+      }
+    }
+  }, [leaderboardSearch, refreshLeaderboard])
+
+  useEffect(() => {
+    if (String(leaderboardSearch || '').trim()) {
+      return undefined
+    }
     const id = setInterval(() => {
-      refreshLeaderboard(true, leaderboardSearch)
-    }, 20000)
+      void refreshLeaderboard(true, '')
+    }, LEADERBOARD_SYNC_INTERVAL_MS)
     return () => clearInterval(id)
   }, [leaderboardSearch, refreshLeaderboard])
 
   useEffect(() => {
     return () => {
+      if (leaderboardSearchDebounceRef.current) {
+        window.clearTimeout(leaderboardSearchDebounceRef.current)
+      }
+      if (leaderboardAbortRef.current) {
+        leaderboardAbortRef.current.abort()
+      }
       if (slideTimeoutRef.current) {
         window.clearTimeout(slideTimeoutRef.current)
       }
@@ -1513,12 +1933,9 @@ function PlayToWL() {
     let cancelled = false
 
     const syncReturningUserBest = async () => {
-      let rows = leaderboard
+      let rows = getPreferredLeaderboardRows()
       try {
-        const remoteRows = await fetchGoogleLeaderboard()
-        if (remoteRows.length > 0) {
-          rows = remoteRows
-        }
+        rows = await ensureFreshLeaderboardRows({ maxAgeMs: LEADERBOARD_FRESH_CACHE_WINDOW_MS })
       } catch {
         // Fall back to cached leaderboard rows.
       }
@@ -1536,7 +1953,7 @@ function PlayToWL() {
     return () => {
       cancelled = true
     }
-  }, [hasProfile, xUsername, walletAddress, leaderboard])
+  }, [ensureFreshLeaderboardRows, getPreferredLeaderboardRows, hasProfile, walletAddress, xUsername])
 
   const resetGame = () => {
     if (slideTimeoutRef.current) {
@@ -1554,11 +1971,17 @@ function PlayToWL() {
     solvedRunHandledRef.current = false
   }
 
-  const handlePlayAgain = async () => {
+  const handlePlayAgain = () => {
     if (slideMove) return
-    const nextReferenceImage = await buildPuzzleReferenceImage()
-    setReferenceImage(nextReferenceImage)
     resetGame()
+    void (async () => {
+      try {
+        const nextReferenceImage = await buildPuzzleReferenceImage()
+        setReferenceImage(nextReferenceImage)
+      } catch {
+        // Keep current reference image when generation fails.
+      }
+    })()
   }
 
   const failRun = (reason) => {
@@ -1598,7 +2021,7 @@ function PlayToWL() {
 
     if (!isCompleteQualifiedSnapshot(snapshotToShare) && hasProfile) {
       try {
-        const remoteRows = await fetchGoogleLeaderboard()
+        const remoteRows = await ensureFreshLeaderboardRows()
         if (remoteRows.length > 0) {
           const nx = normalizeX(xUsername)
           const nw = normalizeWallet(walletAddress)
@@ -1780,18 +2203,39 @@ function PlayToWL() {
 
     setIsStartingGame(true)
     try {
-      let rows = leaderboard
+      let rows = getPreferredLeaderboardRows()
+      let identity = null
       try {
-        const remoteRows = await fetchGoogleLeaderboard()
-        if (remoteRows.length > 0) {
-          rows = remoteRows
-          applyFullLeaderboardCache(remoteRows)
+        const bootstrap = await fetchPuzzleBootstrap({
+          xUsername: normalizedX,
+          walletAddress: walletAddress.trim(),
+          limit: LEADERBOARD_FETCH_LIMIT,
+          includeRows: true,
+          includeProofStatus: false,
+          includeIdentity: true,
+        })
+        if (bootstrap.rows.length > 0) {
+          rows = bootstrap.rows
+          applyFullLeaderboardCache(bootstrap.rows)
+        }
+        if (bootstrap.identity) {
+          identity = {
+            hasConflict: Boolean(bootstrap.identity.hasConflict),
+            exactPair: Boolean(bootstrap.identity.exactPair),
+            bestScore: Number(bootstrap.identity.bestScore || 0),
+          }
         }
       } catch {
-        // Use cached rows when remote check is unavailable.
+        try {
+          rows = await ensureFreshLeaderboardRows({ maxAgeMs: LEADERBOARD_FRESH_CACHE_WINDOW_MS })
+        } catch {
+          // Use cached rows when remote check is unavailable.
+        }
       }
 
-      const identity = verifyIdentityAgainstRows(rows, normalizedX, walletAddress)
+      if (!identity) {
+        identity = verifyIdentityAgainstRows(rows, normalizedX, walletAddress)
+      }
       if (identity.hasConflict) {
         openModal(
           'Already Existed',
@@ -2265,13 +2709,19 @@ function PlayToWL() {
                 Only proof-submitted entries are visible. Pending-proof entries stay hidden until proof is submitted.
               </p>
               <div className="leaderboard-meta">
-                <span className="leaderboard-pill">Auto-sync: every 20s</span>
+                <span className="leaderboard-pill">{`Auto-sync: every ${Math.round(LEADERBOARD_SYNC_INTERVAL_MS / 1000)}s`}</span>
                 <span className="leaderboard-pill">
                   {lastLeaderboardSync
                     ? `Last synced: ${new Date(lastLeaderboardSync).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`
                     : 'Last synced: waiting...'}
                 </span>
-                {isLeaderboardLoading && <span className="leaderboard-pill loading">Syncing now...</span>}
+                <span
+                  className={`leaderboard-pill loading-sync ${isLeaderboardLoading ? 'is-active' : ''}`}
+                  aria-live="polite"
+                  aria-hidden={!isLeaderboardLoading}
+                >
+                  Syncing now...
+                </span>
               </div>
               <div className="leaderboard-search-row">
                 <label className="leaderboard-search-field" htmlFor="leaderboard-search">
@@ -2309,7 +2759,7 @@ function PlayToWL() {
                     <span className="leader-verify">Proof</span>
                     <span className="leader-wallet">Wallet</span>
                     <span className="leader-score">Score</span>
-                    <span className="leader-time">Moves</span>
+                    <span className="leader-moves">Moves</span>
                     <span className="leader-time">Time</span>
                   </div>
                   {paginatedLeaderboard.map((row, index) => {
@@ -2317,9 +2767,29 @@ function PlayToWL() {
                     const rank = Number.isFinite(Number(row.rank)) && Number(row.rank) > 0
                       ? Number(row.rank)
                       : fallbackRank
+                    const rankDisplay = rank === 1
+                      ? '\u{1F947}'
+                      : rank === 2
+                        ? '\u{1F948}'
+                        : rank === 3
+                          ? '\u{1F949}'
+                          : `#${rank}`
+                    const rankLabel = rank === 1
+                      ? 'Rank 1 (gold medal)'
+                      : rank === 2
+                        ? 'Rank 2 (silver medal)'
+                        : rank === 3
+                          ? 'Rank 3 (bronze medal)'
+                          : `Rank ${rank}`
                     return (
                       <div key={`${row.browserId}-${rank}`} className={`leader-row rank-${rank}`}>
-                        <span className="leader-rank">#{rank}</span>
+                        <span
+                          className={`leader-rank ${rank <= 3 ? 'leader-rank-medal' : ''}`}
+                          title={rankLabel}
+                          aria-label={rankLabel}
+                        >
+                          {rankDisplay}
+                        </span>
                         <span className="leader-name">{row.xUsername || `Anon-${String(row.browserId || '').slice(-4)}`}</span>
                         <span
                           className={`leader-verify ${row.hasProof ? 'verified' : 'pending'}`}
@@ -2330,7 +2800,7 @@ function PlayToWL() {
                         </span>
                         <span className="leader-wallet">{shortWallet(row.walletAddress)}</span>
                         <strong className="leader-score">{row.score}</strong>
-                        <span className="leader-time">{Number.isFinite(Number(row.moves)) && Number(row.moves) > 0 ? row.moves : '-'}</span>
+                        <span className="leader-moves">{Number.isFinite(Number(row.moves)) && Number(row.moves) > 0 ? row.moves : '-'}</span>
                         <span className="leader-time">{Number.isFinite(Number(row.timeSec)) && Number(row.timeSec) > 0 ? formatElapsed(row.timeSec) : '-'}</span>
                       </div>
                   )})}

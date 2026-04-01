@@ -927,9 +927,18 @@
   line-height: 1;
 }
 
-.leaderboard-pill.loading {
+.leaderboard-pill.loading-sync {
+  min-width: 104px;
+  justify-content: center;
+}
+
+.leaderboard-pill.loading-sync.is-active {
   border-color: #58a6ff;
   color: #58a6ff;
+}
+
+.leaderboard-pill.loading-sync:not(.is-active) {
+  visibility: hidden;
 }
 
 .leaderboard-refresh-btn {
@@ -956,7 +965,9 @@
 .leader-header .leader-name,
 .leader-header .leader-wallet,
 .leader-header .leader-score,
-.leader-header .leader-time {
+.leader-header .leader-moves,
+.leader-header .leader-time,
+.leader-header .leader-verify {
   color: #c9d1d9;
   font-size: 0.56rem;
   text-transform: uppercase;
@@ -974,12 +985,18 @@
   gap: 4px;
 }
 
+.leader-rank-medal {
+  font-size: 0.82rem;
+  line-height: 1;
+}
+
 .leader-name {
   color: #f0f6fc;
   font-size: 0.62rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
 }
 
 .leader-wallet {
@@ -989,6 +1006,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
 }
 
 .leader-score {
@@ -999,12 +1017,14 @@
   min-width: 56px;
 }
 
+.leader-moves,
 .leader-time {
   color: #8b949e;
   font-size: 0.56rem;
   text-align: right;
   justify-self: end;
   min-width: 0;
+  white-space: nowrap;
 }
 
 .leader-verify {
@@ -1024,13 +1044,6 @@
 
 .leader-verify.pending {
   color: #f0b74f;
-}
-
-.leader-header .leader-verify {
-  color: #c9d1d9;
-  font-size: 0.56rem;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
 }
 
 .leader-row.rank-1 {
@@ -1069,23 +1082,20 @@
   min-width: 28px;
   padding: 2px 6px;
   border-radius: 4px;
-  border: 1px solid transparent;
+  border: 0;
   font-weight: 700;
 }
 
 .leader-row.rank-1 .leader-rank {
-  background: rgba(212, 175, 55, 0.24);
-  border-color: #d4af37;
+  background: transparent;
 }
 
 .leader-row.rank-2 .leader-rank {
-  background: rgba(184, 194, 204, 0.24);
-  border-color: #b8c2cc;
+  background: transparent;
 }
 
 .leader-row.rank-3 .leader-rank {
-  background: rgba(205, 127, 50, 0.24);
-  border-color: #cd7f32;
+  background: transparent;
 }
 
 .side-card h3 {
@@ -1723,10 +1733,76 @@
     min-width: 0;
   }
 
+  .leaderboard-list {
+    overflow: hidden;
+  }
+
   .leader-row {
-    grid-template-columns: 24px minmax(0, 1.1fr) 24px minmax(56px, 0.95fr) 48px 38px 52px;
-    gap: 3px;
-    padding: 6px 5px;
+    grid-template-columns: 28px minmax(0, 1.35fr) 24px minmax(0, 1.05fr) 48px 42px 54px;
+    grid-template-areas: "rank name proof wallet score moves time";
+    gap: 4px;
+    padding: 7px 6px;
+    align-items: center;
+  }
+
+  .leader-rank {
+    grid-area: rank;
+    width: 100%;
+    text-align: center;
+    justify-self: center;
+    min-width: 0;
+  }
+
+  .leader-rank-medal {
+    font-size: 0.68rem;
+  }
+
+  .leader-name {
+    grid-area: name;
+    width: 100%;
+    min-width: 0;
+    text-align: center;
+    justify-self: center;
+  }
+
+  .leader-verify {
+    grid-area: proof;
+    width: 100%;
+    text-align: center;
+    justify-self: center;
+    min-width: 0;
+  }
+
+  .leader-wallet {
+    grid-area: wallet;
+    width: 100%;
+    min-width: 0;
+    text-align: center;
+    justify-self: center;
+  }
+
+  .leader-score {
+    grid-area: score;
+    width: 100%;
+    text-align: center;
+    justify-self: center;
+    min-width: 0;
+  }
+
+  .leader-moves {
+    grid-area: moves;
+    width: 100%;
+    text-align: center;
+    justify-self: center;
+    min-width: 0;
+  }
+
+  .leader-time {
+    grid-area: time;
+    width: 100%;
+    text-align: center;
+    justify-self: center;
+    min-width: 0;
   }
 
   .leaderboard-proof-note {
@@ -1758,28 +1834,38 @@
   }
 
   .leader-name {
-    font-size: 0.56rem;
-  }
-
-  .leader-wallet {
     font-size: 0.52rem;
   }
 
+  .leader-wallet {
+    font-size: 0.49rem;
+  }
+
   .leader-score {
-    font-size: 0.58rem;
+    font-size: 0.54rem;
+  }
+
+  .leader-moves {
+    font-size: 0.48rem;
   }
 
   .leader-time {
-    font-size: 0.5rem;
+    font-size: 0.48rem;
   }
 
   .leader-verify {
-    font-size: 0.56rem;
+    font-size: 0.54rem;
   }
 
+  .leader-header .leader-rank,
+  .leader-header .leader-name,
+  .leader-header .leader-wallet,
+  .leader-header .leader-score,
+  .leader-header .leader-moves,
+  .leader-header .leader-time,
   .leader-header .leader-verify {
     font-size: 0.46rem;
-    letter-spacing: 0.02em;
+    text-align: center;
   }
 
   .proof-form input {
