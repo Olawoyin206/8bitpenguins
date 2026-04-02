@@ -1,14 +1,73 @@
 import { useState, useEffect, useRef } from 'react'
-import { uploadCanvasToIPFS, saveToSharedGallery, fetchFreshGallery } from './ipfs'
+import { drawAgent as drawGameAgent, generateRandomPenguinTraits as generateGamePenguinTraits } from './penguin2d.js'
 import SiteNav from './SiteNav.jsx'
 import './App.css'
 
 const GRID_SIZE = 80
+const LOCAL_GENERATOR_GALLERY_KEY = 'savedPenguins'
+const LOCAL_GENERATOR_CACHE_KEY = 'cachedGallery'
 const EFFECT_VARIANTS = [
   { name: 'White', weight: 5 },
   { name: 'Light', weight: 3 },
   { name: 'Golden', weight: 1 },
 ]
+const GAME_REFERENCE_RENDER_OPTIONS = {
+  logicalSize: 40,
+  offsetX: 0,
+  offsetY: 0,
+  spriteScale: 0.75,
+  outline: true,
+  innerOutline: true,
+  outerOutline: false,
+}
+
+function normalizePenguinEntry(entry) {
+  if (!entry || typeof entry !== 'object') return null
+  const normalized = {
+    ...entry,
+    id: Number(entry.id || Date.now()),
+    timestamp: Number(entry.timestamp || Date.now()),
+  }
+  if (!Number.isFinite(normalized.id)) return null
+  if (!Number.isFinite(normalized.timestamp)) normalized.timestamp = Date.now()
+  return normalized
+}
+
+function mergePenguinEntries(entries) {
+  const deduped = new Map()
+  entries.forEach((entry) => {
+    const normalized = normalizePenguinEntry(entry)
+    if (normalized) deduped.set(normalized.id, normalized)
+  })
+  return Array.from(deduped.values()).sort((a, b) => Number(b.timestamp || 0) - Number(a.timestamp || 0))
+}
+
+function readLocalPenguinGallery() {
+  if (typeof window === 'undefined') return []
+  try {
+    const savedRaw = localStorage.getItem(LOCAL_GENERATOR_GALLERY_KEY)
+    const cachedRaw = localStorage.getItem(LOCAL_GENERATOR_CACHE_KEY)
+    const saved = savedRaw ? JSON.parse(savedRaw) : []
+    const cached = cachedRaw ? JSON.parse(cachedRaw) : []
+    const savedList = Array.isArray(saved) ? saved : []
+    const cachedList = Array.isArray(cached) ? cached : []
+    return mergePenguinEntries([...savedList, ...cachedList])
+  } catch {
+    return []
+  }
+}
+
+function writeLocalPenguinGallery(entries) {
+  if (typeof window === 'undefined') return
+  try {
+    const merged = mergePenguinEntries(Array.isArray(entries) ? entries : [])
+    const encoded = JSON.stringify(merged)
+    localStorage.setItem(LOCAL_GENERATOR_GALLERY_KEY, encoded)
+    localStorage.setItem(LOCAL_GENERATOR_CACHE_KEY, encoded)
+  } catch {
+    // Ignore local storage write failures.
+  }
+}
 
 function convertToPenguinStyle(imageSrc, canvas, strength = 'high') {
   return new Promise((resolve) => {
@@ -1001,7 +1060,7 @@ export function generateRandomPenguinTraits() {
 
 function renderPenguin4k(traits, options = {}) {
   const canvas = document.createElement('canvas')
-  drawAgent(traits, canvas, 4096, options)
+  drawGameAgent(traits, canvas, 4096, { ...GAME_REFERENCE_RENDER_OPTIONS, ...options })
   return canvas
 }
 
@@ -1022,15 +1081,7 @@ function App() {
       chars: Array.from({ length: 25 }).map(() => Math.random() > 0.5 ? '1' : '0').join('')
     }))
   )
-  const [savedPenguins, setSavedPenguins] = useState(() => {
-    const saved = localStorage.getItem('savedPenguins')
-    return saved ? JSON.parse(saved) : []
-  })
-  
-  const [sharedGallery, setSharedGallery] = useState(() => {
-    const cached = localStorage.getItem('cachedGallery')
-    return cached ? JSON.parse(cached) : []
-  })
+  const [savedPenguins, setSavedPenguins] = useState(() => readLocalPenguinGallery())
   
   const [modalPenguin, setModalPenguin] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
@@ -1038,56 +1089,13 @@ function App() {
   const [cooldown, setCooldown] = useState(0)
   const [uploadCooldown, setUploadCooldown] = useState(0)
   const [transformStrength, setTransformStrength] = useState('high')
-  const [lastRefresh, setLastRefresh] = useState(null)
   const itemsPerPage = 20
   const fileInputRef = useRef(null)
   const canvasRef = useRef(null)
-
-  const refreshSharedGallery = async () => {
-    const gallery = await fetchFreshGallery()
-    setSharedGallery(gallery)
-    setLastRefresh(new Date())
-    return gallery
-  }
   
   useEffect(() => {
-    localStorage.setItem('savedPenguins', JSON.stringify(savedPenguins))
+    writeLocalPenguinGallery(savedPenguins)
   }, [savedPenguins])
-
-  useEffect(() => {
-    if (sharedGallery.length > 0) {
-      localStorage.setItem('cachedGallery', JSON.stringify(sharedGallery))
-    }
-  }, [sharedGallery])
-
-  useEffect(() => {
-    refreshSharedGallery()
-
-    const handleVisibilitySync = () => {
-      if (document.visibilityState === 'visible') {
-        refreshSharedGallery()
-      }
-    }
-
-    const handleFocusSync = () => {
-      refreshSharedGallery()
-    }
-
-    const interval = setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        refreshSharedGallery()
-      }
-    }, 30000)
-
-    document.addEventListener('visibilitychange', handleVisibilitySync)
-    window.addEventListener('focus', handleFocusSync)
-
-    return () => {
-      clearInterval(interval)
-      document.removeEventListener('visibilitychange', handleVisibilitySync)
-      window.removeEventListener('focus', handleFocusSync)
-    }
-  }, [])
 
   useEffect(() => {
     if (cooldown > 0) {
@@ -1105,7 +1113,7 @@ function App() {
 
   useEffect(() => {
     if (canvasRef.current && !ogMode && hasGenerated && traits) {
-      drawAgent(traits, canvasRef.current, 400)
+      drawGameAgent(traits, canvasRef.current, 400, GAME_REFERENCE_RENDER_OPTIONS)
     }
   }, [traits, ogMode, hasGenerated])
 
@@ -1118,8 +1126,6 @@ function App() {
     setConfetti([])
     setUploadCooldown(10)
     
-    refreshSharedGallery()
-    
     const reader = new FileReader()
     reader.onload = (event) => {
       const img = new Image()
@@ -1129,7 +1135,7 @@ function App() {
         
         setTimeout(async () => {
           const extractedTraits = await convertToPenguinStyle(event.target.result, canvasRef.current, transformStrength)
-            drawAgent(extractedTraits, canvasRef.current, 400)
+            drawGameAgent(extractedTraits, canvasRef.current, 400, GAME_REFERENCE_RENDER_OPTIONS)
             setTraits(extractedTraits)
             setUploadedImage(event.target.result)
             setIsGenerating(false)
@@ -1151,27 +1157,12 @@ function App() {
              
             const newPenguin = {
               id: Date.now(),
-              cid: null,
               image: highResCanvas.toDataURL('image/png'),
               traits: extractedTraits,
               isOg: true,
               timestamp: Date.now()
             }
-            setSavedPenguins(prev => [newPenguin, ...prev])
-            setSharedGallery(prev => [newPenguin, ...prev])
-            
-            uploadCanvasToIPFS(highResCanvas).then(async (ipfsData) => {
-              if (ipfsData) {
-                const updatedPenguin = { ...newPenguin, cid: ipfsData.cid, image: ipfsData.url }
-                setSavedPenguins(prev => prev.map(p => p.id === newPenguin.id ? updatedPenguin : p))
-                setSharedGallery(prev => prev.map(p => p.id === newPenguin.id ? updatedPenguin : p))
-                await saveToSharedGallery(updatedPenguin)
-              } else {
-                await saveToSharedGallery(newPenguin)
-              }
-              
-              await refreshSharedGallery()
-            })
+            setSavedPenguins(prev => mergePenguinEntries([newPenguin, ...prev]))
         }, 200)
       }
       img.src = event.target.result
@@ -1189,14 +1180,14 @@ function App() {
     
     setTimeout(() => {
       try {
-        const t = generateRandomPenguinTraits()
+        const t = generateGamePenguinTraits()
         
         setTraits(t)
         
         setTimeout(async () => {
           try {
             setMode('generate')
-            drawAgent(t, canvasRef.current, 400)
+            drawGameAgent(t, canvasRef.current, 400, GAME_REFERENCE_RENDER_OPTIONS)
           } finally {
             setIsGenerating(false)
           }
@@ -1219,28 +1210,12 @@ function App() {
           
           const newPenguin = {
             id: Date.now(),
-            cid: null,
             image: highResCanvas.toDataURL('image/png'),
             traits: t,
             isOg: false,
             timestamp: Date.now()
           }
-          setSavedPenguins(prev => [newPenguin, ...prev])
-          setSharedGallery(prev => [newPenguin, ...prev])
-          
-          const previewCanvas = canvasRef.current || highResCanvas
-          uploadCanvasToIPFS(previewCanvas).then(async (ipfsData) => {
-            if (ipfsData) {
-              const updatedPenguin = { ...newPenguin, cid: ipfsData.cid, image: ipfsData.url }
-              setSavedPenguins(prev => prev.map(p => p.id === newPenguin.id ? updatedPenguin : p))
-              setSharedGallery(prev => prev.map(p => p.id === newPenguin.id ? updatedPenguin : p))
-              await saveToSharedGallery(updatedPenguin)
-            } else {
-              await saveToSharedGallery(newPenguin)
-            }
-            
-            await refreshSharedGallery()
-          })
+          setSavedPenguins(prev => mergePenguinEntries([newPenguin, ...prev]))
         }, 200)
       } catch (err) {
         console.error('Generate failed:', err)
@@ -1303,7 +1278,7 @@ function App() {
           </div>
           
           <div className={`canvas-wrap ${isGenerating ? 'generating' : ''} ${isRevealing ? 'reveal' : ''} ${!hasGenerated && !hasOgGenerated ? 'matrix-idle' : ''}`}>
-            <canvas ref={canvasRef} style={{ opacity: (hasGenerated || hasOgGenerated) ? 1 : 0 }} />
+            <canvas ref={canvasRef} style={{ opacity: isGenerating ? 0 : ((hasGenerated || hasOgGenerated) ? 1 : 0) }} />
             {(isGenerating || !hasGenerated && !hasOgGenerated) && (
               <div className="matrix-rain">
                 {idleMatrix.map((col) => (
@@ -1373,11 +1348,6 @@ function App() {
               </>
             )}
           </div>
-          {lastRefresh && (
-            <p className="last-refresh">
-              Gallery refreshed: {lastRefresh.toLocaleTimeString()}
-            </p>
-          )}
           <p className="status">{status}</p>
         </div>
 
@@ -1407,21 +1377,7 @@ function App() {
         </div>
         
         {(() => {
-          const allById = new Map()
-          
-          sharedGallery.forEach(p => {
-            if (!allById.has(p.id)) {
-              allById.set(p.id, p)
-            }
-          })
-          
-          savedPenguins.forEach(p => {
-            allById.set(p.id, p)
-          })
-          
-          const allUnique = Array.from(allById.values())
-          
-          const sortedPenguins = allUnique.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+          const sortedPenguins = mergePenguinEntries(savedPenguins)
           
           const filteredPenguins = sortedPenguins.filter(p => galleryTab === 'generated' ? !p.isOg : p.isOg)
           
