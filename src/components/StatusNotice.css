@@ -1,0 +1,59 @@
+.status-notice {
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: 1px solid #2f3a46;
+  border-left-width: 3px;
+  border-radius: 5px;
+  background: #0f151d;
+  text-align: left;
+}
+
+.status-notice-message,
+.status-notice-hint {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.status-notice-message {
+  font-size: 0.74rem;
+  line-height: 1.35;
+  color: #dce8f5;
+}
+
+.status-notice-hint {
+  margin-top: 4px;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  color: #9fb4c9;
+}
+
+.status-notice.info {
+  border-left-color: #6ea8e8;
+}
+
+.status-notice.pending {
+  border-left-color: #7cb7ff;
+  background: rgba(25, 52, 88, 0.34);
+}
+
+.status-notice.success {
+  border-left-color: #5abf7a;
+  background: rgba(17, 53, 28, 0.36);
+}
+
+.status-notice.warning {
+  border-left-color: #d5a45f;
+  background: rgba(80, 57, 21, 0.3);
+}
+
+.status-notice.error {
+  border-left-color: #e07f7f;
+  background: rgba(85, 28, 28, 0.34);
+}
+
+@media (max-width: 640px) {
+  .status-notice {
+    padding: 8px 9px;
+  }
+}

@@ -166,6 +166,7 @@ export function renderPenguinMintSVG(traits, options = {}) {
   const beak = traits?.beak?.base || '#FF9F43'
   const beakShadow = traits?.beak?.shadow || beak
   const feet = traits?.feet?.base || '#FF9F43'
+  const feetHighlight = traits?.feet?.highlight || feet
   const feetShadow = traits?.feet?.shadow || feet
   const headColor = traits?.head?.color || '#D4AF37'
   const headShadow = traits?.head?.shadow || headColor
@@ -358,7 +359,7 @@ function traceCanvasRegionData(canvas, region) {
   return rects
 }
 
-function traceCanvasRegionRects(canvas, region) {
+function _traceCanvasRegionRects(canvas, region) {
   return traceCanvasRegionData(canvas, region).map(({ x, y, width, height, fill }) => (
     `<rect x="${x}" y="${y}" width="${width}" height="${height}" fill="${fill}" />`
   ))

@@ -1,7 +1,11 @@
-export const DEFAULT_TASK_PINNED_POST_LINK = 'https://x.com/8bitpenguin_xyz/status/2031353109654417574?s=20'
-export const DEFAULT_TASK_PINNED_POST_ID = '2031353109654417574'
+export const DEFAULT_TASK_PINNED_POST_LINK = 'https://x.com/8bitspenguins_/status/2034951264597922035?s=20'
+export const DEFAULT_TASK_PINNED_POST_ID = '2034951264597922035'
 export const TASK_PINNED_POST_KEY = 'penguin:task-pinned-post-link'
 export const TASK_CONFIG_UPDATED_EVENT = 'penguin:task-config-updated'
+
+const LEGACY_TASK_PINNED_POST_LINKS = new Set([
+  'https://x.com/8bitspenguins_/status/2031353109654417574?s=20',
+])
 
 const VALID_X_HOSTS = new Set(['x.com', 'twitter.com', 'mobile.twitter.com'])
 
@@ -28,7 +32,11 @@ export function extractTweetMetaFromLink(link) {
     if (statusIndex >= 1) {
       const candidate = parts[statusIndex - 1]
       const parent = parts[statusIndex - 2] || ''
-      const isReservedPath = candidate.toLowerCase() === 'web' && parent.toLowerCase() === 'i'
+      const candidateLower = String(candidate || '').toLowerCase()
+      const parentLower = String(parent || '').toLowerCase()
+      const isReservedPath =
+        candidateLower === 'i' ||
+        (candidateLower === 'web' && parentLower === 'i')
       if (!isReservedPath && /^[A-Za-z0-9_]{1,15}$/.test(candidate || '')) {
         username = candidate
       }
@@ -51,8 +59,13 @@ export function isValidPinnedPostLink(link) {
 export function getTaskPinnedPostLink() {
   try {
     const stored = localStorage.getItem(TASK_PINNED_POST_KEY)
-    if (stored && isValidPinnedPostLink(stored)) return stored.trim()
-  } catch {}
+    if (stored && isValidPinnedPostLink(stored)) {
+      const trimmed = stored.trim()
+      if (!LEGACY_TASK_PINNED_POST_LINKS.has(trimmed)) return trimmed
+    }
+  } catch {
+    // Ignore storage read issues and fall back to the default link.
+  }
   return DEFAULT_TASK_PINNED_POST_LINK
 }
 
@@ -67,11 +80,15 @@ export function saveTaskPinnedPostLink(link) {
 
   try {
     localStorage.setItem(TASK_PINNED_POST_KEY, nextLink)
-  } catch {}
+  } catch {
+    // Ignore storage write issues; runtime state still updates.
+  }
 
   try {
     window.dispatchEvent(new CustomEvent(TASK_CONFIG_UPDATED_EVENT, { detail: payload }))
-  } catch {}
+  } catch {
+    // Ignore event dispatch issues outside the browser.
+  }
 
   return payload
 }
@@ -79,7 +96,9 @@ export function saveTaskPinnedPostLink(link) {
 export function resetTaskPinnedPostLink() {
   try {
     localStorage.removeItem(TASK_PINNED_POST_KEY)
-  } catch {}
+  } catch {
+    // Ignore storage clear issues and continue with runtime reset.
+  }
 
   const payload = {
     link: DEFAULT_TASK_PINNED_POST_LINK,
@@ -89,7 +108,9 @@ export function resetTaskPinnedPostLink() {
 
   try {
     window.dispatchEvent(new CustomEvent(TASK_CONFIG_UPDATED_EVENT, { detail: payload }))
-  } catch {}
+  } catch {
+    // Ignore event dispatch issues outside the browser.
+  }
 
   return payload
 }

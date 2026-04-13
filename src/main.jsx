@@ -2,49 +2,60 @@ import { StrictMode, Suspense, lazy } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Analytics } from '@vercel/analytics/react'
-import Error404 from './Error404.jsx'
+import Error404 from './pages/Error404.jsx'
+import GlobalFooter from './components/GlobalFooter.jsx'
+import { applyStorageSchemaMigration } from './storageSchema.js'
 import './index.css'
 import './Button.css'
 
-const App = lazy(() => import('./App.jsx'))
-const Mint = lazy(() => import('./Mint.jsx'))
-const ThreeGenerator = lazy(() => import('./ThreeGenerator.jsx'))
-const Task = lazy(() => import('./Task.jsx'))
-const Evolve = lazy(() => import('./Evolve.jsx'))
-const Admin = lazy(() => import('./Admin.jsx'))
-const PlayToWL = lazy(() => import('./PlayToWL.jsx'))
-const LOCK_NON_TASK_PAGES = import.meta.env.PROD
+const loadApp = () => import('./pages/App.jsx')
+const loadMint = () => import('./pages/Mint.jsx')
+const loadThreeGenerator = () => import('./pages/ThreeGenerator.jsx')
+const loadTask = () => import('./pages/Task.jsx')
+const loadEvolve = () => import('./pages/Evolve.jsx')
+const loadAdmin = () => import('./pages/Admin.jsx')
+const loadPlayToWL = () => import('./pages/PlayToWL.jsx')
+const loadWalletChecker = () => import('./pages/WalletChecker.jsx')
+const App = lazy(loadApp)
+const Mint = lazy(loadMint)
+const ThreeGenerator = lazy(loadThreeGenerator)
+const Task = lazy(loadTask)
+const Evolve = lazy(loadEvolve)
+const Admin = lazy(loadAdmin)
+const PlayToWL = lazy(loadPlayToWL)
+const WalletChecker = lazy(loadWalletChecker)
+const isProductionBuild = Boolean(import.meta?.env?.PROD)
+const showTestingRoutesInDev = Boolean(import.meta?.env?.DEV)
+
+applyStorageSchemaMigration()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
-      <Suspense fallback={<div style={{ minHeight: '100vh', background: '#0d1117' }} />}>
-        <Routes>
-          <Route path="/" element={<Task />} />
-          <Route path="/task" element={<Task />} />
-          {LOCK_NON_TASK_PAGES ? (
-            <>
-              <Route path="/generate" element={<App />} />
-              <Route path="/mint" element={<Error404 />} />
-              <Route path="/admin" element={<Error404 />} />
-              <Route path="/evolve" element={<Error404 />} />
-              <Route path="/3d" element={<Error404 />} />
-              <Route path="/play-to-wl" element={<PlayToWL />} />
-            </>
-          ) : (
-            <>
+      <div className="app-root-shell">
+        <div className="app-route-shell">
+          <Suspense fallback={<div style={{ minHeight: '100vh', background: '#0d1117' }} />}>
+            <Routes>
+              <Route path="/" element={<Task />} />
+              <Route path="/task" element={<Task />} />
               <Route path="/generate" element={<App />} />
               <Route path="/mint" element={<Mint />} />
               <Route path="/admin" element={<Admin />} />
               <Route path="/evolve" element={<Evolve />} />
+              {(isProductionBuild || showTestingRoutesInDev) && <Route path="/testingmint" element={<Mint />} />}
+              {(isProductionBuild || showTestingRoutesInDev) && <Route path="/testingadmin" element={<Admin />} />}
+              {(isProductionBuild || showTestingRoutesInDev) && <Route path="/testingevolve" element={<Evolve />} />}
               <Route path="/3d" element={<ThreeGenerator />} />
+              {showTestingRoutesInDev && <Route path="/testing3d" element={<ThreeGenerator />} />}
+              <Route path="/wallet-checker" element={<WalletChecker />} />
               <Route path="/play-to-wl" element={<PlayToWL />} />
-            </>
-          )}
-          <Route path="*" element={<Error404 />} />
-        </Routes>
-      </Suspense>
-      <Analytics />
+              <Route path="*" element={<Error404 />} />
+            </Routes>
+          </Suspense>
+        </div>
+        <GlobalFooter />
+        <Analytics />
+      </div>
     </BrowserRouter>
   </StrictMode>,
 )

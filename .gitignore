@@ -35,3 +35,23 @@ generate-previews.js
 nft-generator.js
 preview-generator.js
 previews.html
+
+# Local recovery/build artifacts
+.recovery-backup-*/
+.tmp-*/
+artifacts/
+archive/
+.vercel/
+tmp-render-compare/
+
+# Hardhat / Solidity generated outputs
+cache/
+contracts_*.bin
+@openzeppelin_contracts*.bin
+
+# Local scratch files
+.tmp*
+*.tmp
+
+# Local image backups
+docs/placeholders/backups/

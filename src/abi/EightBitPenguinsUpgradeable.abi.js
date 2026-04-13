@@ -1,10 +1,339 @@
-﻿const contractABI = [
+const contractABI = [
     {
         "inputs":  [
 
                    ],
         "stateMutability":  "nonpayable",
         "type":  "constructor"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "AttributesMustBeJsonArray",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "AttributesRequired",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "BadRankLen",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "BadScoreLen",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "DirectMintDisabled",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "ExceedsGlobalMaxPerWallet",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "ExceedsMaxSupply",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "ExceedsPhaseMaxPerWallet",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "ExceedsPhaseMaxSupply",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "InsufficientPayment",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "InvalidDisplayToggleDuration",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "InvalidEvolveImageUri",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "InvalidImageData",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "InvalidModelUri",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "InvalidPhaseWindow",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "InvalidRoyaltyFeeBps",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "InvalidRoyaltyReceiver",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "InvalidToken",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "InvalidWhitelistAddress",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "MaxPerWalletMustBePositive",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "MaxSupplyBelowMinted",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "MaxSupplyMustBePositive",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "MetadataBuilderAddressRequired",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "MintingNotActive",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "Missing2DImage",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "MissingAttributesCount",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "MissingImageCount",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "MissingNameCount",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "MissingRarityScoreCount",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "MustMintAtLeastOne",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "NoActiveMintPhase",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "NoIds",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "NoPhaseToDelete",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "NoTokensMinted",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "NotTokenOwner",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "NotWhitelistedForPhase",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "OnlyLastPhaseCanBeDeleted",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "PhaseDisabled",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "PhaseDoesNotExist",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "PhaseNameRequired",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "PlaceholderImageRequired",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "RandomnessHelperAddressRequired",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "RarityAlreadyFinalized",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "RendererAddressRequired",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "SellOutOrCloseMintFirst",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "TokenNotEvolved",
+        "type":  "error"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "TokenUnrevealed",
+        "type":  "error"
     },
     {
         "anonymous":  false,
@@ -80,6 +409,19 @@
         "inputs":  [
                        {
                            "indexed":  false,
+                           "internalType":  "uint256",
+                           "name":  "durationSeconds",
+                           "type":  "uint256"
+                       }
+                   ],
+        "name":  "DisplayToggleDurationChanged",
+        "type":  "event"
+    },
+    {
+        "anonymous":  false,
+        "inputs":  [
+                       {
+                           "indexed":  false,
                            "internalType":  "uint8",
                            "name":  "version",
                            "type":  "uint8"
@@ -118,6 +460,19 @@
         "anonymous":  false,
         "inputs":  [
                        {
+                           "indexed":  true,
+                           "internalType":  "address",
+                           "name":  "metadataBuilder",
+                           "type":  "address"
+                       }
+                   ],
+        "name":  "MetadataBuilderUpdated",
+        "type":  "event"
+    },
+    {
+        "anonymous":  false,
+        "inputs":  [
+                       {
                            "indexed":  false,
                            "internalType":  "uint256",
                            "name":  "_tokenId",
@@ -125,6 +480,19 @@
                        }
                    ],
         "name":  "MetadataUpdate",
+        "type":  "event"
+    },
+    {
+        "anonymous":  false,
+        "inputs":  [
+                       {
+                           "indexed":  false,
+                           "internalType":  "bool",
+                           "name":  "directMintEnabled",
+                           "type":  "bool"
+                       }
+                   ],
+        "name":  "MintModeConfigured",
         "type":  "event"
     },
     {
@@ -151,6 +519,19 @@
                        }
                    ],
         "name":  "MintStatusChanged",
+        "type":  "event"
+    },
+    {
+        "anonymous":  false,
+        "inputs":  [
+                       {
+                           "indexed":  true,
+                           "internalType":  "address",
+                           "name":  "renderer",
+                           "type":  "address"
+                       }
+                   ],
+        "name":  "OnchainRendererUpdated",
         "type":  "event"
     },
     {
@@ -282,6 +663,32 @@
         "anonymous":  false,
         "inputs":  [
                        {
+                           "indexed":  true,
+                           "internalType":  "address",
+                           "name":  "randomnessHelper",
+                           "type":  "address"
+                       }
+                   ],
+        "name":  "RandomnessHelperUpdated",
+        "type":  "event"
+    },
+    {
+        "anonymous":  false,
+        "inputs":  [
+                       {
+                           "indexed":  false,
+                           "internalType":  "uint256",
+                           "name":  "supply",
+                           "type":  "uint256"
+                       }
+                   ],
+        "name":  "RarityFinalized",
+        "type":  "event"
+    },
+    {
+        "anonymous":  false,
+        "inputs":  [
+                       {
                            "indexed":  false,
                            "internalType":  "bool",
                            "name":  "status",
@@ -289,6 +696,56 @@
                        }
                    ],
         "name":  "RevealStatusChanged",
+        "type":  "event"
+    },
+    {
+        "anonymous":  false,
+        "inputs":  [
+                       {
+                           "indexed":  true,
+                           "internalType":  "address",
+                           "name":  "receiver",
+                           "type":  "address"
+                       },
+                       {
+                           "indexed":  false,
+                           "internalType":  "uint96",
+                           "name":  "feeBps",
+                           "type":  "uint96"
+                       }
+                   ],
+        "name":  "RoyaltyInfoUpdated",
+        "type":  "event"
+    },
+    {
+        "anonymous":  false,
+        "inputs":  [
+                       {
+                           "indexed":  true,
+                           "internalType":  "uint256",
+                           "name":  "tokenId",
+                           "type":  "uint256"
+                       },
+                       {
+                           "indexed":  true,
+                           "internalType":  "uint8",
+                           "name":  "mode",
+                           "type":  "uint8"
+                       },
+                       {
+                           "indexed":  false,
+                           "internalType":  "uint256",
+                           "name":  "expiresAt",
+                           "type":  "uint256"
+                       },
+                       {
+                           "indexed":  true,
+                           "internalType":  "address",
+                           "name":  "triggeredBy",
+                           "type":  "address"
+                       }
+                   ],
+        "name":  "TokenDisplayModeChanged",
         "type":  "event"
     },
     {
@@ -308,6 +765,25 @@
                        }
                    ],
         "name":  "TokenEvolved3D",
+        "type":  "event"
+    },
+    {
+        "anonymous":  false,
+        "inputs":  [
+                       {
+                           "indexed":  true,
+                           "internalType":  "uint256",
+                           "name":  "tokenId",
+                           "type":  "uint256"
+                       },
+                       {
+                           "indexed":  false,
+                           "internalType":  "string",
+                           "name":  "modelUri",
+                           "type":  "string"
+                       }
+                   ],
+        "name":  "TokenInteractiveModelUpdated",
         "type":  "event"
     },
     {
@@ -406,6 +882,21 @@
     },
     {
         "inputs":  [
+                       {
+                           "internalType":  "bool",
+                           "name":  "directMintEnabled_",
+                           "type":  "bool"
+                       }
+                   ],
+        "name":  "configureMintMode",
+        "outputs":  [
+
+                    ],
+        "stateMutability":  "nonpayable",
+        "type":  "function"
+    },
+    {
+        "inputs":  [
 
                    ],
         "name":  "currentPhaseId",
@@ -441,6 +932,21 @@
     },
     {
         "inputs":  [
+
+                   ],
+        "name":  "directMintEnabled",
+        "outputs":  [
+                        {
+                            "internalType":  "bool",
+                            "name":  "",
+                            "type":  "bool"
+                        }
+                    ],
+        "stateMutability":  "view",
+        "type":  "function"
+    },
+    {
+        "inputs":  [
                        {
                            "internalType":  "uint256",
                            "name":  "tokenId",
@@ -448,7 +954,7 @@
                        },
                        {
                            "internalType":  "string",
-                           "name":  "imageBase64",
+                           "name":  "imageUri",
                            "type":  "string"
                        },
                        {
@@ -473,7 +979,7 @@
                        },
                        {
                            "internalType":  "string",
-                           "name":  "imageBase64",
+                           "name":  "imageUri",
                            "type":  "string"
                        }
                    ],
@@ -490,9 +996,90 @@
                            "internalType":  "uint256",
                            "name":  "tokenId",
                            "type":  "uint256"
+                       },
+                       {
+                           "internalType":  "string",
+                           "name":  "imageUri",
+                           "type":  "string"
+                       },
+                       {
+                           "internalType":  "string",
+                           "name":  "modelUri",
+                           "type":  "string"
+                       }
+                   ],
+        "name":  "evolveTo3DImageOnlyWithModel",
+        "outputs":  [
+
+                    ],
+        "stateMutability":  "nonpayable",
+        "type":  "function"
+    },
+    {
+        "inputs":  [
+                       {
+                           "internalType":  "uint256",
+                           "name":  "tokenId",
+                           "type":  "uint256"
+                       },
+                       {
+                           "internalType":  "string",
+                           "name":  "imageUri",
+                           "type":  "string"
+                       },
+                       {
+                           "internalType":  "string",
+                           "name":  "modelUri",
+                           "type":  "string"
+                       },
+                       {
+                           "internalType":  "string",
+                           "name":  "attributesJson",
+                           "type":  "string"
+                       }
+                   ],
+        "name":  "evolveTo3DWithModel",
+        "outputs":  [
+
+                    ],
+        "stateMutability":  "nonpayable",
+        "type":  "function"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "finalizeRarity",
+        "outputs":  [
+
+                    ],
+        "stateMutability":  "nonpayable",
+        "type":  "function"
+    },
+    {
+        "inputs":  [
+                       {
+                           "internalType":  "uint256",
+                           "name":  "tokenId",
+                           "type":  "uint256"
                        }
                    ],
         "name":  "getApproved",
+        "outputs":  [
+                        {
+                            "internalType":  "address",
+                            "name":  "",
+                            "type":  "address"
+                        }
+                    ],
+        "stateMutability":  "view",
+        "type":  "function"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "getOnchainRenderer",
         "outputs":  [
                         {
                             "internalType":  "address",
@@ -578,20 +1165,87 @@
     },
     {
         "inputs":  [
-
+                       {
+                           "internalType":  "uint256",
+                           "name":  "phaseId",
+                           "type":  "uint256"
+                       },
+                       {
+                           "internalType":  "uint256",
+                           "name":  "offset",
+                           "type":  "uint256"
+                       },
+                       {
+                           "internalType":  "uint256",
+                           "name":  "limit",
+                           "type":  "uint256"
+                       }
                    ],
-        "name":  "initialize",
+        "name":  "getPhaseWhitelistSlice",
         "outputs":  [
-
+                        {
+                            "internalType":  "address[]",
+                            "name":  "accounts",
+                            "type":  "address[]"
+                        },
+                        {
+                            "internalType":  "bool[]",
+                            "name":  "active",
+                            "type":  "bool[]"
+                        },
+                        {
+                            "internalType":  "uint256",
+                            "name":  "nextOffset",
+                            "type":  "uint256"
+                        },
+                        {
+                            "internalType":  "uint256",
+                            "name":  "totalMembers",
+                            "type":  "uint256"
+                        }
                     ],
-        "stateMutability":  "nonpayable",
+        "stateMutability":  "view",
+        "type":  "function"
+    },
+    {
+        "inputs":  [
+                       {
+                           "internalType":  "uint256",
+                           "name":  "tokenId",
+                           "type":  "uint256"
+                       }
+                   ],
+        "name":  "getTokenDisplayModeState",
+        "outputs":  [
+                        {
+                            "internalType":  "uint8",
+                            "name":  "configuredMode",
+                            "type":  "uint8"
+                        },
+                        {
+                            "internalType":  "uint8",
+                            "name":  "effectiveMode",
+                            "type":  "uint8"
+                        },
+                        {
+                            "internalType":  "uint256",
+                            "name":  "expiresAt",
+                            "type":  "uint256"
+                        },
+                        {
+                            "internalType":  "uint256",
+                            "name":  "secondsRemaining",
+                            "type":  "uint256"
+                        }
+                    ],
+        "stateMutability":  "view",
         "type":  "function"
     },
     {
         "inputs":  [
 
                    ],
-        "name":  "initializeV2",
+        "name":  "initialize",
         "outputs":  [
 
                     ],
@@ -652,26 +1306,6 @@
                            "internalType":  "uint256",
                            "name":  "quantity",
                            "type":  "uint256"
-                       },
-                       {
-                           "internalType":  "string[]",
-                           "name":  "imageBase64s",
-                           "type":  "string[]"
-                       },
-                       {
-                           "internalType":  "string[]",
-                           "name":  "names",
-                           "type":  "string[]"
-                       },
-                       {
-                           "internalType":  "string[]",
-                           "name":  "attributesJson",
-                           "type":  "string[]"
-                       },
-                       {
-                           "internalType":  "uint256[]",
-                           "name":  "rarityScores",
-                           "type":  "uint256[]"
                        }
                    ],
         "name":  "mint",
@@ -686,6 +1320,21 @@
 
                    ],
         "name":  "mintActive",
+        "outputs":  [
+                        {
+                            "internalType":  "bool",
+                            "name":  "",
+                            "type":  "bool"
+                        }
+                    ],
+        "stateMutability":  "view",
+        "type":  "function"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "mintModeConfigured",
         "outputs":  [
                         {
                             "internalType":  "bool",
@@ -839,6 +1488,25 @@
     },
     {
         "inputs":  [
+                       {
+                           "internalType":  "uint256",
+                           "name":  "phaseId",
+                           "type":  "uint256"
+                       }
+                   ],
+        "name":  "phaseWhitelistMemberCount",
+        "outputs":  [
+                        {
+                            "internalType":  "uint256",
+                            "name":  "",
+                            "type":  "uint256"
+                        }
+                    ],
+        "stateMutability":  "view",
+        "type":  "function"
+    },
+    {
+        "inputs":  [
 
                    ],
         "name":  "placeholderImage",
@@ -847,6 +1515,36 @@
                             "internalType":  "string",
                             "name":  "",
                             "type":  "string"
+                        }
+                    ],
+        "stateMutability":  "view",
+        "type":  "function"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "publicDisplayToggleDuration",
+        "outputs":  [
+                        {
+                            "internalType":  "uint256",
+                            "name":  "",
+                            "type":  "uint256"
+                        }
+                    ],
+        "stateMutability":  "view",
+        "type":  "function"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "rarityFinalized",
+        "outputs":  [
+                        {
+                            "internalType":  "bool",
+                            "name":  "",
+                            "type":  "bool"
                         }
                     ],
         "stateMutability":  "view",
@@ -873,6 +1571,21 @@
     },
     {
         "inputs":  [
+                       {
+                           "internalType":  "uint256",
+                           "name":  "tokenId",
+                           "type":  "uint256"
+                       }
+                   ],
+        "name":  "refreshExpiredDisplayMode",
+        "outputs":  [
+
+                    ],
+        "stateMutability":  "nonpayable",
+        "type":  "function"
+    },
+    {
+        "inputs":  [
 
                    ],
         "name":  "renounceOwnership",
@@ -892,6 +1605,65 @@
                             "internalType":  "bool",
                             "name":  "",
                             "type":  "bool"
+                        }
+                    ],
+        "stateMutability":  "view",
+        "type":  "function"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "royaltyFeeBps",
+        "outputs":  [
+                        {
+                            "internalType":  "uint96",
+                            "name":  "",
+                            "type":  "uint96"
+                        }
+                    ],
+        "stateMutability":  "view",
+        "type":  "function"
+    },
+    {
+        "inputs":  [
+                       {
+                           "internalType":  "uint256",
+                           "name":  "",
+                           "type":  "uint256"
+                       },
+                       {
+                           "internalType":  "uint256",
+                           "name":  "salePrice",
+                           "type":  "uint256"
+                       }
+                   ],
+        "name":  "royaltyInfo",
+        "outputs":  [
+                        {
+                            "internalType":  "address",
+                            "name":  "receiver",
+                            "type":  "address"
+                        },
+                        {
+                            "internalType":  "uint256",
+                            "name":  "royaltyAmount",
+                            "type":  "uint256"
+                        }
+                    ],
+        "stateMutability":  "view",
+        "type":  "function"
+    },
+    {
+        "inputs":  [
+
+                   ],
+        "name":  "royaltyReceiver",
+        "outputs":  [
+                        {
+                            "internalType":  "address",
+                            "name":  "",
+                            "type":  "address"
                         }
                     ],
         "stateMutability":  "view",
@@ -975,6 +1747,31 @@
     {
         "inputs":  [
                        {
+                           "internalType":  "uint256[]",
+                           "name":  "tokenIds",
+                           "type":  "uint256[]"
+                       },
+                       {
+                           "internalType":  "uint256[]",
+                           "name":  "scores",
+                           "type":  "uint256[]"
+                       },
+                       {
+                           "internalType":  "uint256[]",
+                           "name":  "ranks",
+                           "type":  "uint256[]"
+                       }
+                   ],
+        "name":  "setFinalRarityData",
+        "outputs":  [
+
+                    ],
+        "stateMutability":  "nonpayable",
+        "type":  "function"
+    },
+    {
+        "inputs":  [
+                       {
                            "internalType":  "uint256",
                            "name":  "maxPerWallet_",
                            "type":  "uint256"
@@ -1005,12 +1802,42 @@
     {
         "inputs":  [
                        {
+                           "internalType":  "address",
+                           "name":  "metadataBuilder_",
+                           "type":  "address"
+                       }
+                   ],
+        "name":  "setMetadataBuilder",
+        "outputs":  [
+
+                    ],
+        "stateMutability":  "nonpayable",
+        "type":  "function"
+    },
+    {
+        "inputs":  [
+                       {
                            "internalType":  "uint256",
                            "name":  "price",
                            "type":  "uint256"
                        }
                    ],
         "name":  "setMintPrice",
+        "outputs":  [
+
+                    ],
+        "stateMutability":  "nonpayable",
+        "type":  "function"
+    },
+    {
+        "inputs":  [
+                       {
+                           "internalType":  "address",
+                           "name":  "renderer",
+                           "type":  "address"
+                       }
+                   ],
+        "name":  "setOnchainRenderer",
         "outputs":  [
 
                     ],
@@ -1060,12 +1887,62 @@
     {
         "inputs":  [
                        {
+                           "internalType":  "uint256",
+                           "name":  "durationSeconds",
+                           "type":  "uint256"
+                       }
+                   ],
+        "name":  "setPublicDisplayToggleDuration",
+        "outputs":  [
+
+                    ],
+        "stateMutability":  "nonpayable",
+        "type":  "function"
+    },
+    {
+        "inputs":  [
+                       {
+                           "internalType":  "address",
+                           "name":  "randomnessHelper_",
+                           "type":  "address"
+                       }
+                   ],
+        "name":  "setRandomnessHelper",
+        "outputs":  [
+
+                    ],
+        "stateMutability":  "nonpayable",
+        "type":  "function"
+    },
+    {
+        "inputs":  [
+                       {
                            "internalType":  "bool",
                            "name":  "status",
                            "type":  "bool"
                        }
                    ],
         "name":  "setRevealed",
+        "outputs":  [
+
+                    ],
+        "stateMutability":  "nonpayable",
+        "type":  "function"
+    },
+    {
+        "inputs":  [
+                       {
+                           "internalType":  "address",
+                           "name":  "receiver",
+                           "type":  "address"
+                       },
+                       {
+                           "internalType":  "uint96",
+                           "name":  "feeBps",
+                           "type":  "uint96"
+                       }
+                   ],
+        "name":  "setRoyaltyInfo",
         "outputs":  [
 
                     ],
@@ -1104,6 +1981,21 @@
                         }
                     ],
         "stateMutability":  "view",
+        "type":  "function"
+    },
+    {
+        "inputs":  [
+                       {
+                           "internalType":  "uint256",
+                           "name":  "tokenId",
+                           "type":  "uint256"
+                       }
+                   ],
+        "name":  "toggleEvolvedDisplayMode",
+        "outputs":  [
+
+                    ],
+        "stateMutability":  "nonpayable",
         "type":  "function"
     },
     {
@@ -1163,7 +2055,64 @@
                            "type":  "uint256"
                        }
                    ],
+        "name":  "tokenEvolvedImage",
+        "outputs":  [
+                        {
+                            "internalType":  "string",
+                            "name":  "",
+                            "type":  "string"
+                        }
+                    ],
+        "stateMutability":  "view",
+        "type":  "function"
+    },
+    {
+        "inputs":  [
+                       {
+                           "internalType":  "uint256",
+                           "name":  "",
+                           "type":  "uint256"
+                       }
+                   ],
+        "name":  "tokenFinalRarityRank",
+        "outputs":  [
+                        {
+                            "internalType":  "uint256",
+                            "name":  "",
+                            "type":  "uint256"
+                        }
+                    ],
+        "stateMutability":  "view",
+        "type":  "function"
+    },
+    {
+        "inputs":  [
+                       {
+                           "internalType":  "uint256",
+                           "name":  "",
+                           "type":  "uint256"
+                       }
+                   ],
         "name":  "tokenImage",
+        "outputs":  [
+                        {
+                            "internalType":  "string",
+                            "name":  "",
+                            "type":  "string"
+                        }
+                    ],
+        "stateMutability":  "view",
+        "type":  "function"
+    },
+    {
+        "inputs":  [
+                       {
+                           "internalType":  "uint256",
+                           "name":  "",
+                           "type":  "uint256"
+                       }
+                   ],
+        "name":  "tokenInteractiveModel",
         "outputs":  [
                         {
                             "internalType":  "string",
@@ -1220,12 +2169,12 @@
                            "type":  "uint256"
                        }
                    ],
-        "name":  "tokenRarityScore",
+        "name":  "tokenOriginalImage",
         "outputs":  [
                         {
-                            "internalType":  "uint256",
+                            "internalType":  "string",
                             "name":  "",
-                            "type":  "uint256"
+                            "type":  "string"
                         }
                     ],
         "stateMutability":  "view",
@@ -1239,7 +2188,7 @@
                            "type":  "uint256"
                        }
                    ],
-        "name":  "tokenSeeds",
+        "name":  "tokenRarityScore",
         "outputs":  [
                         {
                             "internalType":  "uint256",
@@ -1385,7 +2334,7 @@
         "stateMutability":  "nonpayable",
         "type":  "function"
     }
-];
+]
 
 export default contractABI
 

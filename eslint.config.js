@@ -8,6 +8,11 @@ export default defineConfig([
   globalIgnores([
     'dist',
     'preview/',
+    '.recovery-backup-*/',
+    '.tmp-*/',
+    '.vercel/',
+    'artifacts/',
+    'archive/',
     'nft-output/',
     'generate-previews.js',
     'nft-generator.js',

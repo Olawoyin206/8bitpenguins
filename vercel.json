@@ -1,7 +1,17 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "routes": [
-    { "handle": "filesystem" },
-    { "src": "/.*", "dest": "/index.html" }
+  "rewrites": [
+    { "source": "/task", "destination": "/index.html" },
+    { "source": "/generate", "destination": "/index.html" },
+    { "source": "/mint", "destination": "/index.html" },
+    { "source": "/admin", "destination": "/index.html" },
+    { "source": "/evolve", "destination": "/index.html" },
+    { "source": "/3d", "destination": "/index.html" },
+    { "source": "/wallet-checker", "destination": "/index.html" },
+    { "source": "/play-to-wl", "destination": "/index.html" },
+    { "source": "/testingmint", "destination": "/index.html" },
+    { "source": "/testingadmin", "destination": "/index.html" },
+    { "source": "/testingevolve", "destination": "/index.html" },
+    { "source": "/testing3d", "destination": "/index.html" }
   ]
 }

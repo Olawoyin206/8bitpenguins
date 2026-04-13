@@ -22,6 +22,7 @@
   .admin-phase-btn
 ) {
   appearance: none;
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -37,6 +38,57 @@
   color: #000000;
   box-shadow: 0 6px 16px rgba(255, 255, 255, 0.08);
   transition: transform 0.15s ease, background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+
+:is(
+  .ui-button,
+  .btn,
+  .page-btn,
+  .gallery-tab,
+  .refresh-btn,
+  .puzzle-btn,
+  .puzzle-tab,
+  .task-btn,
+  .verify-btn,
+  .submit-btn,
+  .mint-submit-btn,
+  .mint-connect-btn,
+  .mint-network-btn,
+  .mint-page-btn,
+  .mint-evolve-btn,
+  .admin-action-btn,
+  .admin-phase-btn
+)[aria-busy='true'] {
+  cursor: progress;
+}
+
+:is(
+  .ui-button,
+  .btn,
+  .page-btn,
+  .gallery-tab,
+  .refresh-btn,
+  .puzzle-btn,
+  .puzzle-tab,
+  .task-btn,
+  .verify-btn,
+  .submit-btn,
+  .mint-submit-btn,
+  .mint-connect-btn,
+  .mint-network-btn,
+  .mint-page-btn,
+  .mint-evolve-btn,
+  .admin-action-btn,
+  .admin-phase-btn
+)[aria-busy='true']::after {
+  content: '';
+  width: 0.82em;
+  height: 0.82em;
+  flex: 0 0 auto;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 999px;
+  animation: ui-button-spin 0.75s linear infinite;
 }
 
 :is(
@@ -114,6 +166,34 @@
   box-shadow: none;
 }
 
+:is(
+  .ui-button,
+  .btn,
+  .page-btn,
+  .gallery-tab,
+  .refresh-btn,
+  .puzzle-btn,
+  .puzzle-tab,
+  .task-btn,
+  .verify-btn,
+  .submit-btn,
+  .mint-submit-btn,
+  .mint-connect-btn,
+  .mint-network-btn,
+  .mint-page-btn,
+  .mint-evolve-btn,
+  .admin-action-btn,
+  .admin-phase-btn
+):disabled[aria-busy='true'] {
+  opacity: 0.82;
+}
+
+@keyframes ui-button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .ui-button--block {
   width: 100%;
 }
@@ -121,6 +201,7 @@
 .ui-button--primary {
   background: #ffffff;
   color: #0d1117;
+  border: 1px solid #30363d;
   box-shadow: 0 6px 16px rgba(255, 255, 255, 0.08);
 }
 
@@ -129,43 +210,51 @@
 }
 
 .ui-button--secondary {
-  background: #ffffff;
-  color: #0d1117;
-  box-shadow: 0 6px 16px rgba(255, 255, 255, 0.08);
+  background: #161b22;
+  color: #c9d1d9;
+  border: 1px solid #30363d;
+  box-shadow: none;
 }
 
 .ui-button--secondary:hover:not(:disabled) {
-  background: #eceff3;
+  background: #21262d;
+  color: #f0f6fc;
 }
 
 .ui-button--ghost {
-  background: #ffffff;
-  color: #0d1117;
-  box-shadow: 0 6px 16px rgba(255, 255, 255, 0.08);
+  background: transparent;
+  color: #c9d1d9;
+  border: 1px solid #30363d;
+  box-shadow: none;
 }
 
 .ui-button--ghost:hover:not(:disabled) {
-  background: #eceff3;
+  background: #161b22;
+  color: #f0f6fc;
 }
 
 .ui-button--danger {
-  background: #ffffff;
-  color: #0d1117;
-  box-shadow: 0 6px 16px rgba(255, 255, 255, 0.08);
+  background: #ffe9ec;
+  color: #6e1b27;
+  border: 1px solid #e8a9b4;
+  box-shadow: none;
 }
 
 .ui-button--danger:hover:not(:disabled) {
-  background: #eceff3;
+  background: #ffd7de;
+  color: #5b111d;
 }
 
 .ui-button--success {
-  background: #ffffff;
-  color: #0d1117;
-  box-shadow: 0 6px 16px rgba(255, 255, 255, 0.08);
+  background: #e7f8ef;
+  color: #13472a;
+  border: 1px solid #9fd4b5;
+  box-shadow: none;
 }
 
 .ui-button--success:hover:not(:disabled) {
-  background: #eceff3;
+  background: #d8f1e4;
+  color: #103d24;
 }
 
 .ui-button--sm {
@@ -196,4 +285,78 @@
   padding: 0;
   font-size: 0.95rem;
   letter-spacing: 0;
+}
+
+:is(
+  button,
+  .ui-button,
+  .btn,
+  .page-btn,
+  .gallery-tab,
+  .refresh-btn,
+  .puzzle-btn,
+  .puzzle-tab,
+  .task-btn,
+  .verify-btn,
+  .submit-btn,
+  .shuffle-btn,
+  .mint-submit-btn,
+  .mint-connect-btn,
+  .mint-network-btn,
+  .mint-disconnect-btn,
+  .mint-page-btn,
+  .mint-evolve-btn,
+  .mint-quantity-btn,
+  .mint-wallet-addr-btn,
+  .admin-action-btn,
+  .admin-phase-btn,
+  .evolve-token-lookup-btn,
+  .mint-gallery-corner-toggle,
+  .arcade-btn,
+  .modal-close,
+  .site-nav-toggle
+):is(:disabled, [aria-disabled='true'], .disabled) {
+  opacity: 0.48 !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+  transform: none !important;
+  box-shadow: none !important;
+  filter: grayscale(0.45) !important;
+  background: #2d333b !important;
+  border-color: #3a4250 !important;
+  color: #8b949e !important;
+}
+
+:is(
+  button,
+  .ui-button,
+  .btn,
+  .page-btn,
+  .gallery-tab,
+  .refresh-btn,
+  .puzzle-btn,
+  .puzzle-tab,
+  .task-btn,
+  .verify-btn,
+  .submit-btn,
+  .shuffle-btn,
+  .mint-submit-btn,
+  .mint-connect-btn,
+  .mint-network-btn,
+  .mint-disconnect-btn,
+  .mint-page-btn,
+  .mint-evolve-btn,
+  .mint-quantity-btn,
+  .mint-wallet-addr-btn,
+  .admin-action-btn,
+  .admin-phase-btn,
+  .evolve-token-lookup-btn,
+  .mint-gallery-corner-toggle,
+  .arcade-btn,
+  .modal-close,
+  .site-nav-toggle
+):disabled[aria-busy='true'] {
+  opacity: 0.8 !important;
+  cursor: progress !important;
+  filter: none !important;
 }

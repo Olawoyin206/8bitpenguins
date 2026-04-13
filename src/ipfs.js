@@ -1,93 +1,7 @@
-const PINATA_JWT = import.meta.env.VITE_PINATA_JWT
-const JSONBIN_KEY = import.meta.env.VITE_JSONBIN_KEY
-const JSONBIN_BIN_ID = import.meta.env.VITE_JSONBIN_BIN_ID
-
-const IPFS_GATEWAY = "https://gateway.pinata.cloud/ipfs/"
-const GALLERY_API_PATH = '/api/gallery'
-const GALLERY_CACHE_KEY = 'sharedGalleryCache'
-const MAX_SAVE_RETRIES = 2
-
-function getGalleryCache() {
-  try {
-    const cached = localStorage.getItem(GALLERY_CACHE_KEY)
-    return cached ? JSON.parse(cached) : null
-  } catch {
-    return null
-  }
-}
-
-function setGalleryCache(data) {
-  try {
-    localStorage.setItem(GALLERY_CACHE_KEY, JSON.stringify(data))
-  } catch {
-    // Storage unavailable
-  }
-}
-
-function getPenguinKey(penguin) {
-  if (!penguin) return ''
-  if (penguin.cid) return `cid:${penguin.cid}`
-  if (penguin.id != null) return `id:${penguin.id}`
-  if (penguin.image) return `image:${penguin.image}`
-  return `ts:${penguin.timestamp || 0}`
-}
-
-function mergeGalleryEntries(...collections) {
-  const byKey = new Map()
-
-  collections.flat().forEach((penguin) => {
-    const key = getPenguinKey(penguin)
-    if (!key) return
-    const existing = byKey.get(key)
-    byKey.set(key, existing ? { ...existing, ...penguin } : penguin)
-  })
-
-  return Array.from(byKey.values()).sort((a, b) => Number(b.timestamp || 0) - Number(a.timestamp || 0))
-}
-
-async function fetchGalleryViaApi() {
-  const res = await fetch(GALLERY_API_PATH, { cache: 'no-store' })
-  if (!res.ok) {
-    throw new Error(`Gallery API GET failed: ${res.status}`)
-  }
-
-  const data = await res.json()
-  return Array.isArray(data.penguins) ? data.penguins : []
-}
-
-async function saveGalleryViaApi(penguin) {
-  const res = await fetch(GALLERY_API_PATH, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(penguin),
-  })
-
-  if (!res.ok) {
-    throw new Error(`Gallery API POST failed: ${res.status}`)
-  }
-
-  const data = await res.json()
-  return Array.isArray(data.penguins) ? data.penguins : []
-}
-
-function canUseDirectJsonBinFallback() {
-  return import.meta.env.DEV && Boolean(JSONBIN_KEY && JSONBIN_BIN_ID)
-}
-
-async function fetchGalleryRecord() {
-  const res = await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}/latest`, {
-    headers: { "X-Access-Key": JSONBIN_KEY }
-  })
-
-  if (!res.ok) {
-    return []
-  }
-
-  const data = await res.json()
-  return Array.isArray(data.record?.penguins) ? data.record.penguins : []
-}
+const IPFS_GATEWAY = 'https://gateway.pinata.cloud/ipfs/'
+const IPFS_UPLOAD_API_PATH = '/api/ipfs-upload'
+const SHARED_GALLERY_API_PATH = '/api/gallery'
+const SHARED_GALLERY_STORAGE_KEY = 'sharedGallery'
 
 export async function uploadToIPFS(canvasRef) {
   const canvas = canvasRef?.current
@@ -95,53 +9,109 @@ export async function uploadToIPFS(canvasRef) {
   return uploadCanvasToIPFS(canvas)
 }
 
-export async function uploadCanvasToIPFS(canvas) {
-  if (!PINATA_JWT) {
-    console.error("Pinata JWT not configured. Set VITE_PINATA_JWT in .env")
-    return null
-  }
+function dataUrlToBlob(dataUrl) {
+  if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:')) return null
+  const [header, base64Data] = dataUrl.split(',', 2)
+  if (!header || !base64Data) return null
 
-  const dataUrl = canvas.toDataURL("image/png")
-  
-  const base64Data = dataUrl.split(",")[1]
+  const mimeMatch = header.match(/^data:([^;]+);base64$/i)
+  const mimeType = mimeMatch?.[1] || 'application/octet-stream'
   const binaryString = atob(base64Data)
   const bytes = new Uint8Array(binaryString.length)
-  for (let i = 0; i < binaryString.length; i++) {
+  for (let i = 0; i < binaryString.length; i += 1) {
     bytes[i] = binaryString.charCodeAt(i)
   }
-  
+  return new Blob([bytes], { type: mimeType })
+}
+
+export async function uploadBlobToIPFS(fileBlob, options = {}) {
+  if (!fileBlob) {
+    throw new Error('No file available for IPFS upload.')
+  }
+
+  const extension = options.extension || (fileBlob.type === 'image/jpeg' ? 'jpg' : 'png')
+  const timestamp = Date.now().toString()
+  const fileName = options.fileName || `penguin_${timestamp}.${extension}`
+
   const formData = new FormData()
-  formData.append("file", new Blob([bytes], { type: "image/png" }))
-  
-  const options = JSON.stringify({
-    name: `penguin_${Date.now()}.png`,
-    keyvalues: {
-      timestamp: Date.now().toString()
-    }
-  })
-  formData.append("pinataOptions", options)
+  formData.append('file', fileBlob, fileName)
+  formData.append(
+    'pinataOptions',
+    JSON.stringify({
+      name: fileName,
+      keyvalues: {
+        timestamp,
+        ...(options.keyvalues || {}),
+      },
+    })
+  )
 
   try {
-    const res = await fetch("https://api.pinata.cloud/pinning/pinFileToIPFS", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${PINATA_JWT}`
-      },
-      body: formData
+    const res = await fetch(IPFS_UPLOAD_API_PATH, {
+      method: 'POST',
+      body: formData,
     })
-    
-    const data = await res.json()
-    if (data.IpfsHash) {
+
+    const data = await res.json().catch(() => null)
+    if (!res.ok) {
+      throw new Error(String(data?.error || `IPFS upload failed with status ${res.status}`))
+    }
+
+    if (data?.cid && data?.url) {
       return {
-        cid: data.IpfsHash,
-        url: IPFS_GATEWAY + data.IpfsHash
+        cid: data.cid,
+        url: data.url,
       }
     }
-    return null
+
+    if (data?.IpfsHash) {
+      return {
+        cid: data.IpfsHash,
+        url: IPFS_GATEWAY + data.IpfsHash,
+      }
+    }
+
+    throw new Error('IPFS upload backend returned an unexpected response.')
   } catch (err) {
-    console.error("IPFS upload error:", err)
-    return null
+    console.error('IPFS upload error:', err)
+    const message = err instanceof Error ? err.message : String(err)
+    const normalized = message.toLowerCase()
+
+    if (normalized.includes('failed to fetch') || normalized.includes('networkerror')) {
+      throw new Error('Upload backend unreachable. Run `npm run dev` (full stack) or deploy /api/ipfs-upload.')
+    }
+
+    if (normalized.includes('pinata upload backend is not configured')) {
+      throw new Error('Upload backend not configured. Set PINATA_JWT for /api/ipfs-upload.')
+    }
+    if (normalized.includes('origin is not allowed')) {
+      throw new Error('Upload origin not allowed. Add this site to ALLOWED_ORIGINS or ALLOWED_ORIGIN_SUFFIXES.')
+    }
+    if (normalized.includes('upload payload is too large')) {
+      throw new Error('Upload payload too large. Lower image size or increase IPFS_UPLOAD_MAX_BYTES.')
+    }
+    if (normalized.includes('rate limit exceeded')) {
+      throw new Error('Upload rate limited. Wait briefly and retry.')
+    }
+    if (normalized.includes('ipfs upload timed out')) {
+      throw new Error('Upload timed out. Retry in a moment.')
+    }
+
+    throw err instanceof Error ? err : new Error(message)
   }
+}
+
+export async function uploadCanvasToIPFS(canvas) {
+  const dataUrl = canvas.toDataURL('image/png')
+  return uploadDataUrlToIPFS(dataUrl, { extension: 'png' })
+}
+
+export async function uploadDataUrlToIPFS(dataUrl, options = {}) {
+  const fileBlob = dataUrlToBlob(dataUrl)
+  if (!fileBlob) {
+    throw new Error('Generated image data is invalid for IPFS upload.')
+  }
+  return uploadBlobToIPFS(fileBlob, options)
 }
 
 export function getIPFSUrl(cid) {
@@ -149,84 +119,97 @@ export function getIPFSUrl(cid) {
   return IPFS_GATEWAY + cid
 }
 
-export async function saveToSharedGallery(penguin) {
+function getLocalStorageSafe() {
+  if (typeof window === 'undefined') return null
   try {
-    const apiGallery = await saveGalleryViaApi(penguin)
-    setGalleryCache(apiGallery)
-    return true
-  } catch (apiError) {
-    if (!canUseDirectJsonBinFallback()) {
-      console.error("Error saving to shared gallery:", apiError)
-      return null
-    }
-  }
-
-  if (!JSONBIN_KEY || !JSONBIN_BIN_ID) {
-    return null
-  }
-
-  try {
-    const targetKey = getPenguinKey(penguin)
-
-    for (let attempt = 0; attempt <= MAX_SAVE_RETRIES; attempt += 1) {
-      const gallery = mergeGalleryEntries([penguin], await fetchGalleryRecord())
-
-      await fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
-        method: "PUT",
-        headers: {
-          "X-Access-Key": JSONBIN_KEY,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ penguins: gallery })
-      })
-
-      const confirmedGallery = await fetchGalleryRecord()
-      const mergedGallery = mergeGalleryEntries(confirmedGallery, [penguin])
-      const isSaved = confirmedGallery.some((entry) => getPenguinKey(entry) === targetKey)
-
-      setGalleryCache(mergedGallery)
-
-      if (isSaved) {
-        return true
-      }
-    }
-
-    return null
-  } catch (err) {
-    console.error("Error saving to shared gallery:", err)
+    return window.localStorage
+  } catch {
     return null
   }
 }
 
-export async function fetchSharedGallery() {
-  // Check cache first
-  const cached = getGalleryCache()
-  if (cached && cached.length > 0) {
-    return cached
+function normalizeGalleryItem(item) {
+  if (!item || typeof item !== 'object') return null
+  const normalized = {
+    ...item,
+    id: Number(item.id || Date.now()),
+    timestamp: Number(item.timestamp || Date.now()),
   }
-
-  return fetchFreshGallery()
+  return Number.isFinite(normalized.id) ? normalized : null
 }
 
-export async function fetchFreshGallery() {
+function readSharedGalleryFromStorage() {
+  const storage = getLocalStorageSafe()
+  if (!storage) return []
   try {
-    const gallery = await fetchGalleryViaApi()
-    setGalleryCache(gallery)
-    return gallery
-  } catch (apiError) {
-    if (!canUseDirectJsonBinFallback()) {
-      return []
-    }
-  }
-
-  try {
-    const gallery = await fetchGalleryRecord()
-    
-    // Cache the result
-    setGalleryCache(gallery)
-    
-    return gallery
+    const raw = storage.getItem(SHARED_GALLERY_STORAGE_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed
+      .map(normalizeGalleryItem)
+      .filter(Boolean)
+      .sort((a, b) => Number(b.timestamp || 0) - Number(a.timestamp || 0))
   } catch {
     return []
   }
+}
+
+function writeSharedGalleryToStorage(items) {
+  const storage = getLocalStorageSafe()
+  if (!storage) return
+  try {
+    storage.setItem(SHARED_GALLERY_STORAGE_KEY, JSON.stringify(items))
+  } catch {
+    // Ignore write failures.
+  }
+}
+
+function mergeById(items) {
+  const deduped = new Map()
+  for (const item of items) {
+    const normalized = normalizeGalleryItem(item)
+    if (!normalized) continue
+    deduped.set(normalized.id, normalized)
+  }
+  return Array.from(deduped.values()).sort((a, b) => Number(b.timestamp || 0) - Number(a.timestamp || 0))
+}
+
+export async function fetchFreshGallery() {
+  const cached = readSharedGalleryFromStorage()
+  try {
+    const res = await fetch(SHARED_GALLERY_API_PATH, { method: 'GET' })
+    if (!res.ok) {
+      return cached
+    }
+    const data = await res.json().catch(() => [])
+    const remote = Array.isArray(data?.items)
+      ? data.items
+      : Array.isArray(data?.penguins)
+        ? data.penguins
+        : (Array.isArray(data) ? data : [])
+    const merged = mergeById([...remote, ...cached])
+    writeSharedGalleryToStorage(merged)
+    return merged
+  } catch {
+    return cached
+  }
+}
+
+export async function saveToSharedGallery(item) {
+  const cached = readSharedGalleryFromStorage()
+  const merged = mergeById([item, ...cached])
+  writeSharedGalleryToStorage(merged)
+
+  try {
+    await fetch(SHARED_GALLERY_API_PATH, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(item),
+    })
+  } catch {
+    // Keep local copy if remote gallery endpoint is unavailable.
+  }
+
+  return merged
 }

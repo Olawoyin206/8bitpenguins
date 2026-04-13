@@ -18,25 +18,80 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: var(--app-font);
 }
 
-:is(
+.app-root-shell :is(
+  button,
+  input,
+  select,
+  textarea,
+  .ui-button,
+  .btn,
+  .page-btn,
+  .gallery-tab,
+  .refresh-btn,
+  .puzzle-btn,
+  .puzzle-tab,
+  .task-btn,
+  .verify-btn,
+  .submit-btn,
+  .mint-submit-btn,
+  .mint-connect-btn,
+  .mint-network-btn,
+  .mint-disconnect-btn,
+  .mint-page-btn,
+  .mint-evolve-btn,
+  .admin-action-btn,
+  .admin-phase-btn,
+  .evolve-token-lookup-btn,
+  .mint-gallery-corner-toggle,
+  .mint-quantity-btn,
+  .mint-wallet-addr-btn,
   .site-nav,
-  .site-nav *,
-  .app-page,
-  .app-page *,
-  .mint-page,
-  .mint-page *,
-  .task-page,
-  .task-page *,
-  .puzzle-page,
-  .puzzle-page *
+  .site-nav-topbar,
+  .site-nav-links,
+  .site-nav-link,
+  .site-nav-toggle,
+  .site-nav-label,
+  .mint-card,
+  .mint-display,
+  .mint-wallet,
+  .mint-phase-summary,
+  .mint-phase-item,
+  .mint-phase-summary-stat,
+  .mint-phase-meta-item,
+  .mint-gallery-item,
+  .mint-status,
+  .mint-traits-modal,
+  .mint-raw-metadata-panel,
+  .admin-panel,
+  .admin-stat,
+  .admin-phase-item,
+  .admin-whitelist-phase-card,
+  .admin-whitelist-preview,
+  .evolve-selected-card,
+  .evolve-stat-box,
+  .preview,
+  .traits,
+  .gallery,
+  .task-card,
+  .task-progress,
+  .submission-form,
+  .puzzle-board-card,
+  .side-card,
+  .tile,
+  .modal-content,
+  .modal-image,
+  .mint-wallet-bal,
+  .badge,
+  .status-chip,
+  .stat-pill
 ) {
   border-radius: var(--ui-radius) !important;
 }
 
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   min-width: 320px;
@@ -48,7 +103,10 @@ html, body {
   font-family: var(--app-font);
 }
 
-button, input, select, textarea {
+button,
+input,
+select,
+textarea {
   font-family: var(--app-font);
 }
 
@@ -57,539 +115,62 @@ button, input, select, textarea {
   min-height: 100vh;
 }
 
-.site-nav {
+.app-root-shell {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-route-shell {
+  width: 100%;
+  flex: 1 0 auto;
+  padding-bottom: 22px;
+}
+
+.global-footer {
+  width: 100vw;
+  max-width: none;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  border-top: 1px solid #30363d;
+  background: #0b0f14;
+  margin-top: 16px;
+  padding: 14px 16px;
+  flex-shrink: 0;
+}
+
+.global-footer-inner {
+  width: 100%;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  margin-top: 10px;
-  margin-bottom: 24px;
-  padding: 16px 20px;
-  border: 1px solid #30363d;
-  border-radius: 8px;
-  background: #161b22;
-}
-
-.site-nav-topbar {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  min-width: 0;
-}
-
-.site-nav-brand-wrap {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-
-.site-nav-brand {
-  color: #ffffff;
-  text-decoration: none;
-  font-size: 1rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  text-shadow: 0 0 18px rgba(255, 255, 255, 0.08);
-}
-
-.site-nav-label {
-  padding: 6px 10px 5px;
-  border-left: 1px solid #30363d;
-  border-radius: 0;
+  justify-content: center;
+  gap: 8px;
   color: #8b949e;
   font-size: 0.62rem;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  white-space: nowrap;
-  background: transparent;
 }
 
-.site-nav-links {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 8px;
-  flex-wrap: wrap;
-  width: auto;
-  padding: 0;
-  margin-left: auto;
-  border: none;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
+.global-footer-brand {
+  color: #c9d1d9;
+  font-weight: 700;
 }
 
-.site-nav-link {
-  min-width: 0;
-  padding: 10px 16px;
-  border: 1px solid #30363d;
-  border-radius: 3px;
-  color: #ffffff;
-  text-decoration: none;
-  font-size: 0.65rem;
-  font-weight: 500;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  text-align: center;
-  background: #21262d;
-  transition: all 0.18s ease;
+.global-footer-sep {
+  opacity: 0.55;
 }
 
-.site-nav-link:hover {
-  color: #ffffff;
-  border-color: #ffffff;
-  background: #30363d;
+.global-footer-copy {
+  color: #8b949e;
 }
 
-.site-nav-link.active {
-  color: #0d1117;
-  border-color: #ffffff;
-  background: #ffffff;
-  box-shadow: none;
-}
-
-.site-nav-toggle {
-  display: none;
-  width: 44px;
-  height: 44px;
-  padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  cursor: pointer;
-}
-
-.site-nav-toggle span {
-  display: block;
-  width: 18px;
-  height: 2px;
-  margin: 4px auto;
-  background: #ffffff;
-  transition: transform 0.2s ease, opacity 0.2s ease;
-}
-
-.site-nav.is-open .site-nav-toggle span:nth-child(1) {
-  transform: translateY(6px) rotate(45deg);
-}
-
-.site-nav.is-open .site-nav-toggle span:nth-child(2) {
-  opacity: 0;
-}
-
-.site-nav.is-open .site-nav-toggle span:nth-child(3) {
-  transform: translateY(-6px) rotate(-45deg);
-}
-
-@media (max-width: 900px) {
-  .site-nav {
-    flex-direction: column;
-    align-items: stretch;
-    margin-top: 0;
-    padding: 0 0 18px;
-    border: none;
-    border-radius: 0;
-    background: transparent;
-  }
-
-  .site-nav-topbar {
-    justify-content: space-between;
-    width: 100%;
-  }
-
-  .site-nav-links {
-    width: 100%;
-    margin-left: 0;
-    justify-content: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  .site-nav-link {
-    min-width: 0;
-  }
-}
-
-@media (max-width: 600px) {
-  .site-nav {
-    flex-direction: column;
-    align-items: stretch;
-    margin-top: 0;
-    padding: 12px 12px 14px;
-    gap: 0;
-    margin-bottom: 18px;
-    border: 1px solid #30363d;
-    border-radius: 8px;
-    background: #161b22;
-  }
-
-  .site-nav-brand {
-    font-size: 0.96rem;
-    letter-spacing: 0.14em;
-  }
-
-  .site-nav-label {
-    display: none;
-  }
-
-  .site-nav-toggle {
-    display: block;
-    flex-shrink: 0;
-  }
-
-  .site-nav-links {
-    display: none;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-    padding-top: 14px;
-    border-top: 1px solid #30363d;
-    margin-top: 12px;
-  }
-
-  .site-nav.is-open .site-nav-links {
-    display: flex;
-  }
-
-  .site-nav-link {
-    font-size: 0.66rem;
-    padding: 10px 12px;
+@media (max-width: 640px) {
+  .global-footer-inner {
+    flex-wrap: nowrap;
+    gap: 5px;
+    font-size: 0.58rem;
     text-align: center;
-    border-radius: 3px;
+    white-space: nowrap;
   }
-}
-
-/* Minimal system preview */
-.site-nav,
-.preview,
-.traits,
-.gallery,
-.mint-card,
-.mint-display,
-.mint-phase-summary,
-.mint-phase-card,
-.mint-gallery-card,
-.task-progress,
-.task-card,
-.submission-form,
-.arcade-section,
-.puzzle-board-card,
-.side-card,
-.admin-whitelist-phase-card,
-.admin-whitelist-preview,
-.admin-locked,
-.evolve-selected-card,
-.evolve-gallery-card,
-.mint-wallet {
-  background: var(--app-surface) !important;
-  border-color: var(--app-border) !important;
-  box-shadow: var(--ui-shadow) !important;
-}
-
-.site-nav,
-.task-progress,
-.task-card,
-.submission-form,
-.puzzle-board-card,
-.side-card,
-.mint-card,
-.mint-display,
-.mint-phase-summary,
-.mint-phase-card,
-.mint-gallery-card,
-.admin-whitelist-phase-card,
-.admin-whitelist-preview,
-.admin-locked,
-.evolve-selected-card,
-.evolve-gallery-card,
-.mint-wallet,
-.preview,
-.traits,
-.gallery,
-.arcade-section {
-  backdrop-filter: none !important;
-}
-
-.site-nav-brand,
-.mint-card-title,
-.task-page h2,
-.section-head h2,
-.task-progress-head h2,
-.mint-action-label,
-.mint-quantity-label,
-.mint-supply-label,
-.mint-wallet-kicker,
-.mint-phase-summary-label,
-.mint-phase-detail-label,
-.stat-pill span {
-  letter-spacing: 0.08em !important;
-  text-shadow: none !important;
-}
-
-.site-nav-brand {
-  font-size: 0.92rem !important;
-  letter-spacing: 0.12em !important;
-}
-
-.site-nav-label,
-.site-nav-link,
-.mint-supply-label,
-.mint-card-title,
-.task-progress-head span,
-.player-cell,
-.board-qualification p,
-.task-page h2,
-.mint-wallet-kicker,
-.stat-pill span,
-.mint-phase-summary-label {
-  color: var(--ui-muted) !important;
-}
-
-.task-progress-fill,
-.score-fill,
-.mint-supply-fill {
-  background: #f0f2f5 !important;
-}
-
-.mint-card-badge,
-.status-chip,
-.mint-wallet-bal,
-.mint-phase-summary-status,
-.arcade-pill,
-.admin-locked-badge,
-.mint-card-badge,
-.badge {
-  box-shadow: none !important;
-  filter: none !important;
-}
-
-.mint-card-badge,
-.status-chip,
-.mint-phase-summary-status,
-.arcade-pill,
-.badge {
-  background: #1b2029 !important;
-  border-color: var(--app-border) !important;
-  color: #eef1f5 !important;
-}
-
-.mint-wallet-bal {
-  background: #1b2029 !important;
-  border-color: var(--app-border) !important;
-  color: #eef1f5 !important;
-}
-
-.status-chip.ok,
-.arcade-pill.qualified-pill,
-.board-qualification .ok {
-  background: #1a231c !important;
-  border-color: #2f5640 !important;
-  color: #b6d7c3 !important;
-}
-
-.status-chip.warn {
-  background: #241f18 !important;
-  border-color: #5b4730 !important;
-  color: #d8c2a0 !important;
-}
-
-.canvas-wrap,
-.minted-nft,
-.mint-gallery-item,
-.gallery-item,
-.nft-gallery-item,
-.tile,
-.mint-quantity-panel,
-.mint-phase-summary-stat,
-.task-submit-panel,
-.arcade-board,
-.unlock-message,
-.board-qualification,
-.stat-pill {
-  background: var(--ui-surface-soft) !important;
-  border-color: var(--app-border) !important;
-  box-shadow: none !important;
-}
-
-.canvas-wrap,
-.minted-nft,
-.mint-gallery-item,
-.gallery-item,
-.nft-gallery-item,
-.task-submit-panel,
-.arcade-board,
-.unlock-message,
-.board-qualification,
-.stat-pill {
-  filter: none !important;
-}
-
-.mint-phase-summary-stat,
-.mint-phase-summary-stat-highlight,
-.mint-phase-card,
-.task-submit-panel,
-.arcade-board,
-.puzzle-board-card.alert-red,
-.puzzle-board-card.alert-amber,
-.minted-nft {
-  background-image: none !important;
-}
-
-.joined-image,
-.reference-image {
-  background-color: var(--ui-surface-soft) !important;
-  border-color: var(--app-border) !important;
-  box-shadow: none !important;
-  filter: none !important;
-}
-
-.mint-gallery-item:hover,
-.gallery-item:hover,
-.nft-gallery-item:hover,
-.tile:hover,
-.mint-phase-card:hover,
-.mint-phase-summary-stat:hover {
-  transform: none !important;
-  box-shadow: none !important;
-  border-color: #343b48 !important;
-}
-
-.mint-gallery-item.evolved,
-.gallery-item.selected,
-.nft-gallery-item.evolved {
-  box-shadow: none !important;
-}
-
-.task-progress-fill,
-.score-fill,
-.mint-supply-fill {
-  background-image: none !important;
-}
-
-.arcade-board,
-.canvas-wrap.generating::before {
-  background: var(--ui-surface-soft) !important;
-}
-
-.arcade-player,
-.arcade-item.coin,
-.arcade-item.bomb {
-  box-shadow: none !important;
-}
-
-.task-card.completed,
-.unlock-message,
-.unlock-message.already-submitted {
-  background: var(--app-surface) !important;
-}
-
-.btn,
-.ui-button,
-.puzzle-btn,
-.task-btn,
-.verify-btn,
-.submit-btn,
-.gallery-tab,
-.puzzle-tab,
-.site-nav-link,
-.refresh-btn,
-.page-btn {
-  box-shadow: none !important;
-}
-
-.btn,
-.puzzle-btn,
-.task-btn,
-.verify-btn,
-.submit-btn,
-.page-btn,
-.refresh-btn,
-.gallery-tab,
-.puzzle-tab,
-.site-nav-link {
-  border-color: var(--app-border) !important;
-  background: #1a1e27 !important;
-  color: #eef1f5 !important;
-}
-
-.btn.primary,
-.btn.white,
-.mint-submit-btn,
-.mint-connect-btn,
-.mint-disconnect-btn,
-.mint-page-btn,
-.mint-evolve-btn,
-.admin-action-btn,
-.admin-phase-btn,
-.puzzle-btn.primary,
-.puzzle-btn.white {
-  background: #f3f4f6 !important;
-  border-color: #f3f4f6 !important;
-  color: #12151b !important;
-}
-
-.btn:hover,
-.ui-button:hover:not(:disabled),
-.puzzle-btn:hover:not(:disabled),
-.task-btn:hover,
-.verify-btn:hover,
-.submit-btn:hover:not(:disabled),
-.site-nav-link:hover,
-.gallery-tab:hover:not(.active),
-.puzzle-tab:hover:not(.active),
-.page-btn:hover:not(:disabled),
-.refresh-btn:hover {
-  transform: none !important;
-  background: #202530 !important;
-  border-color: #313746 !important;
-  color: #ffffff !important;
-}
-
-.btn.primary:hover,
-.btn.white:hover,
-.mint-submit-btn:hover:not(:disabled),
-.mint-connect-btn:hover:not(:disabled),
-.mint-disconnect-btn:hover:not(:disabled),
-.mint-page-btn:hover:not(:disabled),
-.mint-evolve-btn:hover:not(:disabled),
-.admin-action-btn:hover:not(:disabled),
-.admin-phase-btn:hover:not(:disabled),
-.puzzle-btn.primary:hover,
-.puzzle-btn.white:hover {
-  background: #e6e9ee !important;
-  border-color: #e6e9ee !important;
-  color: #12151b !important;
-}
-
-.minted-nft,
-.puzzle-board-card.alert-amber,
-.puzzle-board-card.alert-red,
-.task-card.completed {
-  animation: none !important;
-  box-shadow: var(--ui-shadow) !important;
-}
-
-.site-nav-link.active,
-.tab.active,
-.gallery-tab.active,
-.puzzle-tab.active,
-.mint-tab.active,
-.mint-phase-item.active,
-.mint-phase-status.active {
-  background: #ffffff !important;
-  border-color: #ffffff !important;
-  color: #0f1115 !important;
-}
-
-.puzzle-btn:active:not(:disabled),
-.task-btn:active,
-.verify-btn:active,
-.submit-btn:active:not(:disabled),
-.shuffle-btn:active:not(:disabled) {
-  background: #ffffff !important;
-  border-color: #ffffff !important;
-  color: #0f1115 !important;
 }

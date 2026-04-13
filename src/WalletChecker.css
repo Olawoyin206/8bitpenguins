@@ -1,0 +1,251 @@
+.wallet-checker-page {
+  min-height: 100vh;
+  background: #0d1117;
+  color: #c9d1d9;
+}
+
+.wallet-checker-main {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 14px 12px 22px;
+}
+
+.wallet-checker-panel {
+  border: 1px solid #30363d;
+  background: #11161d;
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.wallet-checker-head {
+  margin-bottom: 8px;
+}
+
+.wallet-checker-head h1 {
+  margin: 0;
+  font-size: 0.86rem;
+  color: #f0f6fc;
+}
+
+.wallet-checker-form {
+  display: grid;
+  gap: 4px;
+}
+
+.wallet-checker-label {
+  font-size: 0.66rem;
+  color: #8b949e;
+}
+
+.wallet-checker-form-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.wallet-checker-form-row input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 1px solid #30363d;
+  background: #11161d;
+  color: #c9d1d9;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.74rem;
+}
+
+.wallet-checker-form-row input:focus {
+  outline: none;
+  border-color: #ffffff;
+}
+
+.wallet-checker-error {
+  margin: 8px 0 0;
+  color: #ffb4b8;
+  font-size: 0.74rem;
+}
+
+.wallet-checker-status {
+  margin-top: 8px;
+}
+
+.wallet-checker-result {
+  margin-top: 10px;
+  border: 1px solid #2f3843;
+  background: linear-gradient(180deg, #0e141c 0%, #0c1219 100%);
+  border-radius: 12px;
+  padding: 10px;
+  font-size: 0.75rem;
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.28);
+}
+
+.wallet-checker-result p {
+  margin: 0 0 6px;
+  word-break: break-all;
+}
+
+.wallet-checker-result-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.wallet-checker-phase-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid #3a4654;
+  background: #121b25;
+  color: #9ab0c6;
+  font-size: 0.58rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+.wallet-checker-eligibility.yes span {
+  color: #8ef7be;
+  font-weight: 700;
+}
+
+.wallet-checker-eligibility.no span {
+  color: #ffb4b8;
+  font-weight: 700;
+}
+
+.wallet-checker-phases-block {
+  border-top: 1px solid #24303d;
+  padding-top: 8px;
+}
+
+.wallet-checker-phases-title {
+  display: inline-block;
+  color: #c9d7e6;
+  font-size: 0.64rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.wallet-checker-none {
+  color: #ffb4b8;
+  margin: 0;
+  font-size: 0.74rem;
+}
+
+.wallet-checker-placeholder {
+  margin: 8px 0 0;
+  color: #8b949e;
+  font-size: 0.72rem;
+}
+
+.wallet-checker-phase-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.wallet-checker-phase-row {
+  display: grid;
+  gap: 6px;
+  border: 1px solid #2d3d35;
+  background: linear-gradient(180deg, rgba(26, 49, 39, 0.35) 0%, rgba(19, 34, 28, 0.5) 100%);
+  border-radius: 10px;
+  padding: 7px 8px;
+}
+
+.wallet-checker-phase-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.wallet-checker-phase-index {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(151, 235, 184, 0.45);
+  background: rgba(44, 85, 62, 0.6);
+  color: #c6f6dc;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.6rem;
+  font-weight: 700;
+}
+
+.wallet-checker-phase-name {
+  color: #d6f5e5;
+  font-size: 0.72rem;
+  line-height: 1.3;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.wallet-checker-phase-tag {
+  color: #8ef7be;
+  border: 1px solid rgba(142, 247, 190, 0.35);
+  background: rgba(52, 115, 84, 0.2);
+  border-radius: 999px;
+  padding: 3px 7px;
+  font-size: 0.56rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .wallet-checker-form-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .wallet-checker-form-row .ui-button {
+    width: 100%;
+  }
+
+  .wallet-checker-result-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .wallet-checker-phase-list {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+
+  .wallet-checker-phase-row {
+    border-radius: 8px;
+    padding: 6px 7px;
+    gap: 5px;
+  }
+
+  .wallet-checker-phase-top {
+    gap: 6px;
+  }
+
+  .wallet-checker-phase-index {
+    width: 17px;
+    height: 17px;
+    font-size: 0.56rem;
+  }
+
+  .wallet-checker-phase-name {
+    font-size: 0.69rem;
+    line-height: 1.25;
+  }
+
+  .wallet-checker-phase-tag {
+    padding: 2px 6px;
+    font-size: 0.52rem;
+  }
+}

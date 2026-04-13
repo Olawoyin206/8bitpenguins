@@ -7,19 +7,33 @@ if (process.platform === "win32" && process.env.HARDHAT_USE_NATIVE_SOLC !== "tru
   CompilerDownloader.getCompilerPlatform = () => CompilerPlatform.WASM;
 }
 
+const parsedOptimizerRuns = Number.parseInt(String(process.env.SOLC_OPTIMIZER_RUNS || "").trim(), 10);
+const optimizerRuns = Number.isFinite(parsedOptimizerRuns) && parsedOptimizerRuns > 0 ? parsedOptimizerRuns : 1;
+const useViaIR = String(process.env.SOLC_VIA_IR || "true").trim().toLowerCase() !== "false";
+const solidityVersion = String(process.env.SOLC_VERSION || "0.8.20").trim();
+
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
   solidity: {
-    version: "0.8.20",
+    version: solidityVersion,
     settings: {
       optimizer: {
         enabled: true,
-        runs: 1
+        runs: optimizerRuns
       },
-      viaIR: true
+      viaIR: useViaIR
     }
   },
   networks: {
+    mainnet: {
+      url:
+        process.env.ETH_MAINNET_RPC_URL ||
+        process.env.MAINNET_RPC_URL ||
+        process.env.VITE_RPC_URL ||
+        "https://ethereum-rpc.publicnode.com",
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      chainId: 1,
+    },
     sepolia: {
       url:
         process.env.ETH_SEPOLIA_RPC_URL ||
@@ -30,6 +44,9 @@ module.exports = {
     },
   },
   etherscan: {
-    apiKey: process.env.ETHERSCAN_API_KEY || process.env.BASESCAN_API_KEY || "",
+    apiKey: {
+      mainnet: process.env.ETHERSCAN_API_KEY || process.env.BASESCAN_API_KEY || "",
+      sepolia: process.env.ETHERSCAN_API_KEY || process.env.BASESCAN_API_KEY || "",
+    },
   },
 };

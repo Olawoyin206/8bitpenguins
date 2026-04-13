@@ -1036,30 +1036,30 @@
   --mint-success: #00ff88;
 }
 
-.mint-page {
+.app-page .mint-page {
   min-height: 100vh;
   background: var(--mint-bg);
   padding: 40px 20px;
 }
 
-.mint-page .app > header {
+.app-page .mint-page .app > header {
   display: none;
 }
 
-.mint-container {
+.app-page .mint-container {
   width: 100%;
   margin: 0 auto;
 }
 
 /* Hero Section */
-.mint-hero {
+.app-page .mint-hero {
   text-align: center;
   margin-bottom: 48px;
   padding: 40px 20px;
   position: relative;
 }
 
-.mint-hero::before {
+.app-page .mint-hero::before {
   content: '';
   position: absolute;
   top: 0;
@@ -1072,7 +1072,7 @@
   z-index: 0;
 }
 
-.mint-hero h1 {
+.app-page .mint-hero h1 {
   font-size: 3rem;
   font-weight: 800;
   color: var(--mint-text);
@@ -1082,14 +1082,14 @@
   z-index: 1;
 }
 
-.mint-hero h1 span {
+.app-page .mint-hero h1 span {
   background: linear-gradient(135deg, var(--mint-accent), #fff);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-.mint-hero p {
+.app-page .mint-hero p {
   font-size: 1rem;
   color: var(--mint-text-secondary);
   margin: 0;
@@ -1097,7 +1097,7 @@
 }
 
 /* Main Two Column Layout */
-.mint-layout {
+.app-page .mint-layout {
   display: grid;
   grid-template-columns: 380px 1fr;
   gap: 32px;
@@ -1105,7 +1105,7 @@
 }
 
 /* Left Column - Mint Card */
-.mint-card {
+.app-page .mint-card {
   background: var(--mint-card);
   border: 1px solid var(--mint-border);
   border-radius: 16px;
@@ -1114,7 +1114,7 @@
   top: 24px;
 }
 
-.mint-card-header {
+.app-page .mint-card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1123,14 +1123,14 @@
   border-bottom: 1px solid var(--mint-border);
 }
 
-.mint-card-title {
+.app-page .mint-card-title {
   font-size: 0.75rem;
   color: var(--mint-text-secondary);
   text-transform: uppercase;
   letter-spacing: 2px;
 }
 
-.mint-card-badge {
+.app-page .mint-card-badge {
   background: var(--mint-accent);
   color: #000;
   font-size: 0.65rem;
@@ -1142,48 +1142,48 @@
 }
 
 /* Supply Display */
-.mint-supply {
+.app-page .mint-supply {
   margin-bottom: 28px;
 }
 
-.mint-supply-header {
+.app-page .mint-supply-header {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
   margin-bottom: 12px;
 }
 
-.mint-supply-label {
+.app-page .mint-supply-label {
   font-size: 0.8rem;
   color: var(--mint-text-secondary);
 }
 
-.mint-supply-value {
+.app-page .mint-supply-value {
   font-size: 1.4rem;
   font-weight: 700;
   color: var(--mint-text);
 }
 
-.mint-supply-value span {
+.app-page .mint-supply-value span {
   color: var(--mint-text-muted);
   font-weight: 400;
 }
 
-.mint-supply-bar {
+.app-page .mint-supply-bar {
   height: 4px;
   background: var(--mint-border);
   border-radius: 2px;
   overflow: hidden;
 }
 
-.mint-supply-fill {
+.app-page .mint-supply-fill {
   height: 100%;
   background: linear-gradient(90deg, var(--mint-accent), var(--mint-accent-dim));
   border-radius: 2px;
   transition: width 0.5s ease;
 }
 
-.mint-supply-footer {
+.app-page .mint-supply-footer {
   display: flex;
   justify-content: space-between;
   margin-top: 10px;
@@ -1192,7 +1192,7 @@
 }
 
 /* Network Button */
-.mint-network-btn {
+.app-page .mint-network-btn {
   width: 100%;
   padding: 10px 12px;
   background: transparent;
@@ -1206,25 +1206,25 @@
   margin-bottom: 16px;
 }
 
-.mint-network-btn:hover {
+.app-page .mint-network-btn:hover {
   border-color: var(--mint-accent);
   color: var(--mint-accent);
 }
 
 /* Connect / Mint Form */
-.mint-form {
+.app-page .mint-form {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.mint-connected {
+.app-page .mint-connected {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.mint-wallet {
+.app-page .mint-wallet {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1234,20 +1234,20 @@
   border-radius: 10px;
 }
 
-.mint-wallet-addr {
+.app-page .mint-wallet-addr {
   font-family: 'JetBrains Mono';
   font-size: 0.8rem;
   color: var(--mint-text);
 }
 
-.mint-wallet-bal {
+.app-page .mint-wallet-bal {
   font-size: 0.75rem;
   color: var(--mint-success);
   font-weight: 500;
 }
 
 /* Quantity Selector */
-.mint-quantity {
+.app-page .mint-quantity {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -1258,7 +1258,7 @@
   border-radius: 10px;
 }
 
-.mint-quantity-btn {
+.app-page .mint-quantity-btn {
   width: 40px;
   height: 40px;
   display: flex;
@@ -1273,17 +1273,17 @@
   transition: all 0.2s ease;
 }
 
-.mint-quantity-btn:hover:not(:disabled) {
+.app-page .mint-quantity-btn:hover:not(:disabled) {
   border-color: var(--mint-accent);
   color: var(--mint-accent);
 }
 
-.mint-quantity-btn:disabled {
+.app-page .mint-quantity-btn:disabled {
   opacity: 0.3;
   cursor: not-allowed;
 }
 
-.mint-quantity-value {
+.app-page .mint-quantity-value {
   font-size: 1.5rem;
   font-weight: 700;
   color: var(--mint-text);
@@ -1291,13 +1291,13 @@
   text-align: center;
 }
 
-.mint-quantity-limit {
+.app-page .mint-quantity-limit {
   font-size: 0.7rem;
   color: var(--mint-text-muted);
 }
 
 /* Mint Button */
-.mint-submit-btn {
+.app-page .mint-submit-btn {
   width: 100%;
   padding: 8px 10px;
   background: #ffffff;
@@ -1314,7 +1314,7 @@
   overflow: hidden;
 }
 
-.mint-submit-btn::before {
+.app-page .mint-submit-btn::before {
   content: '';
   position: absolute;
   top: 0;
@@ -1325,17 +1325,17 @@
   transition: left 0.5s ease;
 }
 
-.mint-submit-btn:hover:not(:disabled)::before {
+.app-page .mint-submit-btn:hover:not(:disabled)::before {
   left: 100%;
 }
 
-.mint-submit-btn:hover:not(:disabled) {
+.app-page .mint-submit-btn:hover:not(:disabled) {
   background: #eceff3;
   box-shadow: 0 6px 16px rgba(255, 255, 255, 0.08);
   transform: translateY(-1px);
 }
 
-.mint-submit-btn:disabled {
+.app-page .mint-submit-btn:disabled {
   background: #ffffff;
   color: #000000;
   cursor: not-allowed;
@@ -1343,7 +1343,7 @@
 }
 
 /* Status Messages */
-.mint-status {
+.app-page .mint-status {
   text-align: center;
   padding: 12px;
   font-size: 0.8rem;
@@ -1353,13 +1353,13 @@
   border: 1px solid rgba(0, 212, 255, 0.2);
 }
 
-.mint-status.error {
+.app-page .mint-status.error {
   color: #ff4444;
   background: rgba(255, 68, 68, 0.1);
   border-color: rgba(255, 68, 68, 0.2);
 }
 
-.mint-tx-link {
+.app-page .mint-tx-link {
   display: block;
   text-align: center;
   padding: 10px;
@@ -1371,41 +1371,41 @@
   transition: all 0.2s ease;
 }
 
-.mint-tx-link:hover {
+.app-page .mint-tx-link:hover {
   border-color: var(--mint-accent);
   background: rgba(0, 212, 255, 0.05);
 }
 
 /* Right Column - Display */
-.mint-display {
+.app-page .mint-display {
   display: flex;
   flex-direction: column;
   gap: 32px;
 }
 
 /* Preview Card */
-.mint-preview-card {
+.app-page .mint-preview-card {
   background: var(--mint-card);
   border: 1px solid var(--mint-border);
   border-radius: 16px;
   padding: 32px;
 }
 
-.mint-preview-header {
+.app-page .mint-preview-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
 }
 
-.mint-preview-title {
+.app-page .mint-preview-title {
   font-size: 0.75rem;
   color: var(--mint-text-secondary);
   text-transform: uppercase;
   letter-spacing: 2px;
 }
 
-.mint-preview-badge {
+.app-page .mint-preview-badge {
   font-size: 0.65rem;
   color: var(--mint-text-muted);
   padding: 4px 10px;
@@ -1413,7 +1413,7 @@
   border-radius: 20px;
 }
 
-.mint-preview-image {
+.app-page .mint-preview-image {
   width: 100%;
   aspect-ratio: 1;
   display: flex;
@@ -1424,25 +1424,25 @@
   overflow: hidden;
 }
 
-.mint-preview-image canvas {
+.app-page .mint-preview-image canvas {
   max-width: 100%;
   max-height: 400px;
   image-rendering: pixelated;
 }
 
 /* Minted NFT Display */
-.mint-minted {
+.app-page .mint-minted {
   text-align: center;
   padding: 24px;
 }
 
-.mint-minted h3 {
+.app-page .mint-minted h3 {
   font-size: 1.2rem;
   color: var(--mint-success);
   margin-bottom: 16px;
 }
 
-.mint-minted-image {
+.app-page .mint-minted-image {
   width: 200px;
   height: 200px;
   margin: 0 auto 12px;
@@ -1451,25 +1451,25 @@
   border: 2px solid var(--mint-success);
 }
 
-.mint-minted-image canvas {
+.app-page .mint-minted-image canvas {
   width: 100%;
   height: 100%;
   image-rendering: pixelated;
 }
 
-.mint-minted-id {
+.app-page .mint-minted-id {
   font-size: 1rem;
   font-weight: 700;
   color: var(--mint-text);
 }
 
 /* Connect State */
-.mint-connect {
+.app-page .mint-connect {
   text-align: center;
   padding: 48px 24px;
 }
 
-.mint-connect-icon {
+.app-page .mint-connect-icon {
   width: 64px;
   height: 64px;
   margin: 0 auto 20px;
@@ -1481,12 +1481,12 @@
   font-size: 1.5rem;
 }
 
-.mint-connect p {
+.app-page .mint-connect p {
   color: var(--mint-text-secondary);
   margin-bottom: 20px;
 }
 
-.mint-connect-btn {
+.app-page .mint-connect-btn {
   padding: 8px 10px;
   background: #ffffff;
   border: none;
@@ -1498,17 +1498,17 @@
   transition: all 0.3s ease;
 }
 
-.mint-connect-btn:hover {
+.app-page .mint-connect-btn:hover {
   background: #eceff3;
   box-shadow: 0 6px 16px rgba(255, 255, 255, 0.08);
 }
 
 /* Gallery Sections */
-.mint-gallery {
+.app-page .mint-gallery {
   margin-top: 16px;
 }
 
-.mint-gallery-header {
+.app-page .mint-gallery-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1517,25 +1517,25 @@
   border-bottom: 1px solid var(--mint-border);
 }
 
-.mint-gallery-title {
+.app-page .mint-gallery-title {
   font-size: 0.9rem;
   font-weight: 600;
   color: var(--mint-text);
 }
 
-.mint-gallery-count {
+.app-page .mint-gallery-count {
   font-size: 0.8rem;
   color: var(--mint-accent);
   font-weight: 500;
 }
 
-.mint-gallery-grid {
+.app-page .mint-gallery-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: 16px;
 }
 
-.mint-gallery-item {
+.app-page .mint-gallery-item {
   background: var(--mint-card);
   border: 1px solid var(--mint-border);
   border-radius: 12px;
@@ -1543,18 +1543,18 @@
   transition: all 0.3s ease;
 }
 
-.mint-gallery-item:hover {
+.app-page .mint-gallery-item:hover {
   border-color: var(--mint-border-light);
   transform: translateY(-4px);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
 }
 
-.mint-gallery-item.evolved {
+.app-page .mint-gallery-item.evolved {
   border-color: var(--mint-accent);
   box-shadow: 0 0 20px var(--mint-accent-glow);
 }
 
-.mint-gallery-image {
+.app-page .mint-gallery-image {
   width: 100%;
   aspect-ratio: 1;
   display: flex;
@@ -1566,32 +1566,32 @@
   margin-bottom: 12px;
 }
 
-.mint-gallery-image canvas,
-.mint-gallery-image img {
+.app-page .mint-gallery-image canvas,
+.app-page .mint-gallery-image img {
   max-width: 100%;
   max-height: 140px;
   image-rendering: pixelated;
 }
 
-.mint-gallery-info {
+.app-page .mint-gallery-info {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.mint-gallery-id {
+.app-page .mint-gallery-id {
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--mint-text);
 }
 
-.mint-gallery-traits {
+.app-page .mint-gallery-traits {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
 }
 
-.mint-gallery-trait {
+.app-page .mint-gallery-trait {
   font-size: 0.6rem;
   color: var(--mint-text-muted);
   background: var(--mint-bg);
@@ -1599,13 +1599,13 @@
   border-radius: 4px;
 }
 
-.mint-gallery-actions {
+.app-page .mint-gallery-actions {
   display: flex;
   gap: 8px;
   margin-top: 10px;
 }
 
-.mint-evolve-btn {
+.app-page .mint-evolve-btn {
   flex: 1;
   padding: 6px 10px;
   background: transparent;
@@ -1620,27 +1620,27 @@
   transition: all 0.2s ease;
 }
 
-.mint-evolve-btn:hover:not(:disabled) {
+.app-page .mint-evolve-btn:hover:not(:disabled) {
   border-color: var(--mint-accent);
   color: var(--mint-accent);
 }
 
-.mint-evolve-btn:disabled {
+.app-page .mint-evolve-btn:disabled {
   opacity: 0.3;
   cursor: not-allowed;
 }
 
 /* Responsive */
 @media (max-width: 900px) {
-  .mint-layout {
+  .app-page .mint-layout {
     grid-template-columns: 1fr;
   }
-  
-  .mint-card {
+
+  .app-page .mint-card {
     position: static;
   }
-  
-  .mint-hero h1 {
+
+  .app-page .mint-hero h1 {
     font-size: 2rem;
   }
 }
@@ -1803,7 +1803,7 @@
     padding: 0 12px;
     align-items: stretch;
   }
-  
+
   .three-canvas {
     width: min(100%, 420px) !important;
     max-width: none;
@@ -1832,7 +1832,7 @@
     padding: 12px;
     border-radius: 10px;
   }
-  
+
   .three-page .traits ul {
     grid-template-columns: 1fr;
   }
@@ -1970,5 +1970,3 @@
   flex-wrap: wrap;
   justify-content: center;
 }
-
-
