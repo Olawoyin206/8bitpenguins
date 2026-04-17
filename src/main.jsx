@@ -5,6 +5,7 @@ import { Analytics } from '@vercel/analytics/react'
 import Error404 from './pages/Error404.jsx'
 import GlobalFooter from './components/GlobalFooter.jsx'
 import { applyStorageSchemaMigration } from './storageSchema.js'
+import { SNAPSHOT_LOCK_ENABLED } from './snapshotLockConfig.js'
 import './index.css'
 import './Button.css'
 
@@ -16,6 +17,7 @@ const loadEvolve = () => import('./pages/Evolve.jsx')
 const loadAdmin = () => import('./pages/Admin.jsx')
 const loadPlayToWL = () => import('./pages/PlayToWL.jsx')
 const loadWalletChecker = () => import('./pages/WalletChecker.jsx')
+const loadSnapshotLocked = () => import('./pages/SnapshotLocked.jsx')
 const App = lazy(loadApp)
 const Mint = lazy(loadMint)
 const ThreeGenerator = lazy(loadThreeGenerator)
@@ -24,8 +26,11 @@ const Evolve = lazy(loadEvolve)
 const Admin = lazy(loadAdmin)
 const PlayToWL = lazy(loadPlayToWL)
 const WalletChecker = lazy(loadWalletChecker)
+const SnapshotLocked = lazy(loadSnapshotLocked)
 const isProductionBuild = Boolean(import.meta?.env?.PROD)
 const showTestingRoutesInDev = Boolean(import.meta?.env?.DEV)
+const taskRouteElement = SNAPSHOT_LOCK_ENABLED ? <SnapshotLocked pageLabel="Tasks" /> : <Task />
+const playToWlRouteElement = SNAPSHOT_LOCK_ENABLED ? <SnapshotLocked pageLabel="Play To WL" /> : <PlayToWL />
 
 applyStorageSchemaMigration()
 
@@ -36,8 +41,8 @@ createRoot(document.getElementById('root')).render(
         <div className="app-route-shell">
           <Suspense fallback={<div style={{ minHeight: '100vh', background: '#0d1117' }} />}>
             <Routes>
-              <Route path="/" element={<Task />} />
-              <Route path="/task" element={<Task />} />
+              <Route path="/" element={taskRouteElement} />
+              <Route path="/task" element={taskRouteElement} />
               <Route path="/generate" element={<App />} />
               <Route path="/mint" element={<Mint />} />
               <Route path="/admin" element={<Admin />} />
@@ -48,7 +53,7 @@ createRoot(document.getElementById('root')).render(
               <Route path="/3d" element={<ThreeGenerator />} />
               {showTestingRoutesInDev && <Route path="/testing3d" element={<ThreeGenerator />} />}
               <Route path="/wallet-checker" element={<WalletChecker />} />
-              <Route path="/play-to-wl" element={<PlayToWL />} />
+              <Route path="/play-to-wl" element={playToWlRouteElement} />
               <Route path="*" element={<Error404 />} />
             </Routes>
           </Suspense>

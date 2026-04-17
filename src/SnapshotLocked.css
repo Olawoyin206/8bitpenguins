@@ -1,0 +1,122 @@
+.snapshot-locked-page {
+  min-height: 100vh;
+  background: #0d1117;
+  color: #c9d1d9;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.snapshot-locked-shell {
+  min-height: 100vh;
+}
+
+.snapshot-locked-main {
+  min-height: calc(100vh - 130px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+}
+
+.snapshot-locked-card {
+  width: min(640px, 100%);
+  border: 1px solid #30363d;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #111823 0%, #0d1117 100%);
+  padding: 20px 18px;
+  text-align: center;
+}
+
+.snapshot-locked-kicker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #f0b74f;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.56rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #f0b74f;
+  background: rgba(240, 183, 79, 0.1);
+}
+
+.snapshot-locked-card h1 {
+  margin: 12px 0 10px;
+  color: #f0f6fc;
+  font-size: 0.95rem;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.snapshot-locked-card p {
+  margin: 0;
+  color: #8b949e;
+  font-size: 0.68rem;
+  line-height: 1.6;
+}
+
+.snapshot-locked-card .snapshot-locked-note {
+  margin-top: 10px;
+  color: #f0f6fc;
+}
+
+.snapshot-locked-actions {
+  margin-top: 14px;
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.snapshot-locked-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #30363d;
+  border-radius: var(--ui-button-radius);
+  padding: 10px 14px;
+  font-size: 0.62rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: #f0f6fc;
+  text-decoration: none;
+  background: #111723;
+  transition: all 0.15s;
+}
+
+.snapshot-locked-btn:hover {
+  border-color: #58a6ff;
+  color: #58a6ff;
+}
+
+.snapshot-locked-btn-primary {
+  background: #ffffff;
+  border-color: #ffffff;
+  color: #0d1117;
+}
+
+.snapshot-locked-btn-primary:hover {
+  background: #e0e0e0;
+  border-color: #e0e0e0;
+  color: #0d1117;
+}
+
+@media (max-width: 640px) {
+  .snapshot-locked-main {
+    min-height: calc(100vh - 120px);
+  }
+
+  .snapshot-locked-card {
+    border-radius: 12px;
+    padding: 16px 14px;
+  }
+
+  .snapshot-locked-actions {
+    flex-direction: column;
+  }
+
+  .snapshot-locked-btn {
+    width: 100%;
+  }
+}
