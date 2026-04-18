@@ -6,7 +6,7 @@ import ConnectWalletButton from '../components/ConnectWalletButton.jsx'
 import StatusNotice from '../components/StatusNotice.jsx'
 import SiteNav from '../components/SiteNav.jsx'
 import '../Mint.css'
-import { BLOCK_EXPLORER_URL, CHAIN_ID_HEX, CHAIN_NAME, CONTRACT_ADDRESS, ETH_SEPOLIA_RPC, ETH_SEPOLIA_RPC_URLS } from '../contractConfig.js'
+import { BLOCK_EXPLORER_URL, CHAIN_ID_HEX, CHAIN_NAME, CONTRACT_ADDRESS, ETH_SEPOLIA_RPC, ETH_SEPOLIA_RPC_URLS, MINT_GATE_ADDRESS } from '../contractConfig.js'
 import contractABI from '../abi/EightBitPenguinsUpgradeable.abi.js'
 import { getSharedReadProvider } from '../readProvider.js'
 
@@ -14,22 +14,26 @@ const NETWORK_RPC_URLS = Array.from(new Set([
   ...(Array.isArray(ETH_SEPOLIA_RPC_URLS) ? ETH_SEPOLIA_RPC_URLS : []),
   ETH_SEPOLIA_RPC,
 ].filter(Boolean)))
+const NORMALIZED_MINT_GATE_ADDRESS = String(MINT_GATE_ADDRESS || '').trim()
+const USING_MINT_GATE = Boolean(NORMALIZED_MINT_GATE_ADDRESS)
+const MINT_CONTRACT_ADDRESS = NORMALIZED_MINT_GATE_ADDRESS || CONTRACT_ADDRESS
 const SHARED_RPC_PROVIDER = getSharedReadProvider()
 const DIRECT_MINT_ABI = ['function mint(uint256 quantity) payable']
+const GATE_MINT_ABI = ['function mint(uint256 quantity, uint256 maxAllowance, uint256 deadline, bytes signature) payable']
 const RENDERER_READ_ABI = ['function getOnchainRenderer() view returns (address)']
 const PHASE_READ_ABI = [
   'function phaseCount() view returns (uint256)',
   'function currentPhaseId() view returns (bool exists, uint256 phaseId)',
   'function getPhase(uint256 phaseId) view returns (string name, uint256 price, uint256 startTime, uint256 endTime, uint256 maxSupply, uint256 maxPerWallet, uint256 minted, bool enabled)',
-  'function phaseWhitelistCount(uint256 phaseId) view returns (uint256)',
-  'function isPhaseWhitelisted(uint256 phaseId, address account) view returns (bool)',
+  'function phaseRequiresWhitelistSignature(uint256 phaseId) view returns (bool)',
   'function phaseMintedPerWallet(uint256 phaseId, address account) view returns (uint256)',
 ]
 const CONTRACT_INTERFACE = new ethers.Interface(contractABI)
 const PHASE_NAME_GROUP_SEPARATOR = '::'
-const PHASE_ORDER_STORAGE_KEY = `penguin:phase-order:${String(CONTRACT_ADDRESS || '').toLowerCase()}`
+const PHASE_ORDER_STORAGE_KEY = `penguin:phase-order:${String(MINT_CONTRACT_ADDRESS || '').toLowerCase()}`
 const MINT_PHASE_GROUP_ORDER = ['team', 'guaranteed', 'selected communities', 'fcfs', 'public']
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
+const WHITELIST_PROOF_API_PATH = '/api/whitelist-proof'
 const CONTRACT_ERROR_MESSAGES = {
   MintingNotActive: 'Minting is currently paused.',
   MustMintAtLeastOne: 'Quantity must be at least 1.',
@@ -41,6 +45,13 @@ const CONTRACT_ERROR_MESSAGES = {
   ExceedsPhaseMaxPerWallet: 'Phase wallet limit reached.',
   InsufficientPayment: 'Insufficient payment for mint.',
   NoActiveMintPhase: 'No active mint phase.',
+  PhaseRequiresWhitelistSignature: 'This phase requires off-chain whitelist proof.',
+  PhaseDoesNotRequireWhitelistSignature: 'This phase does not use off-chain whitelist proof.',
+  InvalidWhitelistSignature: 'Invalid whitelist proof signature.',
+  WhitelistSignatureExpired: 'Whitelist proof expired. Retry mint.',
+  InvalidWhitelistAllowance: 'Invalid whitelist allowance.',
+  WhitelistAllowanceExceeded: 'Whitelist mint allowance reached.',
+  InvalidWhitelistPhase: 'Whitelist proof phase mismatch.',
   DirectMintDisabled: 'Direct mint is disabled on this contract.',
   RendererAddressRequired: 'Contract renderer is not configured.',
   RandomnessHelperAddressRequired: 'Contract randomness helper is not configured.',
@@ -144,6 +155,66 @@ function formatMintStatusMessage(status) {
   return ensureMessagePunctuation(noErrorPrefix)
 }
 
+async function requestWhitelistProof({ wallet, phaseId, mode = 'mint', contractAddress = '' }) {
+  const params = new URLSearchParams({
+    wallet: String(wallet || ''),
+    phaseId: String(Number(phaseId || 0)),
+  })
+  const normalizedContract = String(contractAddress || '').trim()
+  if (normalizedContract) {
+    params.set('contract', normalizedContract)
+  }
+  if (String(mode || '').toLowerCase() === 'check') {
+    params.set('checkOnly', '1')
+  }
+
+  const response = await fetch(`${WHITELIST_PROOF_API_PATH}?${params.toString()}`, {
+    method: 'GET',
+    cache: 'no-store',
+  })
+
+  const payload = await response.json().catch(() => null)
+  if (!response.ok || !payload?.ok) {
+    const message = String(payload?.error || 'Whitelist proof request failed')
+    const error = new Error(message)
+    error.status = response.status
+    error.payload = payload
+    throw error
+  }
+
+  return payload
+}
+
+async function requestWhitelistEligibilityBatch({ wallet, contractAddress = '' }) {
+  const params = new URLSearchParams({
+    wallet: String(wallet || ''),
+    checkOnly: '1',
+    allPhases: '1',
+    scope: 'all',
+    phaseId: '0',
+  })
+  const normalizedContract = String(contractAddress || '').trim()
+  if (normalizedContract) {
+    params.set('contract', normalizedContract)
+  }
+
+  const response = await fetch(`${WHITELIST_PROOF_API_PATH}?${params.toString()}`, {
+    method: 'GET',
+    cache: 'no-store',
+  })
+
+  const payload = await response.json().catch(() => null)
+  if (!response.ok || !payload?.ok) {
+    const message = String(payload?.error || 'Whitelist proof request failed')
+    const error = new Error(message)
+    error.status = response.status
+    error.payload = payload
+    throw error
+  }
+
+  return payload
+}
+
 function computeWalletRemaining(maxPerWallet, mintedCount, phaseMaxPerWallet, phaseMintedCount) {
   const globalRemaining = Number(maxPerWallet) > 0
     ? Math.max(0, Number(maxPerWallet) - Number(mintedCount || 0))
@@ -243,6 +314,12 @@ function getPriorityPhaseForGroup(items, activePhaseId, nowMs) {
   return [...phases].sort((a, b) => Number(a.id || 0) - Number(b.id || 0))[0] || null
 }
 
+function isPublicPhase(phase) {
+  const name = String(phase?.name || '').trim().toLowerCase()
+  if (!name) return false
+  return /(^|\s|::|[-_/])public(\s|$|::|[-_/])/.test(name)
+}
+
 function getPhaseGroupHeaderInfo(items, activePhaseId, nowMs, account, phaseEligibilityMap) {
   const targetPhase = getPriorityPhaseForGroup(items, activePhaseId, nowMs)
   if (!targetPhase) {
@@ -274,11 +351,13 @@ function getPhaseGroupHeaderInfo(items, activePhaseId, nowMs, account, phaseElig
   }
 
   const phaseEligibility = phaseEligibilityMap?.[targetPhase.id] || null
-  const requiresWhitelist = Boolean(phaseEligibility?.requiresWhitelist)
+  const requiresWhitelist = Boolean(
+    phaseEligibility?.requiresWhitelist ?? targetPhase?.requiresWhitelist
+  )
   const isEligible = Boolean(phaseEligibility?.eligible)
 
-  let eligibilityText = 'Eligible'
-  let eligibilityTone = 'eligible'
+  let eligibilityText = 'Open'
+  let eligibilityTone = 'open'
 
   if (!targetPhase.enabled) {
     eligibilityText = 'Disabled'
@@ -294,6 +373,9 @@ function getPhaseGroupHeaderInfo(items, activePhaseId, nowMs, account, phaseElig
       eligibilityText = 'Not Eligible'
       eligibilityTone = 'ineligible'
     }
+  } else if (!account && isPublicPhase(targetPhase)) {
+    eligibilityText = 'Eligible'
+    eligibilityTone = 'eligible'
   }
 
   return {
@@ -701,8 +783,8 @@ function Mint() {
     contractFetchRequestRef.current = requestId
     const isStale = () => contractFetchRequestRef.current !== requestId
     try {
-      const contract = new ethers.Contract(CONTRACT_ADDRESS, contractABI, SHARED_RPC_PROVIDER)
-      const phaseReadContract = new ethers.Contract(CONTRACT_ADDRESS, PHASE_READ_ABI, SHARED_RPC_PROVIDER)
+      const contract = new ethers.Contract(MINT_CONTRACT_ADDRESS, contractABI, SHARED_RPC_PROVIDER)
+      const phaseReadContract = new ethers.Contract(MINT_CONTRACT_ADDRESS, PHASE_READ_ABI, SHARED_RPC_PROVIDER)
 
       let fallbackMintPriceRaw = 0n
       try {
@@ -728,6 +810,7 @@ function Mint() {
       setIsMintActive(Boolean(mintActive))
 
       let nextCurrentPhase = null
+      let nextEligibilityMap = null
       const unsupported = Symbol('unsupported')
       const rendererAddress = await safeRead(
         () => new ethers.Contract(CONTRACT_ADDRESS, RENDERER_READ_ABI, SHARED_RPC_PROVIDER).getOnchainRenderer(),
@@ -751,7 +834,11 @@ function Mint() {
         const phaseResults = totalPhaseCount > 0
           ? await Promise.all(
               Array.from({ length: totalPhaseCount }, async (_, index) => {
-                const phase = await phaseReadContract.getPhase(index)
+                const [phase, requiresSignatureRaw] = await Promise.all([
+                  phaseReadContract.getPhase(index),
+                  safeRead(() => phaseReadContract.phaseRequiresWhitelistSignature(index), unsupported),
+                ])
+                const requiresWhitelist = requiresSignatureRaw === unsupported ? true : Boolean(requiresSignatureRaw)
                 return {
                   id: index,
                   name: phase[0],
@@ -762,6 +849,7 @@ function Mint() {
                   maxPerWallet: Number(phase[5]),
                   minted: Number(phase[6]),
                   enabled: Boolean(phase[7]),
+                  requiresWhitelist,
                 }
               })
             )
@@ -781,20 +869,46 @@ function Mint() {
             lastEligibilityPhaseIdsRef.current !== phaseIdsKey
 
           if (shouldRefreshEligibility) {
+            const eligibilityBatchByPhase = new Map()
+            try {
+              const batchPayload = await requestWhitelistEligibilityBatch({
+                wallet: address,
+                contractAddress: MINT_CONTRACT_ADDRESS,
+              })
+              const batchPhases = Array.isArray(batchPayload?.phases) ? batchPayload.phases : []
+              for (const batchPhase of batchPhases) {
+                const batchPhaseId = Number(batchPhase?.phaseId)
+                if (!Number.isInteger(batchPhaseId) || batchPhaseId < 0) continue
+                eligibilityBatchByPhase.set(batchPhaseId, batchPhase)
+              }
+            } catch {
+              // Fallback to per-phase checks when batch is unavailable.
+            }
+
             const eligibilityEntries = await Promise.all(
               phaseResults.map(async (phase) => {
-                const whitelistCountRaw = await safeRead(() => phaseReadContract.phaseWhitelistCount(phase.id), unsupported)
-                let whitelistCount = 0
-                if (whitelistCountRaw !== unsupported) {
-                  whitelistCount = Number(whitelistCountRaw || 0)
-                } else {
-                  whitelistCount = 0
+                const requiresSignature = Boolean(phase.requiresWhitelist)
+                let eligible = !requiresSignature
+                if (requiresSignature) {
+                  const batchPhase = eligibilityBatchByPhase.get(Number(phase.id))
+                  if (batchPhase && !batchPhase.error) {
+                    eligible = Boolean(batchPhase?.eligible) && Number(batchPhase?.maxAllowance || 0) > 0
+                  } else {
+                    try {
+                      const proofCheck = await requestWhitelistProof({
+                        wallet: address,
+                        phaseId: phase.id,
+                        mode: 'check',
+                        contractAddress: MINT_CONTRACT_ADDRESS,
+                      })
+                      eligible = Boolean(proofCheck?.eligible)
+                    } catch {
+                      eligible = false
+                    }
+                  }
                 }
-                const isWhitelisted = whitelistCount > 0
-                  ? Boolean(await safeRead(() => phaseReadContract.isPhaseWhitelisted(phase.id, address), false))
-                  : true
                 const mintedByWallet = Number(await safeRead(() => phaseReadContract.phaseMintedPerWallet(phase.id, address), 0))
-                return [phase.id, { requiresWhitelist: whitelistCount > 0, eligible: isWhitelisted, mintedByWallet }]
+                return [phase.id, { requiresWhitelist: requiresSignature, eligible, mintedByWallet }]
               })
             )
             if (isStale()) return
@@ -804,6 +918,7 @@ function Mint() {
               eligibility[phaseId] = { requiresWhitelist: value.requiresWhitelist, eligible: value.eligible }
               mintedByPhase[phaseId] = Number(value.mintedByWallet || 0)
             })
+            nextEligibilityMap = eligibility
             setPhaseEligibilityMap(eligibility)
             setPhaseWalletMintedMap(mintedByPhase)
             lastEligibilitySyncRef.current = Date.now()
@@ -853,21 +968,27 @@ function Mint() {
         ]
         if (nextCurrentPhase) {
           addressReads.push(safeRead(() => phaseReadContract.phaseMintedPerWallet(nextCurrentPhase.id, address), 0))
-          addressReads.push(safeRead(() => phaseReadContract.phaseWhitelistCount(nextCurrentPhase.id), 0))
-          addressReads.push(safeRead(() => phaseReadContract.isPhaseWhitelisted(nextCurrentPhase.id, address), false))
         }
-        const [bal, minted, phaseMinted, whitelistCount, isWhitelisted] = await Promise.all(addressReads)
+        const [bal, minted, phaseMinted] = await Promise.all(addressReads)
         if (isStale()) return
         setBalance(Number(bal))
         setMintedCount(Number(minted))
         setPhaseMintedCount(Number(phaseMinted || 0))
-        setPhaseWhitelistRequired(Number(whitelistCount || 0) > 0)
-        setPhaseWhitelistEligible(Number(whitelistCount || 0) === 0 ? true : Boolean(isWhitelisted))
+        const activeEligibilityMap = nextEligibilityMap || phaseEligibilityMap || {}
+        const activePhaseId = Number(nextCurrentPhase?.id)
+        const activeEntry = Number.isInteger(activePhaseId) && activePhaseId >= 0
+          ? activeEligibilityMap?.[activePhaseId]
+          : null
+        const requiresSignature = activeEntry
+          ? Boolean(activeEntry.requiresWhitelist)
+          : Boolean(nextCurrentPhase?.requiresWhitelist ?? true)
+        const phaseEligible = requiresSignature ? Boolean(activeEntry?.eligible) : true
+        setPhaseWhitelistRequired(requiresSignature)
+        setPhaseWhitelistEligible(requiresSignature ? phaseEligible : true)
         if (nextCurrentPhase) {
-          const activePhaseId = Number(nextCurrentPhase.id)
           const activeMinted = Number(phaseMinted || 0)
-          const activeRequiresWhitelist = Number(whitelistCount || 0) > 0
-          const activeEligible = activeRequiresWhitelist ? Boolean(isWhitelisted) : true
+          const activeRequiresWhitelist = requiresSignature
+          const activeEligible = activeRequiresWhitelist ? Boolean(phaseEligible) : true
           setPhaseWalletMintedMap((prev) => {
             if (Number(prev?.[activePhaseId]) === activeMinted) return prev
             return { ...(prev || {}), [activePhaseId]: activeMinted }
@@ -890,10 +1011,10 @@ function Mint() {
       } else {
         setPhaseMintedCount(0)
         if (nextCurrentPhase) {
-          const whitelistCount = await safeRead(() => phaseReadContract.phaseWhitelistCount(nextCurrentPhase.id), 0)
+          const requiresSignature = Boolean(nextCurrentPhase?.requiresWhitelist ?? true)
           if (isStale()) return
-          setPhaseWhitelistRequired(Number(whitelistCount || 0) > 0)
-          setPhaseWhitelistEligible(false)
+          setPhaseWhitelistRequired(requiresSignature)
+          setPhaseWhitelistEligible(!requiresSignature)
         } else {
           setPhaseWhitelistRequired(false)
           setPhaseWhitelistEligible(true)
@@ -996,7 +1117,7 @@ function Mint() {
       return
     }
     if (phaseWhitelistBlocked) {
-      setStatus('Wallet is not whitelisted for this phase')
+      setStatus('Wallet is not eligible for this phase')
       return
     }
     const liveActivePhase = currentPhase
@@ -1056,10 +1177,11 @@ function Mint() {
         setStatus('Wallet mismatch. Reconnect the intended wallet.')
         return
       }
-      const contract = new ethers.Contract(CONTRACT_ADDRESS, contractABI, signer)
-      const phaseReadContract = new ethers.Contract(CONTRACT_ADDRESS, PHASE_READ_ABI, signer)
+      const contract = new ethers.Contract(MINT_CONTRACT_ADDRESS, contractABI, signer)
+      const phaseReadContract = new ethers.Contract(MINT_CONTRACT_ADDRESS, PHASE_READ_ABI, signer)
 
       let mintPrice = 0n
+      let whitelistMintProof = null
       try {
         mintPrice = ethers.parseEther(String(displayPrice || '0'))
       } catch {
@@ -1106,19 +1228,48 @@ function Mint() {
             return
           }
           const phaseMaxPerWallet = Number(Array.isArray(phase) ? phase[5] : phase?.maxPerWallet || 0)
+          const phaseMintedByWallet = Number(await safeRead(() => phaseReadContract.phaseMintedPerWallet(phaseIdValue, signerAddress), 0))
           if (phaseMaxPerWallet > 0) {
-            const phaseMintedByWallet = Number(await safeRead(() => phaseReadContract.phaseMintedPerWallet(phaseIdValue, signerAddress), 0))
             if (phaseMintedByWallet + safeQuantity > phaseMaxPerWallet) {
               setStatus('Phase wallet limit reached')
               return
             }
           }
-          const whitelistCount = Number(await safeRead(() => phaseReadContract.phaseWhitelistCount(phaseIdValue), 0))
-          if (whitelistCount > 0) {
-            const isWhitelisted = Boolean(await safeRead(() => phaseReadContract.isPhaseWhitelisted(phaseIdValue, signerAddress), false))
-            if (!isWhitelisted) {
-              setStatus('Wallet is not whitelisted for this phase')
+          const requiresSignature = Boolean(await safeRead(
+            () => phaseReadContract.phaseRequiresWhitelistSignature(phaseIdValue),
+            false
+          ))
+          if (requiresSignature) {
+            setStatus('Fetching whitelist proof...')
+            let proofPayload = null
+            try {
+              proofPayload = await requestWhitelistProof({
+                wallet: signerAddress,
+                phaseId: Number(phaseIdValue),
+                mode: 'mint',
+                contractAddress: MINT_CONTRACT_ADDRESS,
+              })
+            } catch (proofError) {
+              setStatus(`Error: ${formatMintError(proofError, 'Wallet is not eligible for this phase')}`)
               return
+            }
+
+            const maxAllowance = Number(proofPayload?.maxAllowance || 0)
+            const deadline = Number(proofPayload?.deadline || 0)
+            if (!proofPayload?.signature || maxAllowance <= 0 || deadline <= Math.floor(Date.now() / 1000)) {
+              setStatus('Whitelist proof is invalid or expired. Retry mint.')
+              return
+            }
+            if (phaseMintedByWallet + safeQuantity > maxAllowance) {
+              setStatus(`Whitelist allowance reached (${phaseMintedByWallet}/${maxAllowance})`)
+              return
+            }
+
+            whitelistMintProof = {
+              phaseId: Number(phaseIdValue),
+              maxAllowance,
+              deadline,
+              signature: String(proofPayload.signature),
             }
           }
           mintPrice = phase[1]
@@ -1129,11 +1280,22 @@ function Mint() {
       }
 
       const mintValue = mintPrice * BigInt(safeQuantity)
-      const directMintContract = new ethers.Contract(CONTRACT_ADDRESS, DIRECT_MINT_ABI, signer)
+      const directMintContract = new ethers.Contract(MINT_CONTRACT_ADDRESS, DIRECT_MINT_ABI, signer)
+      const gateMintContract = new ethers.Contract(MINT_CONTRACT_ADDRESS, GATE_MINT_ABI, signer)
       let tx = null
       try {
         setStatus('Minting...')
-        tx = await directMintContract.mint(safeQuantity, { value: mintValue })
+        if (USING_MINT_GATE) {
+          tx = await gateMintContract.mint(
+            safeQuantity,
+            BigInt(whitelistMintProof?.maxAllowance || 0),
+            BigInt(whitelistMintProof?.deadline || 0),
+            String(whitelistMintProof?.signature || '0x'),
+            { value: mintValue }
+          )
+        } else {
+          tx = await directMintContract.mint(safeQuantity, { value: mintValue })
+        }
       } catch (directMintError) {
         setStatus(`Error: ${formatMintError(directMintError, 'Mint transaction failed')}`)
         return
@@ -1201,20 +1363,22 @@ function Mint() {
       ? `${summaryPhaseMinted !== null ? summaryPhaseMinted : '--'}/${summaryWalletCap > 0 ? summaryWalletCap : 'Unlimited'}`
       : 'Closed')
   const summaryEligibility = summaryPhase ? phaseEligibilityMap?.[summaryPhase.id] : null
-  const summaryRequiresWhitelist = Boolean(summaryEligibility?.requiresWhitelist)
+  const summaryRequiresWhitelist = Boolean(
+    summaryEligibility?.requiresWhitelist ?? summaryPhase?.requiresWhitelist
+  )
   const summaryEligible = Boolean(summaryEligibility?.eligible)
   const summaryIsActivePhase = Boolean(activePhase && summaryPhase && Number(activePhase.id) === Number(summaryPhase.id))
   const summaryAccessLabel = !summaryPhase
     ? (phaseCount === 0 ? (account ? 'Open Mint' : 'Connect Wallet') : 'Closed')
     : !account
-      ? 'Connect Wallet'
+      ? (summaryRequiresWhitelist ? 'Connect Wallet' : (isPublicPhase(summaryPhase) ? 'Eligible' : 'Open'))
       : summaryRequiresWhitelist
         ? (summaryEligible ? (summaryIsActivePhase ? 'Whitelisted' : 'Eligible') : (summaryIsActivePhase ? 'No Access' : 'Not Eligible'))
         : (summaryIsActivePhase ? 'Open Phase' : 'Open')
   const summaryAccessTone = !summaryPhase
     ? (phaseCount === 0 ? (account ? 'allowed' : 'connect') : 'muted')
     : !account
-      ? 'connect'
+      ? (summaryRequiresWhitelist ? 'connect' : (isPublicPhase(summaryPhase) ? 'allowed' : 'open'))
       : summaryRequiresWhitelist
         ? (summaryEligible ? (summaryIsActivePhase ? 'live' : 'allowed') : 'blocked')
         : (summaryIsActivePhase ? 'live' : 'allowed')

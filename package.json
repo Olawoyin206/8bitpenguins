@@ -14,13 +14,17 @@
     "preview": "vite preview",
     "deploy": "set HARDHAT_USE_SOLCJS=true&& hardhat run scripts/deploy-upgradeable.cjs --network mainnet",
     "deploy:upgradeable": "set HARDHAT_USE_SOLCJS=true&& hardhat run scripts/deploy-upgradeable.cjs --network mainnet",
+    "deploy:mint-gate": "set HARDHAT_USE_SOLCJS=true&& hardhat run scripts/deploy-mint-gate.cjs --network mainnet",
     "deploy:upgradeable:sepolia": "set HARDHAT_USE_SOLCJS=true&& hardhat run scripts/deploy-upgradeable.cjs --network sepolia",
+    "deploy:mint-gate:sepolia": "set HARDHAT_USE_SOLCJS=true&& hardhat run scripts/deploy-mint-gate.cjs --network sepolia",
+    "audit:deploy-gas": "node scripts/audit-deploy-gas.cjs",
     "upgrade:contract": "set HARDHAT_USE_SOLCJS=true&& hardhat run scripts/upgrade-upgradeable.cjs --network mainnet",
     "upgrade:contract:sepolia": "set HARDHAT_USE_SOLCJS=true&& hardhat run scripts/upgrade-upgradeable.cjs --network sepolia",
     "verify:current": "set HARDHAT_USE_SOLCJS=true&& hardhat run scripts/verify-current.cjs --network mainnet",
     "verify:current:sepolia": "set HARDHAT_USE_SOLCJS=true&& hardhat run scripts/verify-current.cjs --network sepolia",
     "check:proxy": "set HARDHAT_USE_SOLCJS=true&& hardhat run scripts/check-proxy-current.cjs --network mainnet",
-    "check:proxy:sepolia": "set HARDHAT_USE_SOLCJS=true&& hardhat run scripts/check-proxy-current.cjs --network sepolia"
+    "check:proxy:sepolia": "set HARDHAT_USE_SOLCJS=true&& hardhat run scripts/check-proxy-current.cjs --network sepolia",
+    "whitelist:sync": "node scripts/sync-whitelist-snapshot.mjs"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^4.9.6",

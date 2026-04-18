@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run whitelist:sync && npm run build",
   "rewrites": [
     { "source": "/task", "destination": "/index.html" },
     { "source": "/generate", "destination": "/index.html" },
