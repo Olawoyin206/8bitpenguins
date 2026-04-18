@@ -149,7 +149,12 @@ function WalletChecker() {
                 id="wallet-checker-input"
                 type="text"
                 value={walletInput}
-                onChange={(e) => setWalletInput(e.target.value)}
+                onChange={(e) => {
+                  const nextValue = e.target.value
+                  setWalletInput(nextValue)
+                  setResult(null)
+                  setError('')
+                }}
                 placeholder="0x..."
                 autoComplete="off"
                 spellCheck={false}
@@ -183,26 +188,16 @@ function WalletChecker() {
                 </p>
                 <span className="wallet-checker-phase-count">{result.phases.length} phase(s)</span>
               </div>
-              <p className="wallet-checker-contract">
-                Checked contract: {phaseContractAddress}
-              </p>
               <div className="wallet-checker-phases-block">
                 <strong className="wallet-checker-phases-title">Whitelist Phases</strong>
                 {result.phases.length === 0 ? (
                   <p className="wallet-checker-none">Address does not appear in any whitelist phase.</p>
                 ) : (
                   <ul className="wallet-checker-phase-list">
-                    {result.phases.map((phase, index) => (
+                    {result.phases.map((phase) => (
                       <li className="wallet-checker-phase-row" key={`wallet-phase-${phase.id}`}>
-                        <div className="wallet-checker-phase-top">
-                          <span className="wallet-checker-phase-index">{index + 1}</span>
-                        </div>
                         <span className="wallet-checker-phase-name">{phase.name}</span>
-                        <span className="wallet-checker-phase-meta">
-                          {phase.accessSource === 'offchain-signature'
-                            ? `Signed sheet whitelist${phase.maxAllowance > 0 ? ` - allowance ${phase.maxAllowance}` : ''}`
-                            : 'Signed sheet whitelist'}
-                        </span>
+                        <span className="wallet-checker-phase-meta">Max: {phase.maxAllowance}</span>
                       </li>
                     ))}
                   </ul>
